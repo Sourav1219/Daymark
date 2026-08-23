@@ -132,20 +132,10 @@ export function createAuth(
           },
         }
       : {}),
-    rateLimit: {
-      customRules: {
-        "/sign-in/email": { max: 10, window: 60 },
-        "/sign-up/email": { max: 5, window: 60 },
-        "/request-password-reset": { max: 5, window: 60 },
-        "/reset-password": { max: 5, window: 60 },
-        "/send-verification-email": { max: 5, window: 60 },
-      },
-      // Brute-force protection is not production-only: the database storage
-      // works locally, so development keeps it too. Only automated tests run
-      // unrestricted so integration suites can exercise auth freely.
-      enabled: env.NODE_ENV !== "test",
-      storage: "database",
-    },
+    // Authentication entry points are protected by the shared Upstash limiter.
+    // Keeping Better Auth's duplicate database limiter disabled avoids an
+    // additional rate_limits query on every request through Supavisor.
+    rateLimit: { enabled: false },
     session: {
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,

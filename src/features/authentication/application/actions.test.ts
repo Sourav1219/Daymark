@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
+  enforceRateLimit,
   withHealthyAuth,
   logger,
   redirect,
@@ -12,6 +13,7 @@ const {
   signInEmail,
   signUpEmail,
 } = vi.hoisted(() => ({
+  enforceRateLimit: vi.fn(),
   withHealthyAuth: vi.fn(),
   logger: { error: vi.fn(), warn: vi.fn() },
   redirect: vi.fn(),
@@ -32,6 +34,7 @@ vi.mock("next/headers", () => ({
 vi.mock("next/navigation", () => ({ redirect }))
 vi.mock("@/features/authentication/server/auth", () => ({ withHealthyAuth }))
 vi.mock("@/lib/observability/logger", () => ({ logger }))
+vi.mock("@/lib/rate-limit/rate-limiter", () => ({ enforceRateLimit }))
 
 import {
   loginAction,
@@ -66,6 +69,7 @@ describe("registerAction", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    enforceRateLimit.mockResolvedValue(null)
     withHealthyAuth.mockImplementation((scope) =>
       scope({ api: { signUpEmail } }),
     )
@@ -114,6 +118,7 @@ describe("loginAction", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
+    enforceRateLimit.mockResolvedValue(null)
     withHealthyAuth.mockImplementation((scope) =>
       scope({ api: { signInEmail } }),
     )
@@ -157,6 +162,7 @@ describe("account email requests", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    enforceRateLimit.mockResolvedValue(null)
     withHealthyAuth.mockImplementation((scope) =>
       scope({ api: { requestPasswordReset, sendVerificationEmail } }),
     )
@@ -209,6 +215,7 @@ describe("resetPasswordAction", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
+    enforceRateLimit.mockResolvedValue(null)
     withHealthyAuth.mockImplementation((scope) =>
       scope({ api: { resetPassword } }),
     )

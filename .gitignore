@@ -10,10 +10,23 @@
 /playwright-report
 /test-results
 
-# local environment files
-.env
-.env.local
-.env.*.local
+# local environment files (keep only the placeholder template)
+.env*
+!.env.example
+
+# local credentials and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+credentials.*.json
+service-account*.json
+service_account*.json
+secrets.json
+secrets.*.json
 
 # deployment
 .vercel

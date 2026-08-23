@@ -1,12 +1,12 @@
-import { getAuth } from "@/features/authentication/server/auth"
+import { getHealthyAuth } from "@/features/authentication/server/auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-export function GET(request: Request) {
-  return getAuth().handler(request)
+export async function GET(request: Request) {
+  return (await getHealthyAuth()).handler(request)
 }
 
-export function POST(request: Request) {
-  return getAuth().handler(request)
+export async function POST(request: Request) {
+  return (await getHealthyAuth()).handler(request)
 }

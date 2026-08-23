@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
-  getAuth,
+  getHealthyAuth,
   logger,
   redirect,
   requestPasswordReset,
@@ -12,7 +12,7 @@ const {
   signInEmail,
   signUpEmail,
 } = vi.hoisted(() => ({
-  getAuth: vi.fn(),
+  getHealthyAuth: vi.fn(),
   logger: { error: vi.fn(), warn: vi.fn() },
   redirect: vi.fn(),
   requestPasswordReset: vi.fn(),
@@ -30,7 +30,7 @@ vi.mock("next/headers", () => ({
   headers: vi.fn().mockResolvedValue(new Headers()),
 }))
 vi.mock("next/navigation", () => ({ redirect }))
-vi.mock("@/features/authentication/server/auth", () => ({ getAuth }))
+vi.mock("@/features/authentication/server/auth", () => ({ getHealthyAuth }))
 vi.mock("@/lib/observability/logger", () => ({ logger }))
 
 import {
@@ -66,7 +66,7 @@ describe("registerAction", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    getAuth.mockReturnValue({ api: { signUpEmail } })
+    getHealthyAuth.mockResolvedValue({ api: { signUpEmail } })
   })
 
   it("returns the same generic response for new and existing addresses", async () => {
@@ -112,7 +112,7 @@ describe("loginAction", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
-    getAuth.mockReturnValue({ api: { signInEmail } })
+    getHealthyAuth.mockResolvedValue({ api: { signInEmail } })
   })
 
   it("returns one neutral response for every authentication failure", async () => {
@@ -153,7 +153,7 @@ describe("account email requests", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    getAuth.mockReturnValue({
+    getHealthyAuth.mockResolvedValue({
       api: { requestPasswordReset, sendVerificationEmail },
     })
   })
@@ -205,7 +205,7 @@ describe("resetPasswordAction", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
-    getAuth.mockReturnValue({ api: { resetPassword } })
+    getHealthyAuth.mockResolvedValue({ api: { resetPassword } })
   })
 
   it("uses the one-time token and redirects after a successful reset", async () => {

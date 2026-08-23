@@ -7,17 +7,24 @@ import postgres from "postgres"
 import * as schema from "@/db/schema"
 import { readServerEnv } from "@/lib/env/server"
 
+type PostgresClient = ReturnType<typeof postgres>
+
+function createPostgresClient(databaseUrl: string, verifyTls: boolean) {
+  return postgres(databaseUrl, {
+    connect_timeout: 10,
+    idle_timeout: 20,
+    max: 1,
+    max_lifetime: 60,
+    prepare: false,
+    ...(verifyTls ? { ssl: "require" as const } : {}),
+  })
+}
+
 export function createDatabase(
   databaseUrl: string,
   verifyTls = process.env.NODE_ENV === "production",
 ) {
-  const client = postgres(databaseUrl, {
-    connect_timeout: 10,
-    idle_timeout: 20,
-    max: 5,
-    prepare: false,
-    ...(verifyTls ? { ssl: "require" as const } : {}),
-  })
+  const client = createPostgresClient(databaseUrl, verifyTls)
 
   return drizzle(client, { schema })
 }
@@ -51,10 +58,69 @@ export async function withTenantContext<T>(
 }
 
 let database: Database | undefined
+let databaseClient: PostgresClient | undefined
 
 export function getDatabase(): Database {
   const env = readServerEnv()
-  database ??= createDatabase(env.DATABASE_URL, env.NODE_ENV === "production")
+  if (!database || !databaseClient) {
+    databaseClient = createPostgresClient(
+      env.DATABASE_URL,
+      env.NODE_ENV === "production",
+    )
+    database = drizzle(databaseClient, { schema })
+  }
 
   return database
+}
+
+const databaseProbeTimeoutMilliseconds = 3_000
+
+async function probeDatabase(candidate: Database): Promise<void> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      candidate.execute(sql`SELECT 1`),
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error("Database liveness probe timed out")),
+          databaseProbeTimeoutMilliseconds,
+        )
+      }),
+    ])
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
+}
+
+async function recycleDatabaseClient(candidate: Database): Promise<void> {
+  if (database !== candidate) return
+
+  const staleClient = databaseClient
+  database = undefined
+  databaseClient = undefined
+  await staleClient?.end({ timeout: 0 })
+}
+
+/**
+ * Detects sockets that went stale while a serverless function was frozen.
+ * One fresh-client retry keeps transient Supavisor/NAT disconnects from
+ * leaving an application request pending until the platform timeout.
+ */
+export async function getHealthyDatabase(): Promise<Database> {
+  const first = getDatabase()
+  try {
+    await probeDatabase(first)
+    return first
+  } catch {
+    await recycleDatabaseClient(first)
+  }
+
+  const retry = getDatabase()
+  try {
+    await probeDatabase(retry)
+    return retry
+  } catch (error) {
+    await recycleDatabaseClient(retry)
+    throw error
+  }
 }

@@ -5,7 +5,7 @@ import { createHash } from "node:crypto"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
-import { getAuth } from "@/features/authentication/server/auth"
+import { getHealthyAuth } from "@/features/authentication/server/auth"
 import {
   emailRequestSchema,
   loginSchema,
@@ -68,7 +68,7 @@ export async function registerAction(
 
   const startedAt = Date.now()
   try {
-    await getAuth().api.signUpEmail({
+    await (await getHealthyAuth()).api.signUpEmail({
       body: { ...parsed.data, callbackURL: "/sign-in?verified=1" },
       headers: await headers(),
     })
@@ -112,7 +112,7 @@ export async function loginAction(
   }
 
   try {
-    await getAuth().api.signInEmail({
+    await (await getHealthyAuth()).api.signInEmail({
       body: { ...parsed.data, callbackURL: "/sign-in?verified=1" },
       headers: await headers(),
     })
@@ -143,7 +143,7 @@ export async function resendVerificationAction(
 
   const startedAt = Date.now()
   try {
-    await getAuth().api.sendVerificationEmail({
+    await (await getHealthyAuth()).api.sendVerificationEmail({
       body: {
         callbackURL: "/sign-in?verified=1",
         email: parsed.data.email,
@@ -178,7 +178,7 @@ export async function requestPasswordResetAction(
 
   const startedAt = Date.now()
   try {
-    await getAuth().api.requestPasswordReset({
+    await (await getHealthyAuth()).api.requestPasswordReset({
       body: { email: parsed.data.email, redirectTo: "/reset-password" },
       headers: await headers(),
     })
@@ -213,7 +213,7 @@ export async function resetPasswordAction(
   }
 
   try {
-    await getAuth().api.resetPassword({
+    await (await getHealthyAuth()).api.resetPassword({
       body: {
         newPassword: parsed.data.newPassword,
         token: parsed.data.token,
@@ -235,6 +235,6 @@ export async function resetPasswordAction(
 }
 
 export async function logoutAction(): Promise<never> {
-  await getAuth().api.signOut({ headers: await headers() })
+  await (await getHealthyAuth()).api.signOut({ headers: await headers() })
   redirect("/sign-in")
 }

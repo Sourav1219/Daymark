@@ -6,7 +6,7 @@ import { createEmailVerificationToken } from "better-auth/api"
 import { nextCookies } from "better-auth/next-js"
 
 import type { Database } from "@/db/client"
-import { getDatabase } from "@/db/client"
+import { getDatabase, getHealthyDatabase } from "@/db/client"
 import * as schema from "@/db/schema"
 import { AUTH_COOKIE_PREFIX } from "@/features/authentication/config"
 import {
@@ -171,9 +171,24 @@ export function createAuth(
 export type Auth = ReturnType<typeof createAuth>
 
 let auth: Auth | undefined
+let authDatabase: Database | undefined
 
 export function getAuth(): Auth {
-  auth ??= createAuth(getDatabase(), readServerEnv())
+  const database = getDatabase()
+  if (!auth || authDatabase !== database) {
+    auth = createAuth(database, readServerEnv())
+    authDatabase = database
+  }
+
+  return auth
+}
+
+export async function getHealthyAuth(): Promise<Auth> {
+  const database = await getHealthyDatabase()
+  if (!auth || authDatabase !== database) {
+    auth = createAuth(database, readServerEnv())
+    authDatabase = database
+  }
 
   return auth
 }

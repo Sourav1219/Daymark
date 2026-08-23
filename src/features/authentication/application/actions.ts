@@ -16,7 +16,6 @@ import {
 import type { ActionFailure, ActionResult } from "@/lib/actions/action-result"
 import { validationFailure } from "@/lib/actions/action-helpers"
 import { logger } from "@/lib/observability/logger"
-import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 
 export type AuthActionState = ActionResult<{ message: string }> | null
 
@@ -50,36 +49,10 @@ function loginFailure(): ActionFailure {
   }
 }
 
-function rateLimitFailure(): ActionFailure {
-  return {
-    error: {
-      code: "RATE_LIMITED",
-      message: "Too many account requests. Please wait and try again.",
-    },
-    ok: false,
-  }
-}
-
-async function accountRateLimit(email: unknown) {
-  const requestHeaders = await headers()
-  const identity =
-    typeof email === "string"
-      ? createHash("sha256").update(email.trim().toLowerCase()).digest("hex")
-      : undefined
-  const result = await enforceRateLimit({
-    headers: requestHeaders,
-    policy: "account",
-    ...(identity ? { userId: identity } : {}),
-  })
-  return result && !result.success ? rateLimitFailure() : null
-}
-
 export async function registerAction(
   _previousState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  const limited = await accountRateLimit(formData.get("email"))
-  if (limited) return limited
   const parsed = registrationSchema.safeParse({
     email: formData.get("email"),
     name: formData.get("name"),
@@ -126,8 +99,6 @@ export async function loginAction(
   _previousState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  const limited = await accountRateLimit(formData.get("email"))
-  if (limited) return limited
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -162,8 +133,6 @@ export async function resendVerificationAction(
   _previousState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  const limited = await accountRateLimit(formData.get("email"))
-  if (limited) return limited
   const parsed = emailRequestSchema.safeParse({ email: formData.get("email") })
   if (!parsed.success) {
     return validationFailure(
@@ -199,8 +168,6 @@ export async function requestPasswordResetAction(
   _previousState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  const limited = await accountRateLimit(formData.get("email"))
-  if (limited) return limited
   const parsed = emailRequestSchema.safeParse({ email: formData.get("email") })
   if (!parsed.success) {
     return validationFailure(
@@ -233,8 +200,6 @@ export async function resetPasswordAction(
   _previousState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  const limited = await accountRateLimit(undefined)
-  if (limited) return limited
   const parsed = passwordResetSchema.safeParse({
     confirmPassword: formData.get("confirmPassword"),
     newPassword: formData.get("newPassword"),
@@ -270,7 +235,6 @@ export async function resetPasswordAction(
 }
 
 export async function logoutAction(): Promise<never> {
-  if (await accountRateLimit(undefined)) redirect("/sign-in")
   await getAuth().api.signOut({ headers: await headers() })
   redirect("/sign-in")
 }

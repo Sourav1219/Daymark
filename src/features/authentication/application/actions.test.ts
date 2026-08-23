@@ -3,7 +3,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
-  enforceRateLimit,
   getAuth,
   logger,
   redirect,
@@ -13,7 +12,6 @@ const {
   signInEmail,
   signUpEmail,
 } = vi.hoisted(() => ({
-  enforceRateLimit: vi.fn(),
   getAuth: vi.fn(),
   logger: { error: vi.fn(), warn: vi.fn() },
   redirect: vi.fn(),
@@ -34,7 +32,6 @@ vi.mock("next/headers", () => ({
 vi.mock("next/navigation", () => ({ redirect }))
 vi.mock("@/features/authentication/server/auth", () => ({ getAuth }))
 vi.mock("@/lib/observability/logger", () => ({ logger }))
-vi.mock("@/lib/rate-limit/rate-limiter", () => ({ enforceRateLimit }))
 
 import {
   loginAction,
@@ -69,7 +66,6 @@ describe("registerAction", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    enforceRateLimit.mockResolvedValue(null)
     getAuth.mockReturnValue({ api: { signUpEmail } })
   })
 
@@ -116,7 +112,6 @@ describe("loginAction", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
-    enforceRateLimit.mockResolvedValue(null)
     getAuth.mockReturnValue({ api: { signInEmail } })
   })
 
@@ -158,7 +153,6 @@ describe("account email requests", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    enforceRateLimit.mockResolvedValue(null)
     getAuth.mockReturnValue({
       api: { requestPasswordReset, sendVerificationEmail },
     })
@@ -211,7 +205,6 @@ describe("resetPasswordAction", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
-    enforceRateLimit.mockResolvedValue(null)
     getAuth.mockReturnValue({ api: { resetPassword } })
   })
 

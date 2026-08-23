@@ -5,7 +5,7 @@ import { createHash } from "node:crypto"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
-import { getHealthyAuth } from "@/features/authentication/server/auth"
+import { withHealthyAuth } from "@/features/authentication/server/auth"
 import {
   emailRequestSchema,
   loginSchema,
@@ -68,10 +68,12 @@ export async function registerAction(
 
   const startedAt = Date.now()
   try {
-    await (await getHealthyAuth()).api.signUpEmail({
-      body: { ...parsed.data, callbackURL: "/sign-in?verified=1" },
-      headers: await headers(),
-    })
+    await withHealthyAuth(async (auth) =>
+      auth.api.signUpEmail({
+        body: { ...parsed.data, callbackURL: "/sign-in?verified=1" },
+        headers: await headers(),
+      }),
+    )
   } catch (error) {
     if (
       isAPIError(error) &&
@@ -112,10 +114,12 @@ export async function loginAction(
   }
 
   try {
-    await (await getHealthyAuth()).api.signInEmail({
-      body: { ...parsed.data, callbackURL: "/sign-in?verified=1" },
-      headers: await headers(),
-    })
+    await withHealthyAuth(async (auth) =>
+      auth.api.signInEmail({
+        body: { ...parsed.data, callbackURL: "/sign-in?verified=1" },
+        headers: await headers(),
+      }),
+    )
   } catch {
     // Keep missing-account and wrong-password responses identical so the login
     // form cannot be used to discover which email addresses are registered.
@@ -143,13 +147,15 @@ export async function resendVerificationAction(
 
   const startedAt = Date.now()
   try {
-    await (await getHealthyAuth()).api.sendVerificationEmail({
-      body: {
-        callbackURL: "/sign-in?verified=1",
-        email: parsed.data.email,
-      },
-      headers: await headers(),
-    })
+    await withHealthyAuth(async (auth) =>
+      auth.api.sendVerificationEmail({
+        body: {
+          callbackURL: "/sign-in?verified=1",
+          email: parsed.data.email,
+        },
+        headers: await headers(),
+      }),
+    )
   } catch (error) {
     logger.error(
       "authentication.verification_request_failed",
@@ -178,10 +184,12 @@ export async function requestPasswordResetAction(
 
   const startedAt = Date.now()
   try {
-    await (await getHealthyAuth()).api.requestPasswordReset({
-      body: { email: parsed.data.email, redirectTo: "/reset-password" },
-      headers: await headers(),
-    })
+    await withHealthyAuth(async (auth) =>
+      auth.api.requestPasswordReset({
+        body: { email: parsed.data.email, redirectTo: "/reset-password" },
+        headers: await headers(),
+      }),
+    )
   } catch (error) {
     logger.error(
       "authentication.password_reset_request_failed",
@@ -213,13 +221,15 @@ export async function resetPasswordAction(
   }
 
   try {
-    await (await getHealthyAuth()).api.resetPassword({
-      body: {
-        newPassword: parsed.data.newPassword,
-        token: parsed.data.token,
-      },
-      headers: await headers(),
-    })
+    await withHealthyAuth(async (auth) =>
+      auth.api.resetPassword({
+        body: {
+          newPassword: parsed.data.newPassword,
+          token: parsed.data.token,
+        },
+        headers: await headers(),
+      }),
+    )
   } catch {
     return {
       error: {
@@ -235,6 +245,8 @@ export async function resetPasswordAction(
 }
 
 export async function logoutAction(): Promise<never> {
-  await (await getHealthyAuth()).api.signOut({ headers: await headers() })
+  await withHealthyAuth(async (auth) =>
+    auth.api.signOut({ headers: await headers() }),
+  )
   redirect("/sign-in")
 }

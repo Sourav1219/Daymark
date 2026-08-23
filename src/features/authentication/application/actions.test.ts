@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
-  getHealthyAuth,
+  withHealthyAuth,
   logger,
   redirect,
   requestPasswordReset,
@@ -12,7 +12,7 @@ const {
   signInEmail,
   signUpEmail,
 } = vi.hoisted(() => ({
-  getHealthyAuth: vi.fn(),
+  withHealthyAuth: vi.fn(),
   logger: { error: vi.fn(), warn: vi.fn() },
   redirect: vi.fn(),
   requestPasswordReset: vi.fn(),
@@ -30,7 +30,7 @@ vi.mock("next/headers", () => ({
   headers: vi.fn().mockResolvedValue(new Headers()),
 }))
 vi.mock("next/navigation", () => ({ redirect }))
-vi.mock("@/features/authentication/server/auth", () => ({ getHealthyAuth }))
+vi.mock("@/features/authentication/server/auth", () => ({ withHealthyAuth }))
 vi.mock("@/lib/observability/logger", () => ({ logger }))
 
 import {
@@ -66,7 +66,9 @@ describe("registerAction", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    getHealthyAuth.mockResolvedValue({ api: { signUpEmail } })
+    withHealthyAuth.mockImplementation((scope) =>
+      scope({ api: { signUpEmail } }),
+    )
   })
 
   it("returns the same generic response for new and existing addresses", async () => {
@@ -112,7 +114,9 @@ describe("loginAction", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
-    getHealthyAuth.mockResolvedValue({ api: { signInEmail } })
+    withHealthyAuth.mockImplementation((scope) =>
+      scope({ api: { signInEmail } }),
+    )
   })
 
   it("returns one neutral response for every authentication failure", async () => {
@@ -153,9 +157,9 @@ describe("account email requests", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    getHealthyAuth.mockResolvedValue({
-      api: { requestPasswordReset, sendVerificationEmail },
-    })
+    withHealthyAuth.mockImplementation((scope) =>
+      scope({ api: { requestPasswordReset, sendVerificationEmail } }),
+    )
   })
 
   it("returns a generic verification response regardless of delivery outcome", async () => {
@@ -205,7 +209,9 @@ describe("resetPasswordAction", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
-    getHealthyAuth.mockResolvedValue({ api: { resetPassword } })
+    withHealthyAuth.mockImplementation((scope) =>
+      scope({ api: { resetPassword } }),
+    )
   })
 
   it("uses the one-time token and redirects after a successful reset", async () => {

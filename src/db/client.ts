@@ -92,35 +92,40 @@ async function probeDatabase(candidate: Database): Promise<void> {
   }
 }
 
-async function recycleDatabaseClient(candidate: Database): Promise<void> {
-  if (database !== candidate) return
-
-  const staleClient = databaseClient
-  database = undefined
-  databaseClient = undefined
-  await staleClient?.end({ timeout: 0 })
-}
-
 /**
- * Detects sockets that went stale while a serverless function was frozen.
- * One fresh-client retry keeps transient Supavisor/NAT disconnects from
- * leaving an application request pending until the platform timeout.
+ * Authentication requests use an isolated connection because a serverless
+ * instance can be frozen between requests, leaving a pooled TCP socket stale.
+ * The preflight follows Supabase's guidance and the client is always closed
+ * before the request finishes, so concurrent auth requests cannot recycle one
+ * another's active connection.
  */
-export async function getHealthyDatabase(): Promise<Database> {
-  const first = getDatabase()
-  try {
-    await probeDatabase(first)
-    return first
-  } catch {
-    await recycleDatabaseClient(first)
+export async function withHealthyDatabase<T>(
+  scope: (database: Database) => Promise<T>,
+): Promise<T> {
+  const env = readServerEnv()
+  let lastError: unknown
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const client = createPostgresClient(
+      env.DATABASE_URL,
+      env.NODE_ENV === "production",
+    )
+    const candidate = drizzle(client, { schema })
+
+    try {
+      await probeDatabase(candidate)
+    } catch (error) {
+      lastError = error
+      await client.end({ timeout: 0 })
+      continue
+    }
+
+    try {
+      return await scope(candidate)
+    } finally {
+      await client.end({ timeout: 1 })
+    }
   }
 
-  const retry = getDatabase()
-  try {
-    await probeDatabase(retry)
-    return retry
-  } catch (error) {
-    await recycleDatabaseClient(retry)
-    throw error
-  }
+  throw lastError
 }

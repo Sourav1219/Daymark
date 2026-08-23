@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react"
 import Link from "next/link"
+import { Eye, EyeOff } from "lucide-react"
 
 import {
   loginAction,
@@ -11,6 +12,7 @@ import {
   type GoogleOAuthError,
   GoogleAuthButton,
 } from "@/features/authentication/ui/google-auth-button"
+import { EmailVerificationPanel } from "@/features/authentication/ui/email-verification-panel"
 import { requestAutomaticPushPermission } from "@/features/reminders/components/automatic-push-enrollment"
 import type { AuthNotice } from "@/features/authentication/ui/auth-experience"
 
@@ -64,6 +66,7 @@ export function AuthForm({
   )
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const [messageIndex, setMessageIndex] = useState(0)
   const fieldErrors = state && !state.ok ? state.error.fieldErrors : undefined
   const noticeMessage =
@@ -72,8 +75,12 @@ export function AuthForm({
       : notice === "password-reset"
         ? "Your password was reset. Sign in with your new password."
         : notice === "verification-error"
-          ? "That verification link is invalid or expired. Request a new link below."
+          ? "That verification request is invalid or expired. Request a new code below."
           : null
+  const verificationEmail =
+    registering && state?.ok && state.data.verificationRequired
+      ? (state.data.email ?? email)
+      : null
 
   useEffect(() => {
     if (!pending) {
@@ -86,6 +93,16 @@ export function AuthForm({
 
     return () => window.clearInterval(timer)
   }, [pending])
+
+  if (verificationEmail) {
+    return (
+      <main className="auth" data-mode="verification">
+        <div className="auth__inner auth__inner--verification">
+          <EmailVerificationPanel email={verificationEmail} />
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="auth" data-mode={mode}>
@@ -155,7 +172,7 @@ export function AuthForm({
             {noticeMessage}
             {notice === "verification-error" ? (
               <Link className="auth__message-link" href="/verify-email">
-                Resend verification
+                Enter verification code
               </Link>
             ) : null}
           </div>
@@ -233,27 +250,45 @@ export function AuthForm({
                 </Link>
               ) : null}
             </div>
-            <input
-              aria-describedby={
-                [
-                  fieldErrors?.password ? "password-error" : null,
-                  registering ? "password-hint" : null,
-                ]
-                  .filter(Boolean)
-                  .join(" ") || undefined
-              }
-              aria-invalid={Boolean(fieldErrors?.password)}
-              autoComplete={registering ? "new-password" : "current-password"}
-              className="auth__input"
-              disabled={pending}
-              id="password"
-              maxLength={128}
-              minLength={registering ? 8 : undefined}
-              name="password"
-              placeholder="Enter your password"
-              required
-              type="password"
-            />
+            <div className="auth__password-input">
+              <input
+                aria-describedby={
+                  [
+                    fieldErrors?.password ? "password-error" : null,
+                    registering ? "password-hint" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
+                aria-invalid={Boolean(fieldErrors?.password)}
+                autoComplete={registering ? "new-password" : "current-password"}
+                className="auth__input"
+                disabled={pending}
+                id="password"
+                maxLength={128}
+                minLength={registering ? 8 : undefined}
+                name="password"
+                placeholder="Enter your password"
+                required
+                type={passwordVisible ? "text" : "password"}
+              />
+              <button
+                aria-controls="password"
+                aria-label={passwordVisible ? "Hide password" : "Show password"}
+                aria-pressed={passwordVisible}
+                className="auth__password-toggle"
+                disabled={pending}
+                onClick={() => setPasswordVisible((visible) => !visible)}
+                title={passwordVisible ? "Hide password" : "Show password"}
+                type="button"
+              >
+                {passwordVisible ? (
+                  <EyeOff aria-hidden="true" />
+                ) : (
+                  <Eye aria-hidden="true" />
+                )}
+              </button>
+            </div>
             {registering ? (
               <p className="auth__hint" id="password-hint">
                 Use at least 8 characters locally; production requires 12.
@@ -268,9 +303,9 @@ export function AuthForm({
               role={state.ok ? "status" : "alert"}
             >
               {state.ok ? state.data.message : state.error.message}
-              {state.ok && registering ? (
+              {!state.ok && !registering ? (
                 <Link className="auth__message-link" href="/verify-email">
-                  Resend verification
+                  Enter verification code
                 </Link>
               ) : null}
             </div>

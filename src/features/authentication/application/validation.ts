@@ -40,6 +40,14 @@ export const loginSchema = z.object({
 
 export const emailRequestSchema = z.object({ email })
 
+export const emailVerificationCodeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/u, "Enter the 6-digit code from your email"),
+  email,
+})
+
 export const passwordResetTokenSchema = z
   .string()
   .min(20, "This password reset link is invalid or expired")

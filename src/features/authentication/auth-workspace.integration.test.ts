@@ -39,7 +39,7 @@ integrationDescribe("authentication and workspace integration", () => {
   let auth: Auth
   let database: Database
   const passwordResetUrls: string[] = []
-  const verificationUrls: string[] = []
+  const verificationCodes: string[] = []
 
   beforeAll(() => {
     if (!testDatabaseUrl) {
@@ -57,8 +57,8 @@ integrationDescribe("authentication and workspace integration", () => {
       sendPasswordReset: async (input) => {
         passwordResetUrls.push(input.url)
       },
-      sendVerification: async (input) => {
-        verificationUrls.push(input.url)
+      sendVerificationCode: async (input) => {
+        verificationCodes.push(input.code)
       },
     }
     auth = createAuth(database, env, emailDelivery)
@@ -74,7 +74,7 @@ integrationDescribe("authentication and workspace integration", () => {
     await database.delete(workspaces)
     await database.delete(users)
     passwordResetUrls.length = 0
-    verificationUrls.length = 0
+    verificationCodes.length = 0
   })
 
   afterAll(async () => {
@@ -96,7 +96,7 @@ integrationDescribe("authentication and workspace integration", () => {
     const setCookie = registration.headers.get("set-cookie") ?? ""
 
     expect(setCookie).not.toContain("session_token")
-    expect(verificationUrls).toHaveLength(1)
+    expect(verificationCodes).toHaveLength(1)
 
     const access = await findPersonalWorkspaceAccess(
       database,
@@ -125,11 +125,13 @@ integrationDescribe("authentication and workspace integration", () => {
       }),
     ).rejects.toMatchObject({ statusCode: 403 })
 
-    const verificationResponse = await auth.handler(
-      new Request(verificationUrls[0] ?? "", { redirect: "manual" }),
-    )
-    expect(verificationResponse.status).toBeGreaterThanOrEqual(300)
-    expect(verificationResponse.status).toBeLessThan(400)
+    await auth.api.verifyEmailOTP({
+      body: {
+        email: "ada@example.com",
+        otp: verificationCodes[0] ?? "",
+      },
+      headers: new Headers({ origin: "https://questly.test" }),
+    })
 
     const login = await auth.api.signInEmail({
       body: {

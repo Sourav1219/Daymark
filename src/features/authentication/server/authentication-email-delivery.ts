@@ -18,9 +18,14 @@ type AuthenticationEmail = Readonly<{
   url: string
 }>
 
+type VerificationCodeEmail = Readonly<{
+  code: string
+  recipientEmail: string
+}>
+
 export interface AuthenticationEmailDelivery {
   sendPasswordReset(input: AuthenticationEmail): Promise<void>
-  sendVerification(input: AuthenticationEmail): Promise<void>
+  sendVerificationCode(input: VerificationCodeEmail): Promise<void>
 }
 
 function escapeHtml(value: string): string {
@@ -53,6 +58,21 @@ function emailHtml(input: {
     `<p style="line-height:1.6;margin:0 0 24px">${escapeHtml(input.explanation)}</p>`,
     `<p style="margin:0 0 24px"><a href="${url}" style="display:inline-block;background:#316df4;color:#fff;text-decoration:none;border-radius:12px;padding:13px 20px;font-weight:700">${escapeHtml(input.action)}</a></p>`,
     '<p style="font-size:13px;line-height:1.5;color:#66758f;margin:0">This link expires in one hour. If you did not request it, you can safely ignore this email.</p>',
+    "</div></div>",
+  ].join("")
+}
+
+function verificationCodeHtml(input: VerificationCodeEmail): string {
+  const code = escapeHtml(input.code)
+
+  return [
+    '<div style="background:#f4f7fd;padding:32px 16px;font-family:Arial,sans-serif;color:#10213b">',
+    '<div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #dce5f5;border-radius:20px;padding:32px">',
+    '<p style="margin:0 0 24px;font-size:15px;font-weight:800;letter-spacing:.04em;color:#316df4">Daymark</p>',
+    '<h1 style="font-size:28px;line-height:1.2;margin:0 0 12px">Verify your email</h1>',
+    '<p style="line-height:1.6;margin:0 0 24px;color:#52627a">Enter this code in Daymark to finish creating your account.</p>',
+    `<div style="margin:0 0 24px;padding:20px;border:1px solid #cddafa;border-radius:16px;background:#f4f7ff;text-align:center;font-size:34px;font-weight:800;letter-spacing:10px;color:#17305b">${code}</div>`,
+    '<p style="font-size:13px;line-height:1.55;color:#66758f;margin:0">This code expires in 10 minutes and can be used only once. If you did not create a Daymark account, you can safely ignore this email.</p>',
     "</div></div>",
   ].join("")
 }
@@ -103,16 +123,29 @@ class ResendAuthenticationEmailDelivery implements AuthenticationEmailDelivery {
     }
   }
 
-  sendVerification(input: AuthenticationEmail) {
-    return this.send({
-      action: "Verify email address",
-      explanation:
-        "Confirm that this email address belongs to you before signing in to Daymark.",
-      recipientEmail: input.recipientEmail,
-      recipientName: input.recipientName,
-      subject: "Verify your Daymark email",
-      url: input.url,
-    })
+  async sendVerificationCode(input: VerificationCodeEmail) {
+    const subject = `${input.code} is your Daymark verification code`
+    const idempotencyKey = createHash("sha256")
+      .update(`${subject}:${input.recipientEmail}`)
+      .digest("hex")
+    const { data, error } = await withDeadline(
+      this.client.emails.send(
+        {
+          from: `Daymark <${this.from}>`,
+          html: verificationCodeHtml(input),
+          subject,
+          text: `Your Daymark verification code is ${input.code}. It expires in 10 minutes and can be used only once.`,
+          to: input.recipientEmail,
+        },
+        { idempotencyKey },
+      ),
+      emailDeadlineMilliseconds,
+      "Resend verification code delivery",
+    )
+
+    if (error || !data?.id) {
+      throw new Error("Authentication email provider rejected the message.")
+    }
   }
 
   sendPasswordReset(input: AuthenticationEmail) {
@@ -141,8 +174,13 @@ class DevelopmentAuthenticationEmailDelivery implements AuthenticationEmailDeliv
     return Promise.resolve()
   }
 
-  sendVerification(input: AuthenticationEmail) {
-    return this.log("verification", input)
+  sendVerificationCode(input: VerificationCodeEmail) {
+    logger.info("authentication.development_email", {
+      code: input.code,
+      kind: "verification-code",
+      recipient: input.recipientEmail,
+    })
+    return Promise.resolve()
   }
 
   sendPasswordReset(input: AuthenticationEmail) {

@@ -1,12 +1,15 @@
 "use server"
 
 import { isAPIError } from "better-auth/api"
+import { eq } from "drizzle-orm"
 import { createHash } from "node:crypto"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { withHealthyAuth } from "@/features/authentication/server/auth"
+import { users } from "@/db/schema"
 import {
+  emailVerificationCodeSchema,
   emailRequestSchema,
   loginSchema,
   passwordResetSchema,
@@ -18,13 +21,20 @@ import { validationFailure } from "@/lib/actions/action-helpers"
 import { logger } from "@/lib/observability/logger"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 
-export type AuthActionState = ActionResult<{ message: string }> | null
+type AuthActionData = Readonly<{
+  email?: string
+  message: string
+  verificationRequired?: boolean
+}>
 
-function registrationResponse(): NonNullable<AuthActionState> {
+export type AuthActionState = ActionResult<AuthActionData> | null
+
+function registrationResponse(email: string): NonNullable<AuthActionState> {
   return {
     data: {
-      message:
-        "If this address can be registered, a verification link has been sent. Check your inbox before signing in.",
+      email,
+      message: "Enter the 6-digit code we sent to your inbox.",
+      verificationRequired: true,
     },
     ok: true,
   }
@@ -95,12 +105,28 @@ export async function registerAction(
 
   const startedAt = Date.now()
   try {
-    await withHealthyAuth(async (auth) =>
-      auth.api.signUpEmail({
+    await withHealthyAuth(async (auth, database) => {
+      const [existingAccount] = await database
+        .select({ emailVerified: users.emailVerified })
+        .from(users)
+        .where(eq(users.email, parsed.data.email))
+        .limit(1)
+
+      await auth.api.signUpEmail({
         body: { ...parsed.data, callbackURL: "/sign-in?verified=1" },
         headers: await headers(),
-      }),
-    )
+      })
+
+      if (existingAccount && !existingAccount.emailVerified) {
+        await auth.api.sendVerificationOTP({
+          body: {
+            email: parsed.data.email,
+            type: "email-verification",
+          },
+          headers: await headers(),
+        })
+      }
+    })
   } catch (error) {
     if (
       isAPIError(error) &&
@@ -121,7 +147,7 @@ export async function registerAction(
     await normalizeAccountTiming(startedAt)
   }
 
-  return registrationResponse()
+  return registrationResponse(parsed.data.email)
 }
 
 export async function loginAction(
@@ -158,8 +184,18 @@ export async function loginAction(
   redirect(safeRedirectPath(formData.get("next")))
 }
 
-function emailRequestResponse(message: string): NonNullable<AuthActionState> {
-  return { data: { message }, ok: true }
+function emailRequestResponse(
+  message: string,
+  email?: string,
+): NonNullable<AuthActionState> {
+  return {
+    data: {
+      ...(email ? { email } : {}),
+      message,
+      ...(email ? { verificationRequired: true } : {}),
+    },
+    ok: true,
+  }
 }
 
 export async function resendVerificationAction(
@@ -179,10 +215,10 @@ export async function resendVerificationAction(
   const startedAt = Date.now()
   try {
     await withHealthyAuth(async (auth) =>
-      auth.api.sendVerificationEmail({
+      auth.api.sendVerificationOTP({
         body: {
-          callbackURL: "/sign-in?verified=1",
           email: parsed.data.email,
+          type: "email-verification",
         },
         headers: await headers(),
       }),
@@ -197,8 +233,58 @@ export async function resendVerificationAction(
   }
 
   return emailRequestResponse(
-    "If this address has an unverified account, a verification link has been sent.",
+    "If this address has an unverified account, a new 6-digit code has been sent.",
+    parsed.data.email,
   )
+}
+
+export async function verifyEmailCodeAction(
+  _previousState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const limited = await accountRateLimit(formData.get("email"))
+  if (limited) return limited
+  const parsed = emailVerificationCodeSchema.safeParse({
+    code: formData.get("code"),
+    email: formData.get("email"),
+  })
+  if (!parsed.success) {
+    return validationFailure(
+      "Check the verification code and try again.",
+      parsed.error.flatten().fieldErrors,
+    )
+  }
+
+  try {
+    await withHealthyAuth(async (auth) =>
+      auth.api.verifyEmailOTP({
+        body: { email: parsed.data.email, otp: parsed.data.code },
+        headers: await headers(),
+      }),
+    )
+  } catch (error) {
+    logger.warn("authentication.verification_code_rejected", {
+      code:
+        isAPIError(error) && typeof error.body?.code === "string"
+          ? error.body.code
+          : "UNKNOWN",
+    })
+    return {
+      error: {
+        code: "AUTHENTICATION_REQUIRED",
+        fieldErrors: {
+          code: [
+            "That code is incorrect or has expired. Request a new code and try again.",
+          ],
+        },
+        message:
+          "That code is incorrect or has expired. Request a new code and try again.",
+      },
+      ok: false,
+    }
+  }
+
+  redirect("/sign-in?verified=1")
 }
 
 export async function requestPasswordResetAction(

@@ -2,8 +2,8 @@ import "server-only"
 
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { createEmailVerificationToken } from "better-auth/api"
 import { nextCookies } from "better-auth/next-js"
+import { emailOTP } from "better-auth/plugins"
 
 import type { Database } from "@/db/client"
 import { getDatabase, withHealthyDatabase } from "@/db/client"
@@ -17,15 +17,6 @@ import {
 import { provisionPersonalWorkspace } from "@/features/workspaces/application/provision-personal-workspace"
 import { readServerEnv } from "@/lib/env/server"
 import { googleAuthEnvFromServerEnv, type ServerEnv } from "@/lib/env/schema"
-
-function verificationUrl(env: ServerEnv, token: string): string {
-  const callbackUrl = new URL("/sign-in", env.BETTER_AUTH_URL)
-  callbackUrl.searchParams.set("verified", "1")
-  const url = new URL("/api/auth/verify-email", env.BETTER_AUTH_URL)
-  url.searchParams.set("token", token)
-  url.searchParams.set("callbackURL", callbackUrl.toString())
-  return url.toString()
-}
 
 function passwordResetUrl(env: ServerEnv, token: string): string {
   const url = new URL("/reset-password", env.BETTER_AUTH_URL)
@@ -44,7 +35,7 @@ export function createAuth(
   const minPasswordLength = env.NODE_ENV === "development" ? 8 : 12
   const googleAuth = googleAuthEnvFromServerEnv(env)
 
-  return betterAuth({
+  const authentication = betterAuth({
     appName: "Daymark",
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
@@ -69,22 +60,6 @@ export function createAuth(
       enabled: true,
       maxPasswordLength: 128,
       minPasswordLength,
-      onExistingUserSignUp: async ({ user }) => {
-        if (user.emailVerified) return
-        const token = await createEmailVerificationToken(
-          env.BETTER_AUTH_SECRET,
-          user.email,
-          undefined,
-          60 * 60,
-        )
-        await scheduleAuthenticationEmail(() =>
-          emailDelivery.sendVerification({
-            recipientEmail: user.email,
-            recipientName: user.name,
-            url: verificationUrl(env, token),
-          }),
-        )
-      },
       requireEmailVerification: true,
       revokeSessionsOnPasswordReset: true,
       resetPasswordTokenExpiresIn: 60 * 60,
@@ -100,18 +75,8 @@ export function createAuth(
     },
     emailVerification: {
       autoSignInAfterVerification: false,
-      expiresIn: 60 * 60,
       sendOnSignIn: true,
       sendOnSignUp: true,
-      sendVerificationEmail: async ({ user, url }) => {
-        await scheduleAuthenticationEmail(() =>
-          emailDelivery.sendVerification({
-            recipientEmail: user.email,
-            recipientName: user.name,
-            url,
-          }),
-        )
-      },
     },
     account: {
       accountLinking: {
@@ -154,8 +119,28 @@ export function createAuth(
     },
     // Keep this plugin last so auth API calls made by Server Actions can set
     // the response cookie through Next.js.
-    plugins: [nextCookies()],
+    plugins: [
+      emailOTP({
+        allowedAttempts: 5,
+        expiresIn: 10 * 60,
+        otpLength: 6,
+        overrideDefaultEmailVerification: true,
+        sendVerificationOTP: async ({ email, otp, type }) => {
+          if (type !== "email-verification") return
+          await scheduleAuthenticationEmail(() =>
+            emailDelivery.sendVerificationCode({
+              code: otp,
+              recipientEmail: email,
+            }),
+          )
+        },
+        storeOTP: "hashed",
+      }),
+      nextCookies(),
+    ],
   })
+
+  return authentication
 }
 
 export type Auth = ReturnType<typeof createAuth>
@@ -173,7 +158,11 @@ export function getAuth(): Auth {
   return auth
 }
 
-export function withHealthyAuth<T>(scope: (auth: Auth) => Promise<T>) {
+export function withHealthyAuth<T>(
+  scope: (auth: Auth, database: Database) => Promise<T>,
+) {
   const env = readServerEnv()
-  return withHealthyDatabase((database) => scope(createAuth(database, env)))
+  return withHealthyDatabase((database) =>
+    scope(createAuth(database, env), database),
+  )
 }

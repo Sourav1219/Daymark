@@ -4,24 +4,28 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
   enforceRateLimit,
+  findExistingAccount,
   withHealthyAuth,
   logger,
   redirect,
   requestPasswordReset,
   resetPassword,
-  sendVerificationEmail,
+  sendVerificationOTP,
   signInEmail,
   signUpEmail,
+  verifyEmailOTP,
 } = vi.hoisted(() => ({
   enforceRateLimit: vi.fn(),
+  findExistingAccount: vi.fn(),
   withHealthyAuth: vi.fn(),
   logger: { error: vi.fn(), warn: vi.fn() },
   redirect: vi.fn(),
   requestPasswordReset: vi.fn(),
   resetPassword: vi.fn(),
-  sendVerificationEmail: vi.fn(),
+  sendVerificationOTP: vi.fn(),
   signInEmail: vi.fn(),
   signUpEmail: vi.fn(),
+  verifyEmailOTP: vi.fn(),
 }))
 
 vi.mock("better-auth/api", () => ({
@@ -42,7 +46,16 @@ import {
   requestPasswordResetAction,
   resendVerificationAction,
   resetPasswordAction,
+  verifyEmailCodeAction,
 } from "@/features/authentication/application/actions"
+
+const authenticationDatabase = {
+  select: () => ({
+    from: () => ({
+      where: () => ({ limit: findExistingAccount }),
+    }),
+  }),
+}
 
 function loginForm() {
   const form = new FormData()
@@ -70,8 +83,12 @@ describe("registerAction", () => {
     vi.useFakeTimers()
     vi.clearAllMocks()
     enforceRateLimit.mockResolvedValue(null)
+    findExistingAccount.mockResolvedValue([])
     withHealthyAuth.mockImplementation((scope) =>
-      scope({ api: { signUpEmail } }),
+      scope(
+        { api: { sendVerificationOTP, signUpEmail } },
+        authenticationDatabase,
+      ),
     )
   })
 
@@ -79,23 +96,27 @@ describe("registerAction", () => {
     signUpEmail.mockResolvedValueOnce({ user: { id: "new-user" } })
     const created = await register()
 
-    signUpEmail.mockRejectedValueOnce({
-      body: { code: "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" },
-    })
+    findExistingAccount.mockResolvedValueOnce([{ emailVerified: false }])
+    signUpEmail.mockResolvedValueOnce({ user: { id: "synthetic-user" } })
     const existing = await register()
 
     expect(existing).toEqual(created)
     expect(created).toEqual({
       data: {
-        message:
-          "If this address can be registered, a verification link has been sent. Check your inbox before signing in.",
+        email: "person@example.test",
+        message: "Enter the 6-digit code we sent to your inbox.",
+        verificationRequired: true,
       },
       ok: true,
     })
     expect(redirect).not.toHaveBeenCalled()
-    expect(logger.warn).toHaveBeenCalledWith(
-      "authentication.registration_existing_email",
-      expect.objectContaining({ emailFingerprint: expect.any(String) }),
+    expect(sendVerificationOTP).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: {
+          email: "person@example.test",
+          type: "email-verification",
+        },
+      }),
     )
   })
 
@@ -164,16 +185,16 @@ describe("account email requests", () => {
     vi.clearAllMocks()
     enforceRateLimit.mockResolvedValue(null)
     withHealthyAuth.mockImplementation((scope) =>
-      scope({ api: { requestPasswordReset, sendVerificationEmail } }),
+      scope({ api: { requestPasswordReset, sendVerificationOTP } }),
     )
   })
 
   it("returns a generic verification response regardless of delivery outcome", async () => {
-    sendVerificationEmail.mockResolvedValueOnce({ status: true })
+    sendVerificationOTP.mockResolvedValueOnce({ status: true })
     const sent = await finishNormalizedRequest(
       resendVerificationAction(null, emailForm()),
     )
-    sendVerificationEmail.mockRejectedValueOnce(new Error("provider down"))
+    sendVerificationOTP.mockRejectedValueOnce(new Error("provider down"))
     const failed = await finishNormalizedRequest(
       resendVerificationAction(null, emailForm()),
     )
@@ -181,8 +202,10 @@ describe("account email requests", () => {
     expect(failed).toEqual(sent)
     expect(sent).toEqual({
       data: {
+        email: "person@example.test",
         message:
-          "If this address has an unverified account, a verification link has been sent.",
+          "If this address has an unverified account, a new 6-digit code has been sent.",
+        verificationRequired: true,
       },
       ok: true,
     })
@@ -208,6 +231,47 @@ describe("account email requests", () => {
         },
       }),
     )
+  })
+})
+
+describe("verifyEmailCodeAction", () => {
+  beforeEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+    enforceRateLimit.mockResolvedValue(null)
+    withHealthyAuth.mockImplementation((scope) =>
+      scope({ api: { verifyEmailOTP } }),
+    )
+  })
+
+  it("verifies a valid code and returns to sign in", async () => {
+    verifyEmailOTP.mockResolvedValue({ status: true })
+    const form = emailForm()
+    form.set("code", "123456")
+
+    await verifyEmailCodeAction(null, form)
+
+    expect(verifyEmailOTP).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: { email: "person@example.test", otp: "123456" },
+      }),
+    )
+    expect(redirect).toHaveBeenCalledWith("/sign-in?verified=1")
+  })
+
+  it("returns one safe error for an invalid or expired code", async () => {
+    verifyEmailOTP.mockRejectedValue({ body: { code: "INVALID_OTP" } })
+    const form = emailForm()
+    form.set("code", "123456")
+
+    await expect(verifyEmailCodeAction(null, form)).resolves.toMatchObject({
+      error: {
+        code: "AUTHENTICATION_REQUIRED",
+        fieldErrors: { code: [expect.stringContaining("incorrect")] },
+      },
+      ok: false,
+    })
+    expect(redirect).not.toHaveBeenCalled()
   })
 })
 

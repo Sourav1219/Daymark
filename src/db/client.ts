@@ -16,7 +16,7 @@ export function createDatabase(
     idle_timeout: 20,
     max: 5,
     prepare: false,
-    ...(verifyTls ? { ssl: "verify-full" as const } : {}),
+    ...(verifyTls ? { ssl: "require" as const } : {}),
   })
 
   return drizzle(client, { schema })

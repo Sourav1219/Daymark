@@ -29,7 +29,7 @@ export default defineConfig({
   out: "./drizzle",
   dbCredentials: {
     url: migrationDatabaseUrl,
-    ...(production ? { ssl: "verify-full" as const } : {}),
+    ...(production ? { ssl: "require" as const } : {}),
   },
   migrations: {
     table: "__drizzle_migrations",

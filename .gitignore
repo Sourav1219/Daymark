@@ -28,6 +28,10 @@ service_account*.json
 secrets.json
 secrets.*.json
 
+# local documentation (kept locally, not published to the repository)
+*.md
+*.mdx
+
 # deployment
 .vercel
 

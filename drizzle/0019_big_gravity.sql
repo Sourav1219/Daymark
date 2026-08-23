@@ -1,0 +1,1 @@
+CREATE INDEX "group_study_sessions_ended_idx" ON "group_study_sessions" USING btree ("host_user_id","ended_at");

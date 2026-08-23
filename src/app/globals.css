@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@import "./styles/base.css";
+@import "./styles/redesign.css";
+@import "./styles/anime-chapter-styling.css";
+@import "./styles/prototype-motifs.css";
+@import "./styles/today-home-hero.css";
+@import "./styles/sign-up-welcome-screen.css";
+@import "./styles/sign-in-register-forms.css";
+@import "./styles/quest-studio.css";
+@import "./styles/today-page.css";
+@import "./styles/progress-page.css";

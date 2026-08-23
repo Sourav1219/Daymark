@@ -1,0 +1,95 @@
+/* ============================================================
+Prototype motifs — pill numbered eyebrow, step chips,
+   diamond divider, and glowing pill CTA. Shared site-wide so
+   every surface speaks the same "Hunter Log" language.
+   ============================================================ */
+
+/* Rounded pill eyebrow with an orange numbered/gem chip. */
+.chip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.28rem 0.75rem 0.28rem 0.4rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--surface-overlay) 65%, transparent);
+  color: var(--spectral-cyan);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.chip-badge__mark {
+  display: grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  background: var(--system-blue);
+  color: var(--primary-foreground);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  box-shadow: 0 0 0.75rem
+    color-mix(in oklch, var(--system-blue) 55%, transparent);
+}
+
+/* Circular outlined step number placed before a field/section label. */
+.step-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border: 1px solid color-mix(in oklch, var(--system-blue) 55%, transparent);
+  border-radius: 999px;
+  color: var(--system-blue);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Small rotated gem used as a section divider accent. */
+.diamond {
+  width: 0.5rem;
+  height: 0.5rem;
+  rotate: 45deg;
+  background: var(--system-blue);
+  box-shadow: 0 0 0.85rem
+    color-mix(in oklch, var(--system-blue) 65%, transparent);
+}
+
+.diamond-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+}
+
+.diamond-divider::before,
+.diamond-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--border-soft),
+    transparent
+  );
+}
+
+/* Persistent orange bloom for primary calls to action. */
+.cta-glow {
+  box-shadow: 0 0.5rem 1.75rem -0.35rem
+    color-mix(in oklch, var(--system-blue) 60%, transparent);
+}
+
+/* Diagonal hatch texture echoing the prototype backdrop. */
+.diagonal-weave {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklch, white 3%, transparent) 0 1px,
+    transparent 1px 11px
+  );
+}

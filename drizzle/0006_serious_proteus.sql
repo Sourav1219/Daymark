@@ -1,0 +1,2 @@
+ALTER TABLE "tasks" ADD COLUMN "offline_mutation_id" uuid;--> statement-breakpoint
+CREATE UNIQUE INDEX "tasks_workspace_offline_mutation_unique" ON "tasks" USING btree ("workspace_id","offline_mutation_id") WHERE "tasks"."offline_mutation_id" is not null;

@@ -1,0 +1,3 @@
+ALTER TABLE "timer_sessions" ADD COLUMN "quest_id" uuid;--> statement-breakpoint
+ALTER TABLE "timer_sessions" ADD CONSTRAINT "timer_sessions_quest_workspace_fk" FOREIGN KEY ("quest_id","workspace_id") REFERENCES "public"."tasks"("id","workspace_id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "timer_sessions_quest_id_idx" ON "timer_sessions" USING btree ("quest_id") WHERE "timer_sessions"."quest_id" is not null;

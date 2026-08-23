@@ -1,0 +1,38 @@
+/* ============================================================
+Anime "chapter" styling — reusable helpers that echo the
+   sign-in page: dashed chapter rule, orange field bar, and a
+   soft interactive lift used across the app shell.
+   ============================================================ */
+
+/* Chapter eyebrow: dash + label + trailing rule (auth parity). */
+.chapter-rule {
+  height: 1px;
+  flex: 1;
+  min-width: 1.5rem;
+  background: linear-gradient(to right, var(--border-strong), transparent);
+}
+
+/* Orange accent bar on the left edge of inputs, mirroring auth. */
+.field-standard {
+  border-left-width: 3px !important;
+  border-left-color: color-mix(
+    in oklch,
+    var(--system-blue) 55%,
+    transparent
+  ) !important;
+}
+
+.field-standard:focus-visible {
+  border-left-color: var(--system-blue) !important;
+}
+
+/* Soft lift used on interactive panels and links. */
+.lift {
+  transition:
+    transform var(--duration-fast) var(--ease-emphasized),
+    box-shadow var(--duration-standard) var(--ease-emphasized);
+}
+
+.lift:hover {
+  transform: translateY(-2px);
+}

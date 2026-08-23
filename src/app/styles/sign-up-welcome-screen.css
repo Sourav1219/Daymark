@@ -1,0 +1,630 @@
+/* ============================================================
+Sign-up welcome screen — clean, illustration-led onboarding.
+   No dotted backdrop; blue primary + soft-blue secondary CTA.
+   ============================================================ */
+.welcome {
+  display: flex;
+  justify-content: center;
+  min-height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 18% 8%,
+      rgba(91, 145, 255, 0.18),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 85% 92%,
+      rgba(117, 93, 238, 0.14),
+      transparent 32%
+    ),
+    var(--app-page-bg);
+  color: var(--app-text);
+  font-family: var(--font-nunito), var(--font-sans);
+}
+
+.welcome__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 26rem;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: max(1rem, env(safe-area-inset-top, 0px)) 1.15rem
+    calc(1.15rem + env(safe-area-inset-bottom, 0px));
+  border-inline: 1px solid rgba(62, 95, 169, 0.1);
+  background:
+    radial-gradient(
+      circle at 100% 0,
+      rgba(114, 95, 241, 0.12),
+      transparent 30%
+    ),
+    radial-gradient(circle at 0 35%, rgba(75, 139, 255, 0.1), transparent 34%),
+    linear-gradient(
+      165deg,
+      rgba(252, 253, 255, 0.98),
+      rgba(241, 246, 255, 0.98)
+    );
+  box-shadow: 0 0 4rem rgba(42, 73, 142, 0.08);
+  isolation: isolate;
+}
+
+.welcome__inner::before,
+.welcome__inner::after {
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  content: "";
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+.welcome__inner::before {
+  top: 7rem;
+  left: -8rem;
+  width: 14rem;
+  height: 14rem;
+  background: rgba(89, 147, 255, 0.08);
+}
+
+.welcome__inner::after {
+  right: -6rem;
+  bottom: 9rem;
+  width: 11rem;
+  height: 11rem;
+  background: rgba(113, 91, 234, 0.07);
+}
+
+.welcome__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  min-height: 2.65rem;
+  padding: 0 0.2rem;
+  animation: enter-up 0.4s var(--ease-system) both;
+}
+
+.welcome__wordmark,
+.welcome__topnote {
+  display: inline-flex;
+  align-items: center;
+}
+
+.welcome__wordmark {
+  gap: 0.45rem;
+  color: #1e3559;
+  font-family: var(--font-baloo), var(--font-nunito), sans-serif;
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.welcome__wordmark > span {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 3px solid #3972ef;
+  border-radius: 4px;
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 4px rgba(57, 114, 239, 0.09);
+}
+
+.welcome__topnote {
+  gap: 0.3rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid rgba(69, 96, 191, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.65);
+  color: #66779a;
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+  box-shadow: 0 8px 20px -18px rgba(31, 56, 122, 0.8);
+}
+
+.welcome__topnote svg {
+  width: 0.72rem;
+  height: 0.72rem;
+  color: #6a65df;
+}
+
+.welcome__hero {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(1rem, 3dvh, 1.6rem);
+  padding: 0.65rem 0 1rem;
+}
+
+.welcome__art {
+  position: relative;
+  display: grid;
+  width: min(100%, 21rem);
+  aspect-ratio: 1.16;
+  margin-inline: auto;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(67, 103, 196, 0.11);
+  border-radius: 2rem;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(76, 129, 245, 0.2),
+      transparent 38%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.88),
+      rgba(232, 240, 255, 0.74)
+    );
+  box-shadow:
+    0 1.5rem 3rem -2rem rgba(32, 67, 151, 0.38),
+    inset 0 1px rgba(255, 255, 255, 0.92);
+  animation: enter-up 0.5s 0.05s var(--ease-emphasized) both;
+}
+
+.welcome__orbit {
+  position: absolute;
+  width: 15.5rem;
+  height: 15.5rem;
+  border: 1px solid rgba(63, 112, 230, 0.12);
+  border-radius: 50%;
+}
+
+.welcome__orbit::before,
+.welcome__orbit::after {
+  position: absolute;
+  border-radius: 50%;
+  background: #ff9b4b;
+  box-shadow: 0 0.45rem 1rem rgba(255, 144, 57, 0.2);
+  content: "";
+}
+
+.welcome__orbit::before {
+  top: 1.5rem;
+  right: 1.2rem;
+  width: 0.55rem;
+  height: 0.55rem;
+}
+
+.welcome__orbit::after {
+  bottom: 2rem;
+  left: 0.7rem;
+  width: 0.35rem;
+  height: 0.35rem;
+}
+
+.welcome__glow {
+  position: absolute;
+  width: 10rem;
+  height: 10rem;
+  border-radius: 50%;
+  background: rgba(69, 122, 245, 0.16);
+  filter: blur(1.8rem);
+}
+
+@keyframes welcome-mascot-idle {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 1.2rem 1.5rem rgba(50, 108, 247, 0.14));
+  }
+  45% {
+    transform: translateY(-0.35rem) scale(1.025, 1.04);
+    filter: drop-shadow(0 1.45rem 1.8rem rgba(50, 108, 247, 0.2));
+  }
+  58% {
+    transform: translateY(-0.25rem) scale(1.018, 1.01);
+  }
+}
+
+.welcome__avatar {
+  position: relative;
+  z-index: 1;
+  width: min(72%, 15rem);
+  height: auto;
+  object-fit: contain;
+  transform-origin: 50% 58%;
+  will-change: transform, filter;
+  filter: drop-shadow(0 1.2rem 1.5rem rgba(50, 108, 247, 0.14));
+  animation:
+    pop-in 0.5s var(--ease-emphasized) both,
+    welcome-mascot-idle 4.8s 0.5s ease-in-out infinite;
+}
+
+.welcome__float-card {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.58rem;
+  border: 1px solid rgba(52, 82, 165, 0.1);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.88);
+  color: #405576;
+  font-size: 0.61rem;
+  font-weight: 850;
+  box-shadow: 0 0.8rem 1.6rem -1.1rem rgba(31, 62, 139, 0.55);
+  backdrop-filter: blur(0.7rem);
+  animation: enter-up 0.45s 0.35s var(--ease-emphasized) both;
+}
+
+.welcome__float-card svg {
+  width: 0.78rem;
+  height: 0.78rem;
+  color: #3e72ea;
+}
+
+.welcome__float-card--tasks {
+  top: 1.1rem;
+  left: 0.9rem;
+}
+
+.welcome__float-card--focus {
+  right: 0.9rem;
+  bottom: 1.1rem;
+}
+
+.welcome__copy {
+  text-align: center;
+  animation: enter-up 0.48s 0.14s var(--ease-emphasized) both;
+}
+
+.welcome__eyebrow {
+  display: inline-flex;
+  margin-bottom: 0.5rem;
+  color: #5272d8;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.welcome__brand {
+  margin: 0;
+  color: #172e50;
+  font-family: var(--font-baloo), var(--font-nunito), sans-serif;
+  font-size: clamp(2rem, 9vw, 2.55rem);
+  font-weight: 850;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+
+.welcome__brand em {
+  color: #356df0;
+  font-style: normal;
+}
+
+.welcome__tagline {
+  max-width: 28rem;
+  margin: 0.65rem auto 0;
+  color: #71809b;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.55;
+  text-wrap: balance;
+}
+
+.welcome__actions {
+  display: grid;
+  gap: 0.7rem;
+  animation: enter-up 0.48s 0.22s var(--ease-emphasized) both;
+}
+
+.welcome__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3.35rem;
+  gap: 0.55rem;
+  padding: 0 1.1rem;
+  border: 1px solid rgba(38, 91, 223, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #3978f4, #315fe7 58%, #6557e6);
+  color: #fff;
+  font:
+    850 0.9rem var(--font-nunito),
+    var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow:
+    0 1rem 2rem -1rem rgba(41, 87, 213, 0.75),
+    inset 0 1px rgba(255, 255, 255, 0.2);
+  transition:
+    transform 0.12s var(--ease-system),
+    filter 0.15s,
+    background 0.15s;
+}
+
+.welcome__cta svg {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.18s var(--ease-system);
+}
+
+.welcome__cta:hover {
+  filter: brightness(1.04) saturate(1.05);
+  transform: translateY(-1px);
+}
+
+.welcome__cta:hover svg {
+  transform: translateX(0.15rem);
+}
+
+.welcome__cta:active {
+  transform: translateY(1px);
+}
+
+.welcome__cta--secondary {
+  border-color: rgba(52, 81, 153, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+  color: #263c5e;
+  box-shadow: 0 0.7rem 1.5rem -1.2rem rgba(39, 65, 127, 0.5);
+  backdrop-filter: blur(0.65rem);
+}
+
+.welcome__cta--secondary:hover {
+  filter: none;
+  border-color: rgba(52, 101, 223, 0.2);
+  background: #fff;
+}
+
+.welcome__trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0.75rem 0 0;
+  color: #71819e;
+  font-size: 0.59rem;
+  font-weight: 750;
+}
+
+.welcome__trust svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: #4d78dc;
+}
+
+.welcome__legal {
+  margin: 0.75rem auto 0;
+  max-width: 38ch;
+  color: #9aa7bc;
+  font-size: 0.6rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.welcome__legal-link {
+  color: #71809c;
+  text-decoration: underline;
+  text-underline-offset: 0.14rem;
+}
+
+@media (max-height: 42rem) {
+  .welcome__art {
+    width: min(88%, 16rem);
+  }
+
+  .welcome__hero {
+    gap: 0.7rem;
+    padding-block: 0.35rem 0.6rem;
+  }
+
+  .welcome__tagline {
+    margin-top: 0.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome__avatar,
+  .welcome__art,
+  .welcome__copy,
+  .welcome__actions,
+  .welcome__float-card,
+  .welcome__topbar {
+    animation: none;
+  }
+}
+
+/* Keep the immersive welcome independent from the legacy auth form frame. */
+.welcome.welcome--immersive {
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  background: #eef3ff;
+}
+
+.welcome--immersive .welcome__inner {
+  display: grid;
+  grid-template-columns: 100%;
+  grid-template-rows: 48% 52%;
+  width: 100%;
+  max-width: 28rem;
+  height: 100dvh;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background:
+    radial-gradient(circle at 90% 8%, rgba(108, 91, 232, 0.1), transparent 28%),
+    radial-gradient(
+      circle at 4% 38%,
+      rgba(61, 125, 242, 0.11),
+      transparent 30%
+    ),
+    linear-gradient(165deg, #fbfcff 0%, #f4f7ff 58%, #edf3ff 100%);
+  box-shadow: 0 0 4rem rgba(35, 64, 135, 0.12);
+}
+
+.welcome--immersive .welcome__inner::before,
+.welcome--immersive .welcome__inner::after {
+  display: none;
+}
+
+.welcome--immersive .welcome__visual {
+  background: transparent;
+}
+
+.welcome--immersive .welcome__visual::before,
+.welcome--immersive .welcome__visual::after {
+  border-color: rgba(63, 104, 206, 0.07);
+}
+
+.welcome--immersive .welcome__topbar {
+  min-height: auto;
+  padding: max(1rem, env(safe-area-inset-top, 0px)) 1.25rem 0;
+}
+
+.welcome--immersive .welcome__wordmark {
+  color: #1c3458;
+  font-size: 1.05rem;
+  text-shadow: none;
+}
+
+.welcome--immersive .welcome__wordmark > span {
+  border-color: #3972ef;
+  box-shadow: 0 0 0 4px rgba(57, 114, 239, 0.09);
+}
+
+.welcome--immersive .welcome__edition {
+  color: #8290aa;
+}
+
+.welcome--immersive .welcome__art {
+  position: absolute;
+  inset: 2.8rem 0 0;
+  width: 100%;
+  height: calc(100% - 2.8rem);
+  aspect-ratio: auto;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.welcome--immersive .welcome__avatar {
+  width: min(54vw, 15rem);
+  max-height: 78%;
+  filter: drop-shadow(0 1.2rem 1.6rem rgba(46, 91, 194, 0.16));
+}
+
+.welcome--immersive .welcome__halo {
+  width: min(70vw, 19rem);
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.98) 0 43%,
+    rgba(78, 132, 241, 0.08) 44% 66%,
+    transparent 67%
+  );
+  filter: drop-shadow(0 1.3rem 2.3rem rgba(47, 93, 195, 0.1));
+}
+
+.welcome--immersive .welcome__ring--one {
+  width: min(84vw, 23rem);
+  border-color: rgba(58, 105, 213, 0.09);
+}
+
+.welcome--immersive .welcome__ring--two {
+  width: min(100vw, 28rem);
+  border-color: rgba(58, 105, 213, 0.045);
+}
+
+.welcome--immersive .welcome__panel {
+  margin-top: 0;
+  padding: 0.4rem 1.25rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.welcome--immersive .welcome__handle {
+  display: none;
+}
+
+.welcome--immersive .welcome__copy {
+  text-align: center;
+}
+
+.welcome--immersive .welcome__eyebrow {
+  margin-bottom: 0.42rem;
+  color: #4a6fdb;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+}
+
+.welcome--immersive .welcome__brand {
+  max-width: 13ch;
+  margin-inline: auto;
+  color: #142a49;
+  font-size: clamp(2rem, 8.5vw, 2.75rem);
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+}
+
+.welcome--immersive .welcome__tagline {
+  max-width: 30rem;
+  margin: 0.55rem auto 0;
+  color: #71809b;
+  font-size: 0.78rem;
+  line-height: 1.48;
+  text-align: center;
+}
+
+.welcome--immersive .welcome__actions {
+  gap: 0.62rem;
+  margin-top: clamp(0.85rem, 2.1dvh, 1.15rem);
+}
+
+.welcome--immersive .welcome__cta {
+  min-height: 3.2rem;
+  border-radius: 15px;
+  font-size: 0.86rem;
+}
+
+.welcome--immersive .welcome__cta--secondary {
+  border-color: rgba(52, 84, 157, 0.11);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 0.75rem 1.5rem -1.25rem rgba(40, 67, 133, 0.38);
+}
+
+.welcome--immersive .welcome__trust {
+  margin-top: 0.62rem;
+  color: #7b8ba5;
+}
+
+.welcome--immersive .welcome__legal {
+  margin-top: 0.42rem;
+  color: #a1adbf;
+  font-size: 0.56rem;
+}
+
+@media (max-height: 42rem) {
+  .welcome--immersive .welcome__inner {
+    grid-template-rows: 47% 53%;
+  }
+
+  .welcome--immersive .welcome__avatar {
+    width: min(48vw, 12rem);
+  }
+
+  .welcome--immersive .welcome__brand {
+    font-size: 1.85rem;
+  }
+
+  .welcome--immersive .welcome__tagline {
+    margin-top: 0.35rem;
+  }
+
+  .welcome--immersive .welcome__actions {
+    margin-top: 0.65rem;
+  }
+
+  .welcome--immersive .welcome__cta {
+    min-height: 2.75rem;
+  }
+}

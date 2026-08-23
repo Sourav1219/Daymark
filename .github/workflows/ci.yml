@@ -1,0 +1,254 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Shared credentials for jobs that boot the application runtime or run
+  # database-backed suites. Values are throwaway test-only configuration.
+  BETTER_AUTH_SECRET: ci-test-secret-0123456789abcdef0123456789abcdef
+  BETTER_AUTH_URL: http://127.0.0.1:3000
+  DATABASE_URL: postgresql://daymark:daymark@127.0.0.1:5432/daymark_test
+  MIGRATION_DATABASE_URL: postgresql://daymark:daymark@127.0.0.1:5432/daymark_test
+  TEST_DATABASE_URL: postgresql://daymark:daymark@127.0.0.1:5432/daymark_test
+  CRON_SECRET: ci-cron-secret-0123456789abcdef0123456789abcdef
+
+jobs:
+  check:
+    name: Static checks, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      # Without TEST_DATABASE_URL the database-backed integration suites skip;
+      # they run in the dedicated integration job below.
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  integration:
+    name: Integration tests (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: daymark
+          POSTGRES_PASSWORD: daymark
+          POSTGRES_DB: daymark_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U daymark -d daymark_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      # Apply every reviewed migration so suites exercise the real schema,
+      # including tenant predicates that unit tests cannot cover.
+      - run: pnpm db:migrate
+      - run: pnpm db:check
+      # TEST_DATABASE_URL enables the previously skipped integration suites,
+      # including tenant-isolation coverage.
+      - run: pnpm test
+
+  migration-drift:
+    name: Migration drift detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      # Generating must produce zero diff against the committed SQL and
+      # snapshots; any output means schema and migrations have diverged.
+      - run: pnpm db:generate
+      - run: git diff --exit-code -- drizzle
+
+  backup-restore:
+    name: Backup and restore verification
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: daymark
+          POSTGRES_PASSWORD: daymark
+          POSTGRES_DB: daymark_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U daymark -d daymark_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      # The restore drill needs client binaries matching the server version.
+      - run: |
+          echo "/usr/lib/postgresql/bin" >> "$GITHUB_PATH"
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+      - run: pnpm db:migrate
+      - name: Dump, wipe, restore, verify
+        run: ./scripts/backup-restore-check.sh
+        env:
+          DATABASE_URL: postgresql://daymark:daymark@127.0.0.1:5432/daymark_test
+
+  e2e:
+    name: Playwright journeys
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: daymark
+          POSTGRES_PASSWORD: daymark
+          POSTGRES_DB: daymark_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U daymark -d daymark_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 7
+
+  pwa-e2e:
+    name: Production PWA tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: daymark
+          POSTGRES_PASSWORD: daymark
+          POSTGRES_DB: daymark_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U daymark -d daymark_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:pwa
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-pwa-report
+          path: test-results/
+          retention-days: 7
+
+  security:
+    name: Dependency audit and secret scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      # Mandatory gate: fails the build on known advisories in production
+      # dependencies at high severity or above.
+      - run: pnpm audit --prod --audit-level=high
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  smoke:
+    name: Deployment smoke checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [check, integration]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+      # Runs against the production preview URL once configured; skipped
+      # until SMOKE_BASE_URL is provided as a repository secret.
+      - run: pnpm smoke
+        env:
+          BASE_URL: ${{ secrets.SMOKE_BASE_URL }}
+          READINESS_SECRET: ${{ secrets.SMOKE_READINESS_SECRET }}
+        if: ${{ secrets.SMOKE_BASE_URL != '' }}

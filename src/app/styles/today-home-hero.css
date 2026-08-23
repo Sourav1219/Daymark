@@ -1,0 +1,406 @@
+/* ============================================================
+Today home hero — "System Window" HUD (full redesign).
+   Same sign-in palette: near-black glass panel + a single orange
+   accent. Adds orange corner brackets, an animated scan sweep, a
+   glowing XP core ring, a bold glowing display title, an italic
+   serif date, and an orange-edged stat rail. Scoped to /today.
+   ============================================================ */
+@keyframes today-scan {
+  0% {
+    transform: translateX(-130%);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(130%);
+    opacity: 0;
+  }
+}
+
+@keyframes today-core-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+}
+
+.today-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 1.7rem 1.5rem 1.55rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-shell);
+  background:
+    radial-gradient(
+      140% 120% at 100% -10%,
+      color-mix(in oklch, var(--accent-blue) 16%, transparent),
+      transparent 52%
+    ),
+    radial-gradient(
+      120% 120% at -10% 115%,
+      color-mix(in oklch, var(--spectral-cyan) 12%, transparent),
+      transparent 55%
+    ),
+    linear-gradient(158deg, #ffffff, #f4f8ff);
+  box-shadow:
+    var(--shadow-panel),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  color: var(--app-text);
+}
+
+/* Faint dotted grid, echoing the sign-in backdrop. */
+.today-hero__grid {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.045) 1px,
+    transparent 1px
+  );
+  background-size: 20px 20px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+/* Animated orange scan sweep along the top edge. */
+.today-hero__scan {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 45%;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--app-orange),
+    transparent
+  );
+  filter: blur(0.4px);
+  animation: today-scan 6s var(--ease-system) infinite;
+}
+
+/* HUD corner brackets. */
+.today-hero__bracket {
+  position: absolute;
+  z-index: 1;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid var(--app-orange);
+  opacity: 0.85;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px var(--app-orange-border));
+}
+
+.today-hero__bracket[data-corner="tl"] {
+  top: 0.65rem;
+  left: 0.65rem;
+  border-right: 0;
+  border-bottom: 0;
+  border-top-left-radius: 5px;
+}
+
+.today-hero__bracket[data-corner="tr"] {
+  top: 0.65rem;
+  right: 0.65rem;
+  border-left: 0;
+  border-bottom: 0;
+  border-top-right-radius: 5px;
+}
+
+.today-hero__bracket[data-corner="bl"] {
+  bottom: 0.65rem;
+  left: 0.65rem;
+  border-right: 0;
+  border-top: 0;
+  border-bottom-left-radius: 5px;
+}
+
+.today-hero__bracket[data-corner="br"] {
+  bottom: 0.65rem;
+  right: 0.65rem;
+  border-left: 0;
+  border-top: 0;
+  border-bottom-right-radius: 5px;
+}
+
+.today-hero__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* Numbered pill eyebrow — mirrors .app-eyebrow. */
+.today-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.34rem 0.85rem;
+  border: 1px solid var(--accent-blue-border);
+  border-radius: 999px;
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+  font: 800 0.62rem var(--font-sans);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.today-eyebrow__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--accent-blue);
+  box-shadow: 0 0 0.5rem var(--accent-blue-border);
+}
+
+/* Level chip — blue pill. */
+.today-points {
+  flex-shrink: 0;
+  padding: 0.32rem 0.72rem;
+  border: 1px solid var(--accent-blue-border);
+  border-radius: 999px;
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+  font: 800 0.66rem var(--font-sans);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.today-hero__titles {
+  position: relative;
+  z-index: 1;
+  margin-top: 1.2rem;
+}
+
+/* Bold display title — mirrors .app-login-title-block h1. */
+.today-hero__title {
+  margin: 0;
+  color: var(--app-text);
+  font: 800 clamp(2rem, 9.5vw, 2.7rem) / 0.98 var(--font-sans);
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.today-hero__title span {
+  color: var(--app-orange);
+  text-shadow: 0 0 1.6rem
+    color-mix(in oklch, var(--app-orange) 55%, transparent);
+}
+
+/* Italic serif tagline — mirrors .app-login-title-block p. */
+.today-hero__tagline {
+  margin: 0.55rem 0 0;
+  color: var(--app-text-sub);
+  font: italic 0.95rem var(--font-serif);
+  letter-spacing: 0.01em;
+}
+
+/* Diamond divider — mirrors .app-diamond-divider. */
+.today-divider {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1.3rem 0;
+}
+
+.today-divider::before,
+.today-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--app-border),
+    transparent
+  );
+}
+
+.today-divider__gem {
+  width: 0.5rem;
+  height: 0.5rem;
+  rotate: 45deg;
+  border-radius: 1px;
+  background: var(--accent-blue);
+  box-shadow: 0 0 0.75rem var(--accent-blue-border);
+}
+
+/* Progress row — glowing XP core ring + daily-goal readout. */
+.today-progress {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  margin-bottom: 1rem;
+}
+
+.today-ring {
+  position: relative;
+  display: grid;
+  width: 104px;
+  height: 104px;
+  flex-shrink: 0;
+  place-items: center;
+}
+
+.today-ring::before {
+  content: "";
+  position: absolute;
+  inset: 14%;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--accent-blue) 30%, transparent),
+    transparent 70%
+  );
+  filter: blur(6px);
+  animation: today-core-pulse 3.2s var(--ease-system) infinite;
+}
+
+.today-ring__svg {
+  position: relative;
+  width: 104px;
+  height: 104px;
+}
+
+.today-ring__label {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.today-ring__pct {
+  color: var(--app-text);
+  font: 700 1.4rem / 1 var(--font-mono);
+}
+
+.today-ring__sub {
+  margin-top: 0.2rem;
+  color: var(--accent-blue);
+  font: 700 0.55rem var(--font-sans);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.today-progress__meta {
+  min-width: 0;
+}
+
+.today-progress__label {
+  margin: 0;
+  color: var(--app-text-sub);
+  font: 700 0.62rem var(--font-sans);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.today-progress__value {
+  margin: 0.35rem 0 0;
+  color: var(--app-text);
+  font: 700 1.55rem / 1 var(--font-mono);
+}
+
+.today-progress__value span {
+  color: var(--app-text-sub);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.today-progress__hint {
+  margin: 0.4rem 0 0;
+  color: var(--app-text-sub);
+  font: italic 0.85rem var(--font-serif);
+}
+
+.today-progress__hint.is-complete {
+  color: var(--app-orange);
+}
+
+/* Stat rail — orange-edged tiles echoing the auth field bars. */
+.today-rail {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+  margin: 0;
+}
+
+.today-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--app-border);
+  border-left: 2px solid var(--accent-blue-border);
+  border-radius: var(--radius-panel);
+  background: var(--app-surface);
+}
+
+/* The streak tile is the one warm accent. */
+.today-stat--streak {
+  border-left-color: var(--app-orange-border);
+}
+
+.today-stat__label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--app-text-sub);
+  font: 600 0.6rem var(--font-sans);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.today-stat__label svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--accent-blue);
+}
+
+/* Streak flame keeps the warm accent. */
+.today-stat__label .flame-icon {
+  color: var(--app-orange);
+}
+
+.today-stat__value {
+  margin: 0;
+  color: var(--app-text);
+  font: 600 1.55rem / 1 var(--font-mono);
+}
+
+.today-stat__value span {
+  margin-left: 0.3rem;
+  color: var(--app-text-sub);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-hero__scan,
+  .today-ring::before {
+    animation: none;
+  }
+}

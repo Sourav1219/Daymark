@@ -244,10 +244,11 @@ describe("verifyEmailCodeAction", () => {
     )
   })
 
-  it("verifies a valid code and returns to sign in", async () => {
+  it("verifies a valid code and enters the requested app page", async () => {
     verifyEmailOTP.mockResolvedValue({ status: true })
     const form = emailForm()
     form.set("code", "123456")
+    form.set("next", "/quests")
 
     await verifyEmailCodeAction(null, form)
 
@@ -256,7 +257,7 @@ describe("verifyEmailCodeAction", () => {
         body: { email: "person@example.test", otp: "123456" },
       }),
     )
-    expect(redirect).toHaveBeenCalledWith("/sign-in?verified=1")
+    expect(redirect).toHaveBeenCalledWith("/quests")
   })
 
   it("returns one safe error for an invalid or expired code", async () => {

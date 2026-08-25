@@ -61,7 +61,7 @@ function limiter(policy: RateLimitPolicy, scope: "ip" | "user") {
     instance = new Ratelimit({
       analytics: false,
       limiter: Ratelimit.slidingWindow(rule.requests, rule.window),
-      prefix: `daymark:rl:${policy}:${scope}`,
+      prefix: `traketo:rl:${policy}:${scope}`,
       redis: client,
     })
     limiters.set(key, instance)

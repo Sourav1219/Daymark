@@ -8,7 +8,7 @@ export function WelcomeAvatar({ className }: { className?: string }) {
       className={className}
       height={478}
       priority
-      src="/mascots/daymark-guide-blue-transparent.png"
+      src="/mascots/traketo-guide-blue-transparent.png"
       width={606}
     />
   )

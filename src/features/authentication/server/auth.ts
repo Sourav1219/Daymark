@@ -36,7 +36,7 @@ export function createAuth(
   const googleAuth = googleAuthEnvFromServerEnv(env)
 
   const authentication = betterAuth({
-    appName: "Daymark",
+    appName: "Traketo",
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(database, {
@@ -74,7 +74,9 @@ export function createAuth(
       },
     },
     emailVerification: {
-      autoSignInAfterVerification: false,
+      // OTP verification is the final proof of account ownership. Create the
+      // session here so a newly verified user can enter the app immediately.
+      autoSignInAfterVerification: true,
       sendOnSignIn: true,
       sendOnSignUp: true,
     },

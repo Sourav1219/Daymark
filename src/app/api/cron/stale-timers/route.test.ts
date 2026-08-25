@@ -53,7 +53,7 @@ describe("stale timer cleanup Route Handler", () => {
     getDatabase.mockReturnValue(database)
 
     const response = await POST(
-      new Request("https://daymark.example.test/api/cron/stale-timers", {
+      new Request("https://traketo.example.test/api/cron/stale-timers", {
         method: "POST",
       }),
     )

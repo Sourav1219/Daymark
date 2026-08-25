@@ -10,7 +10,7 @@ test("redirects the root to sign-in and exposes the health endpoint", async ({
   const response = await page.request.get("/api/health")
   expect(response.ok()).toBe(true)
   await expect(response.json()).resolves.toMatchObject({
-    service: "daymark",
+    service: "traketo",
     status: "ok",
   })
 

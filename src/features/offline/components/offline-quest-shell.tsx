@@ -58,7 +58,7 @@ export function OfflineQuestShell() {
       <div className="device-frame">
         <header className="device-header">
           <span className="flex items-center gap-2 text-sm font-semibold">
-            <SystemMark className="size-7" /> Daymark
+            <SystemMark className="size-7" /> Traketo
           </span>
           <Badge className="text-warning" variant="outline">
             <CloudOff aria-hidden="true" className="size-3" /> Offline
@@ -134,7 +134,7 @@ export function OfflineQuestShell() {
                 {state.pendingCount > 0 || state.conflicts.length > 0 ? (
                   <p className="rounded-control border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
                     {state.pendingCount} queued · {state.conflicts.length}{" "}
-                    conflicted. Reconnect and open Daymark to synchronize or
+                    conflicted. Reconnect and open Traketo to synchronize or
                     resolve them.
                   </p>
                 ) : null}

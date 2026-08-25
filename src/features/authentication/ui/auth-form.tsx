@@ -70,13 +70,11 @@ export function AuthForm({
   const [messageIndex, setMessageIndex] = useState(0)
   const fieldErrors = state && !state.ok ? state.error.fieldErrors : undefined
   const noticeMessage =
-    notice === "verified"
-      ? "Your email is verified. You can sign in now."
-      : notice === "password-reset"
-        ? "Your password was reset. Sign in with your new password."
-        : notice === "verification-error"
-          ? "That verification request is invalid or expired. Request a new code below."
-          : null
+    notice === "password-reset"
+      ? "Your password was reset. Sign in with your new password."
+      : notice === "verification-error"
+        ? "That verification request is invalid or expired. Request a new code below."
+        : null
   const verificationEmail =
     registering && state?.ok && state.data.verificationRequired
       ? (state.data.email ?? email)
@@ -98,7 +96,13 @@ export function AuthForm({
     return (
       <main className="auth" data-mode="verification">
         <div className="auth__inner auth__inner--verification">
-          <EmailVerificationPanel email={verificationEmail} />
+          <EmailVerificationPanel
+            email={verificationEmail}
+            nextPath={nextPath}
+            {...(onSwitchMode
+              ? { onBackToSignIn: () => onSwitchMode("login") }
+              : {})}
+          />
         </div>
       </main>
     )

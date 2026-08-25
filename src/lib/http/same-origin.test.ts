@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { isTrustedOriginRequest } from "./same-origin"
 
-const canonicalOrigin = "https://daymark.example.test"
+const canonicalOrigin = "https://traketo.example.test"
 
 function request(url: string, headers: Record<string, string> = {}): Request {
   return new Request(url, { headers, method: "POST" })
@@ -17,7 +17,7 @@ describe("isTrustedOriginRequest", () => {
 
   it("accepts an origin matching the server-configured allowlist", () => {
     const result = isTrustedOriginRequest(
-      request("https://daymark.example.test/api/timer/stop", {
+      request("https://traketo.example.test/api/timer/stop", {
         origin: canonicalOrigin,
       }),
       [canonicalOrigin],
@@ -28,8 +28,8 @@ describe("isTrustedOriginRequest", () => {
 
   it("rejects cross-site origins even with spoofed forwarded headers", () => {
     const result = isTrustedOriginRequest(
-      request("https://daymark.example.test/api/timer/stop", {
-        host: "daymark.example.test",
+      request("https://traketo.example.test/api/timer/stop", {
+        host: "traketo.example.test",
         origin: "https://attacker.test",
         "x-forwarded-host": "attacker.test",
         "x-forwarded-proto": "https",
@@ -43,7 +43,7 @@ describe("isTrustedOriginRequest", () => {
   it("rejects any fetch-metadata mode other than same-origin", () => {
     for (const mode of ["cross-site", "same-site", "none"]) {
       const result = isTrustedOriginRequest(
-        request("https://daymark.example.test/api/x", {
+        request("https://traketo.example.test/api/x", {
           "sec-fetch-site": mode,
           origin: canonicalOrigin,
         }),
@@ -56,7 +56,7 @@ describe("isTrustedOriginRequest", () => {
 
   it("rejects malformed origin headers without throwing", () => {
     const result = isTrustedOriginRequest(
-      request("https://daymark.example.test/api/x", {
+      request("https://traketo.example.test/api/x", {
         origin: "not a URL",
       }),
       [canonicalOrigin],
@@ -67,14 +67,14 @@ describe("isTrustedOriginRequest", () => {
 
   it("allows header-less non-browser clients and same-origin metadata", () => {
     expect(
-      isTrustedOriginRequest(request("https://daymark.example.test/api/x"), [
+      isTrustedOriginRequest(request("https://traketo.example.test/api/x"), [
         canonicalOrigin,
       ]),
     ).toBe(true)
 
     expect(
       isTrustedOriginRequest(
-        request("https://daymark.example.test/api/x", {
+        request("https://traketo.example.test/api/x", {
           "sec-fetch-site": "same-origin",
         }),
         [canonicalOrigin],
@@ -84,7 +84,7 @@ describe("isTrustedOriginRequest", () => {
 
   it("denies missing fetch metadata that is not same-origin", () => {
     const result = isTrustedOriginRequest(
-      request("https://daymark.example.test/api/x", {
+      request("https://traketo.example.test/api/x", {
         "sec-fetch-site": "none",
       }),
       [canonicalOrigin],

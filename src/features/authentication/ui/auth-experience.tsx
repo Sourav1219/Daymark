@@ -8,8 +8,7 @@ import type { GoogleOAuthError } from "@/features/authentication/ui/google-auth-
 import { WelcomeAvatar } from "@/features/authentication/ui/welcome-avatar"
 
 type AuthMode = "welcome" | "login" | "register"
-export type AuthNotice =
-  "password-reset" | "verification-error" | "verified" | null
+export type AuthNotice = "password-reset" | "verification-error" | null
 
 type AuthExperienceProps = Readonly<{
   googleAuthConfigured: boolean
@@ -70,7 +69,7 @@ export function AuthExperience({
         <section className="welcome__visual" aria-hidden="true">
           <header className="welcome__topbar">
             <span className="welcome__wordmark">
-              <span /> Daymark
+              <span /> Traketo
             </span>
             <span className="welcome__edition">Your day, made doable</span>
           </header>
@@ -118,7 +117,7 @@ export function AuthExperience({
           </p>
 
           <p className="welcome__legal">
-            By continuing, you agree to Daymark’s{" "}
+            By continuing, you agree to Traketo’s{" "}
             <span className="welcome__legal-link">Terms</span> and{" "}
             <span className="welcome__legal-link">Privacy Policy</span>.
           </p>

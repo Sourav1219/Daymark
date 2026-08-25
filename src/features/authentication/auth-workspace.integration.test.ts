@@ -83,7 +83,7 @@ integrationDescribe("authentication and workspace integration", () => {
     }
   })
 
-  it("requires email verification before password sign-in", async () => {
+  it("requires email verification and creates a session after a valid OTP", async () => {
     const registration = await auth.api.signUpEmail({
       body: {
         email: "ada@example.com",
@@ -125,28 +125,21 @@ integrationDescribe("authentication and workspace integration", () => {
       }),
     ).rejects.toMatchObject({ statusCode: 403 })
 
-    await auth.api.verifyEmailOTP({
+    const verification = await auth.api.verifyEmailOTP({
       body: {
         email: "ada@example.com",
         otp: verificationCodes[0] ?? "",
       },
       headers: new Headers({ origin: "https://questly.test" }),
-    })
-
-    const login = await auth.api.signInEmail({
-      body: {
-        email: "ada@example.com",
-        password: "correct-horse-battery-staple",
-      },
-      headers: new Headers({ origin: "https://questly.test" }),
       returnHeaders: true,
     })
-    expect(login.headers.get("set-cookie")).toContain(
+    expect(verification.response.token).toBeTruthy()
+    expect(verification.headers.get("set-cookie")).toContain(
       "__Secure-questly.session_token=",
     )
-    expect(login.headers.get("set-cookie")).toMatch(/HttpOnly/i)
-    expect(login.headers.get("set-cookie")).toMatch(/Secure/i)
-    expect(login.headers.get("set-cookie")).toMatch(/SameSite=Lax/i)
+    expect(verification.headers.get("set-cookie")).toMatch(/HttpOnly/i)
+    expect(verification.headers.get("set-cookie")).toMatch(/Secure/i)
+    expect(verification.headers.get("set-cookie")).toMatch(/SameSite=Lax/i)
 
     await auth.api.requestPasswordReset({
       body: { email: "ada@example.com", redirectTo: "/reset-password" },

@@ -118,7 +118,7 @@ describe("GoogleAuthButton", () => {
     )
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "No Daymark account exists for that Google email yet. Select Register, then use Sign up with Google first.",
+      "No Traketo account exists for that Google email yet. Select Register, then use Sign up with Google first.",
     )
   })
 })

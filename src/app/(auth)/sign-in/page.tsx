@@ -12,12 +12,11 @@ type SignInPageProps = Readonly<{
     error?: string | string[]
     next?: string | string[]
     passwordReset?: string | string[]
-    verified?: string | string[]
   }>
 }>
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
-  const { authError, error, next, passwordReset, verified } = await searchParams
+  const { authError, error, next, passwordReset } = await searchParams
   const nextPath = safeRedirectPath(
     Array.isArray(next) ? (next[0] ?? null) : (next ?? null),
   )
@@ -37,9 +36,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       : (Array.isArray(passwordReset) ? passwordReset[0] : passwordReset) ===
           "1"
         ? "password-reset"
-        : (Array.isArray(verified) ? verified[0] : verified) === "1"
-          ? "verified"
-          : null
+        : null
 
   return (
     <AuthExperience

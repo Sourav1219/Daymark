@@ -30,7 +30,10 @@ import {
   startTimerAction,
   stopTimerAction,
 } from "@/features/timer/application/actions"
-import { activeTimerStorageKey } from "@/features/timer/components/timer-lifecycle-boundary"
+import {
+  activeTimerStorageKey,
+  legacyActiveTimerStorageKey,
+} from "@/features/timer/components/timer-lifecycle-boundary"
 import { GroupStudyPanel } from "@/features/timer/components/group-study-panel"
 import {
   TimerSessionPopup,
@@ -181,9 +184,11 @@ export function TimerRoute({
   useEffect(() => {
     if (activeSessionId) {
       window.sessionStorage.setItem(activeTimerStorageKey, activeSessionId)
+      window.sessionStorage.removeItem(legacyActiveTimerStorageKey)
       return
     }
     window.sessionStorage.removeItem(activeTimerStorageKey)
+    window.sessionStorage.removeItem(legacyActiveTimerStorageKey)
   }, [activeSessionId])
 
   const dismissCelebration = useCallback(() => setCelebration(null), [])

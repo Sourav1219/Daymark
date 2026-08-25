@@ -12,7 +12,7 @@ const secret = "readiness-secret-that-is-at-least-32-characters"
 
 function request(authorization?: string) {
   return new Request(
-    "https://daymark.example.test/api/ready",
+    "https://traketo.example.test/api/ready",
     authorization ? { headers: { authorization } } : {},
   )
 }

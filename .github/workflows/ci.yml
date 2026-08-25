@@ -18,9 +18,9 @@ env:
   # database-backed suites. Values are throwaway test-only configuration.
   BETTER_AUTH_SECRET: ci-test-secret-0123456789abcdef0123456789abcdef
   BETTER_AUTH_URL: http://127.0.0.1:3000
-  DATABASE_URL: postgresql://daymark:daymark@127.0.0.1:5432/daymark_test
-  MIGRATION_DATABASE_URL: postgresql://daymark:daymark@127.0.0.1:5432/daymark_test
-  TEST_DATABASE_URL: postgresql://daymark:daymark@127.0.0.1:5432/daymark_test
+  DATABASE_URL: postgresql://traketo:traketo@127.0.0.1:5432/traketo_test
+  MIGRATION_DATABASE_URL: postgresql://traketo:traketo@127.0.0.1:5432/traketo_test
+  TEST_DATABASE_URL: postgresql://traketo:traketo@127.0.0.1:5432/traketo_test
   CRON_SECRET: ci-cron-secret-0123456789abcdef0123456789abcdef
 
 jobs:
@@ -52,13 +52,13 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: daymark
-          POSTGRES_PASSWORD: daymark
-          POSTGRES_DB: daymark_test
+          POSTGRES_USER: traketo
+          POSTGRES_PASSWORD: traketo
+          POSTGRES_DB: traketo_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U daymark -d daymark_test"
+          --health-cmd "pg_isready -U traketo -d traketo_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -105,13 +105,13 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: daymark
-          POSTGRES_PASSWORD: daymark
-          POSTGRES_DB: daymark_test
+          POSTGRES_USER: traketo
+          POSTGRES_PASSWORD: traketo
+          POSTGRES_DB: traketo_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U daymark -d daymark_test"
+          --health-cmd "pg_isready -U traketo -d traketo_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -134,7 +134,7 @@ jobs:
       - name: Dump, wipe, restore, verify
         run: ./scripts/backup-restore-check.sh
         env:
-          DATABASE_URL: postgresql://daymark:daymark@127.0.0.1:5432/daymark_test
+          DATABASE_URL: postgresql://traketo:traketo@127.0.0.1:5432/traketo_test
 
   e2e:
     name: Playwright journeys
@@ -143,13 +143,13 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: daymark
-          POSTGRES_PASSWORD: daymark
-          POSTGRES_DB: daymark_test
+          POSTGRES_USER: traketo
+          POSTGRES_PASSWORD: traketo
+          POSTGRES_DB: traketo_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U daymark -d daymark_test"
+          --health-cmd "pg_isready -U traketo -d traketo_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -180,13 +180,13 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: daymark
-          POSTGRES_PASSWORD: daymark
-          POSTGRES_DB: daymark_test
+          POSTGRES_USER: traketo
+          POSTGRES_PASSWORD: traketo
+          POSTGRES_DB: traketo_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U daymark -d daymark_test"
+          --health-cmd "pg_isready -U traketo -d traketo_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12

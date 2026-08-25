@@ -71,7 +71,7 @@ describe("retention sweep Route Handler", () => {
     authorizeCronRequest.mockReturnValue(false)
 
     const response = await POST(
-      new Request("https://daymark.example.test/api/cron/retention", {
+      new Request("https://traketo.example.test/api/cron/retention", {
         method: "POST",
       }),
     )
@@ -97,7 +97,7 @@ describe("retention sweep Route Handler", () => {
     deletePurgedTaskTombstones.mockResolvedValue(1)
 
     const response = await GET(
-      new Request("https://daymark.example.test/api/cron/retention"),
+      new Request("https://traketo.example.test/api/cron/retention"),
     )
 
     expect(response.status).toBe(200)
@@ -139,7 +139,7 @@ describe("retention sweep Route Handler", () => {
     })
 
     const response = await GET(
-      new Request("https://daymark.example.test/api/cron/retention"),
+      new Request("https://traketo.example.test/api/cron/retention"),
     )
 
     expect(response.status).toBe(200)

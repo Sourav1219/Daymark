@@ -85,9 +85,9 @@ export async function sendPushReminder(
 ) {
   const subscriptions = await listPushSubscriptionRecords(database, userId)
   const payload = JSON.stringify({
-    body: "A task reminder is due. Open Daymark to review it.",
+    body: "A task reminder is due. Open Traketo to review it.",
     tag: `task-reminder-${questId}`,
-    title: "Daymark reminder",
+    title: "Traketo reminder",
     url: `/today?task=${encodeURIComponent(questId)}`,
   })
 

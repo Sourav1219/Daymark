@@ -191,7 +191,7 @@ function DataCard() {
           <small>PDF · Private</small>
         </div>
         <h3 id="export-heading">Export your data</h3>
-        <p>A polished, readable archive of your Daymark activity.</p>
+        <p>A polished, readable archive of your Traketo activity.</p>
         <Button
           className="security-action-card__button"
           disabled={isPending}

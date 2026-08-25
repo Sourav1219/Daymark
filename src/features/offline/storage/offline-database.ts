@@ -9,8 +9,11 @@ import type {
   OfflineScope,
 } from "@/features/offline/domain/types"
 
+// Keep the database name stable so existing encrypted offline data is retained.
 export const offlineDatabaseName = "questly-private-offline"
-const lockVerifier = "daymark-offline-lock-v1"
+const lockVerifier = "traketo-offline-lock-v1"
+// Existing encrypted offline stores must remain unlockable after the rename.
+const legacyLockVerifier = "daymark-offline-lock-v1"
 const keyDerivationIterations = 150_000
 export const offlineSnapshotLifetimeMilliseconds = 7 * 24 * 60 * 60 * 1_000
 export const offlineDatabaseVersion = 3
@@ -211,8 +214,18 @@ export async function unlockPrivateOfflineData(passcode: string) {
   if (!lock) return false
   try {
     const key = await deriveKey(passcode, base64ToBytes(lock.salt))
-    if ((await unseal<string>(lock.verifier, key)) !== lockVerifier)
+    const storedVerifier = await unseal<string>(lock.verifier, key)
+    if (![lockVerifier, legacyLockVerifier].includes(storedVerifier))
       return false
+    if (storedVerifier === legacyLockVerifier) {
+      await (
+        await database()
+      ).put(
+        "meta",
+        { ...lock, verifier: await seal(lockVerifier, key) },
+        "offline-lock",
+      )
+    }
     unlockedKey = key
     return true
   } catch {

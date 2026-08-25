@@ -109,12 +109,12 @@ self.addEventListener("push", (event) => {
   const payload = event.data?.json() as
     { body?: string; tag?: string; title?: string; url?: string } | undefined
   event.waitUntil(
-    self.registration.showNotification(payload?.title ?? "Daymark reminder", {
-      badge: "/icons/questly-icon-192.png",
+    self.registration.showNotification(payload?.title ?? "Traketo reminder", {
+      badge: "/icons/traketo-icon-192.png",
       body: payload?.body ?? "A task reminder is due.",
       data: { url: payload?.url ?? "/today" },
-      icon: "/icons/questly-icon-192.png",
-      tag: payload?.tag ?? "daymark-reminder",
+      icon: "/icons/traketo-icon-192.png",
+      tag: payload?.tag ?? "traketo-reminder",
     }),
   )
 })

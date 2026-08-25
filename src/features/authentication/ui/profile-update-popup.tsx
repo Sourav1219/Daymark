@@ -10,7 +10,7 @@ const updateCopy = {
   name: {
     eyebrow: "Profile refreshed",
     heading: "Looking good!",
-    message: "Your new display name is now used across Daymark.",
+    message: "Your new display name is now used across Traketo.",
   },
   password: {
     eyebrow: "Security updated",

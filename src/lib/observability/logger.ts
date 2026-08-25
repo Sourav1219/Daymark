@@ -1,5 +1,5 @@
 /**
- * Structured logger for Daymark observability.
+ * Structured logger for Traketo observability.
  *
  * Provides JSON-formatted logs suitable for aggregation (e.g., Datadog, ELK).
  * Includes correlation IDs and standardized error reporting.

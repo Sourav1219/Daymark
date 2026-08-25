@@ -35,21 +35,31 @@ const nunito = Nunito({
 })
 
 export const metadata: Metadata = {
-  applicationName: "Daymark",
+  metadataBase: new URL("https://traketo.com"),
+  applicationName: "Traketo",
+  alternates: { canonical: "/" },
   appleWebApp: {
     capable: true,
-    startupImage: "/splash/questly-splash-portrait.png",
+    startupImage: "/splash/traketo-splash-portrait.png",
     statusBarStyle: "default",
-    title: "Daymark",
+    title: "Traketo",
   },
   title: {
-    default: "Daymark",
-    template: "%s | Daymark",
+    default: "Traketo",
+    template: "%s | Traketo",
   },
   description:
     "A calm, private space to turn your intentions into finished tasks.",
   formatDetection: { telephone: false },
   icons: { apple: "/icons/apple-touch-icon.png" },
+  openGraph: {
+    description:
+      "A calm, private space to turn your intentions into finished tasks.",
+    siteName: "Traketo",
+    title: "Traketo",
+    type: "website",
+    url: "/",
+  },
 }
 
 export const viewport: Viewport = {

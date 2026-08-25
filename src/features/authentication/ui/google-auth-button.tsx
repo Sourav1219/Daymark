@@ -80,7 +80,7 @@ export function GoogleAuthButton({
   const error =
     clientError ??
     (oauthError === "signup-required"
-      ? "No Daymark account exists for that Google email yet. Select Register, then use Sign up with Google first."
+      ? "No Traketo account exists for that Google email yet. Select Register, then use Sign up with Google first."
       : oauthError === "generic"
         ? "Google sign-in was not completed. Please try again."
         : null)

@@ -2,15 +2,19 @@
 
 import { useEffect } from "react"
 
-export const activeTimerStorageKey = "daymark.active-timer-session"
+export const activeTimerStorageKey = "traketo.active-timer-session"
+export const legacyActiveTimerStorageKey = "daymark.active-timer-session"
 
 export function TimerLifecycleBoundary() {
   useEffect(() => {
     let stopRequested = false
     const stopActiveTimer = () => {
       if (stopRequested) return
-      const sessionId = window.sessionStorage.getItem(activeTimerStorageKey)
+      const sessionId =
+        window.sessionStorage.getItem(activeTimerStorageKey) ??
+        window.sessionStorage.getItem(legacyActiveTimerStorageKey)
       if (!sessionId) return
+      window.sessionStorage.removeItem(legacyActiveTimerStorageKey)
       stopRequested = true
 
       const payload = JSON.stringify({ sessionId })

@@ -60,7 +60,7 @@ export function PwaInstallCard() {
   if (standalone) {
     return (
       <p className="flex items-center gap-2 text-sm text-success" role="status">
-        <Smartphone aria-hidden="true" className="size-4" /> Daymark is
+        <Smartphone aria-hidden="true" className="size-4" /> Traketo is
         installed on this device.
       </p>
     )
@@ -69,7 +69,7 @@ export function PwaInstallCard() {
   return (
     <div className="grid gap-3 text-sm text-ink-muted">
       <p>
-        Install Daymark for app-like launching. Recent tasks and queued creates,
+        Install Traketo for app-like launching. Recent tasks and queued creates,
         edits, completions, deletions, and reopens stay in private device
         storage and synchronize after reconnection. Data is removed on logout.
       </p>
@@ -81,7 +81,7 @@ export function PwaInstallCard() {
             setPrompt(null)
           }}
         >
-          <Download aria-hidden="true" /> Install Daymark
+          <Download aria-hidden="true" /> Install Traketo
         </Button>
       ) : (
         <p className="text-xs">

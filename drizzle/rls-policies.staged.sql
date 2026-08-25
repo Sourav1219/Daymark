@@ -1,4 +1,4 @@
--- Daymark staged row-level security policies (defense in depth).
+-- Traketo staged row-level security policies (defense in depth).
 --
 -- STATUS: NOT APPLIED BY THIS MIGRATION SET. Applying these statements is an
 -- explicit, coordinated release step that requires EVERY database access path

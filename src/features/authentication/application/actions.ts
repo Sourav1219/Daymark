@@ -104,6 +104,7 @@ export async function registerAction(
   }
 
   const startedAt = Date.now()
+  const callbackURL = safeRedirectPath(formData.get("next"))
   try {
     await withHealthyAuth(async (auth, database) => {
       const [existingAccount] = await database
@@ -113,7 +114,7 @@ export async function registerAction(
         .limit(1)
 
       await auth.api.signUpEmail({
-        body: { ...parsed.data, callbackURL: "/sign-in?verified=1" },
+        body: { ...parsed.data, callbackURL },
         headers: await headers(),
       })
 
@@ -168,10 +169,11 @@ export async function loginAction(
     )
   }
 
+  const callbackURL = safeRedirectPath(formData.get("next"))
   try {
     await withHealthyAuth(async (auth) =>
       auth.api.signInEmail({
-        body: { ...parsed.data, callbackURL: "/sign-in?verified=1" },
+        body: { ...parsed.data, callbackURL },
         headers: await headers(),
       }),
     )
@@ -181,7 +183,7 @@ export async function loginAction(
     return loginFailure()
   }
 
-  redirect(safeRedirectPath(formData.get("next")))
+  redirect(callbackURL)
 }
 
 function emailRequestResponse(
@@ -284,7 +286,7 @@ export async function verifyEmailCodeAction(
     }
   }
 
-  redirect("/sign-in?verified=1")
+  redirect(safeRedirectPath(formData.get("next")))
 }
 
 export async function requestPasswordResetAction(

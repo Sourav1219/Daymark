@@ -253,7 +253,11 @@ export function OfflineProvider({
 
   useEffect(() => {
     function synchronized(event: MessageEvent) {
-      if (event.data !== "DAYMARK_OFFLINE_SYNCED") return
+      if (
+        event.data !== "TRAKETO_OFFLINE_SYNCED" &&
+        event.data !== "DAYMARK_OFFLINE_SYNCED"
+      )
+        return
       void refreshQueue()
       router.refresh()
     }

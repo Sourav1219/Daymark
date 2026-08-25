@@ -100,7 +100,7 @@ function addPage(state: PdfState) {
     x: 0,
     y: pageHeight - 5,
   })
-  state.page.drawText("DAYMARK", {
+  state.page.drawText("TRAKETO", {
     color: blue,
     font: state.bold,
     size: 9,
@@ -254,7 +254,7 @@ export async function buildAccountExportPdf(
     x: margin + 18,
   })
   state.y -= 5
-  drawWrapped(state, "Your Daymark archive", {
+  drawWrapped(state, "Your Traketo archive", {
     font: bold,
     maxWidth: contentWidth - 36,
     size: 25,
@@ -355,10 +355,10 @@ export async function buildAccountExportPdf(
     })
   })
 
-  document.setAuthor("Daymark")
-  document.setCreator("Daymark")
+  document.setAuthor("Traketo")
+  document.setCreator("Traketo")
   document.setSubject("Personal account data export")
-  document.setTitle("Daymark personal data export")
+  document.setTitle("Traketo personal data export")
 
   return document.save({ useObjectStreams: true })
 }

@@ -13,7 +13,7 @@ test("installs the worker, queues offline creation, recovers, and clears private
       expect.objectContaining({ sizes: "192x192" }),
       expect.objectContaining({ purpose: "maskable", sizes: "512x512" }),
     ]),
-    name: "Daymark — Tasks & Habits",
+    name: "Traketo — Tasks & Habits",
   })
 
   const email = `phase8-${Date.now()}@example.com`

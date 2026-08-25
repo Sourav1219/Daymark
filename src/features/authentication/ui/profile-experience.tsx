@@ -230,7 +230,7 @@ export function ProfileExperience({
           <div>
             <small>Session</small>
             <strong>Account access</strong>
-            <p>Safely leave Daymark on this device.</p>
+            <p>Safely leave Traketo on this device.</p>
           </div>
         </div>
         <div className="profile-session-tab__action">

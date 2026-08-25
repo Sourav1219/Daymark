@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Post-deployment smoke check for a running Daymark deployment.
+// Post-deployment smoke check for a running Traketo deployment.
 //
-//   BASE_URL=https://daymark.example.com node scripts/smoke.mjs
+//   BASE_URL=https://traketo.com node scripts/smoke.mjs
 //   READINESS_SECRET=... BASE_URL=... node scripts/smoke.mjs   # also probes /api/ready
 //
 // Exits non-zero on the first failure so release pipelines can gate on it.
@@ -37,7 +37,7 @@ async function expectOk(path, init) {
 await check("health endpoint", async () => {
   const response = await expectOk("/api/health")
   const body = await response.json()
-  if (body.status !== "ok" || body.service !== "daymark") {
+  if (body.status !== "ok" || body.service !== "traketo") {
     throw new Error(`unexpected health payload: ${JSON.stringify(body)}`)
   }
 })
@@ -55,7 +55,7 @@ await check("sign-in page renders", async () => {
   const html = await response.text()
   // The auth experience renders its segmented form on first paint; both the
   // wordmark and the primary CTA must be present.
-  for (const marker of ["Daymark", "Sign in", "Get started"]) {
+  for (const marker of ["Traketo", "Sign in", "Get started"]) {
     if (!html.includes(marker)) {
       throw new Error(`sign-in page is missing "${marker}"`)
     }

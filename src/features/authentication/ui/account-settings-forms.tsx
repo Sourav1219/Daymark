@@ -89,7 +89,7 @@ function ProfileNamePanel({
         <div>
           <small>Personal information</small>
           <h3>Identity details</h3>
-          <p>Control how your name appears across Daymark.</p>
+          <p>Control how your name appears across Traketo.</p>
         </div>
       </header>
 
@@ -197,7 +197,7 @@ function PasswordPanel({
         <div>
           <small>Account security</small>
           <h3>Change password</h3>
-          <p>Choose a new password for your Daymark account.</p>
+          <p>Choose a new password for your Traketo account.</p>
         </div>
       </header>
 
@@ -264,7 +264,7 @@ function PasswordPanel({
         ) : null}
 
         <footer className="profile-edit-actions">
-          <span>Use a password unique to Daymark.</span>
+          <span>Use a password unique to Traketo.</span>
           <MutationSubmitButton
             className="profile-edit-submit profile-edit-submit--security"
             idleLabel="Change password"

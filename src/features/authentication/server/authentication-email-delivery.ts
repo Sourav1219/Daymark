@@ -53,7 +53,7 @@ function emailHtml(input: {
   return [
     '<div style="background:#f4f7fd;padding:32px 16px;font-family:Arial,sans-serif;color:#10213b">',
     '<div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #dce5f5;border-radius:18px;padding:32px">',
-    '<p style="margin:0 0 20px;font-weight:700;color:#316df4">Daymark</p>',
+    '<p style="margin:0 0 20px;font-weight:700;color:#316df4">Traketo</p>',
     `<h1 style="font-size:24px;margin:0 0 16px">Hello ${name},</h1>`,
     `<p style="line-height:1.6;margin:0 0 24px">${escapeHtml(input.explanation)}</p>`,
     `<p style="margin:0 0 24px"><a href="${url}" style="display:inline-block;background:#316df4;color:#fff;text-decoration:none;border-radius:12px;padding:13px 20px;font-weight:700">${escapeHtml(input.action)}</a></p>`,
@@ -68,11 +68,11 @@ function verificationCodeHtml(input: VerificationCodeEmail): string {
   return [
     '<div style="background:#f4f7fd;padding:32px 16px;font-family:Arial,sans-serif;color:#10213b">',
     '<div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #dce5f5;border-radius:20px;padding:32px">',
-    '<p style="margin:0 0 24px;font-size:15px;font-weight:800;letter-spacing:.04em;color:#316df4">Daymark</p>',
+    '<p style="margin:0 0 24px;font-size:15px;font-weight:800;letter-spacing:.04em;color:#316df4">Traketo</p>',
     '<h1 style="font-size:28px;line-height:1.2;margin:0 0 12px">Verify your email</h1>',
-    '<p style="line-height:1.6;margin:0 0 24px;color:#52627a">Enter this code in Daymark to finish creating your account.</p>',
+    '<p style="line-height:1.6;margin:0 0 24px;color:#52627a">Enter this code in Traketo to finish creating your account.</p>',
     `<div style="margin:0 0 24px;padding:20px;border:1px solid #cddafa;border-radius:16px;background:#f4f7ff;text-align:center;font-size:34px;font-weight:800;letter-spacing:10px;color:#17305b">${code}</div>`,
-    '<p style="font-size:13px;line-height:1.55;color:#66758f;margin:0">This code expires in 10 minutes and can be used only once. If you did not create a Daymark account, you can safely ignore this email.</p>',
+    '<p style="font-size:13px;line-height:1.55;color:#66758f;margin:0">This code expires in 10 minutes and can be used only once. If you did not create a Traketo account, you can safely ignore this email.</p>',
     "</div></div>",
   ].join("")
 }
@@ -101,7 +101,7 @@ class ResendAuthenticationEmailDelivery implements AuthenticationEmailDelivery {
     const { data, error } = await withDeadline(
       this.client.emails.send(
         {
-          from: `Daymark <${this.from}>`,
+          from: `Traketo <${this.from}>`,
           html: emailHtml({
             action: input.action,
             explanation: input.explanation,
@@ -124,17 +124,17 @@ class ResendAuthenticationEmailDelivery implements AuthenticationEmailDelivery {
   }
 
   async sendVerificationCode(input: VerificationCodeEmail) {
-    const subject = `${input.code} is your Daymark verification code`
+    const subject = `${input.code} is your Traketo verification code`
     const idempotencyKey = createHash("sha256")
       .update(`${subject}:${input.recipientEmail}`)
       .digest("hex")
     const { data, error } = await withDeadline(
       this.client.emails.send(
         {
-          from: `Daymark <${this.from}>`,
+          from: `Traketo <${this.from}>`,
           html: verificationCodeHtml(input),
           subject,
-          text: `Your Daymark verification code is ${input.code}. It expires in 10 minutes and can be used only once.`,
+          text: `Your Traketo verification code is ${input.code}. It expires in 10 minutes and can be used only once.`,
           to: input.recipientEmail,
         },
         { idempotencyKey },
@@ -152,10 +152,10 @@ class ResendAuthenticationEmailDelivery implements AuthenticationEmailDelivery {
     return this.send({
       action: "Reset password",
       explanation:
-        "Use the secure link below to choose a new password for your Daymark account.",
+        "Use the secure link below to choose a new password for your Traketo account.",
       recipientEmail: input.recipientEmail,
       recipientName: input.recipientName,
-      subject: "Reset your Daymark password",
+      subject: "Reset your Traketo password",
       url: input.url,
     })
   }

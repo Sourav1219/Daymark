@@ -13,7 +13,7 @@ describe("GET /api/health", () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get("cache-control")).toBe("no-store")
-    expect(payload.service).toBe("daymark")
+    expect(payload.service).toBe("traketo")
     expect(payload.status).toBe("ok")
     expect(Number.isNaN(Date.parse(payload.timestamp))).toBe(false)
   })

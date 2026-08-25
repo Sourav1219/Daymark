@@ -130,7 +130,7 @@ export async function exportAccountDataAction(): Promise<ExportDataState> {
 
   return {
     data: {
-      filename: `daymark-export-${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `traketo-export-${new Date().toISOString().slice(0, 10)}.pdf`,
       pdfBase64: Buffer.from(pdf).toString("base64"),
     },
     ok: true,

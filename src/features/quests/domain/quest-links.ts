@@ -1,6 +1,6 @@
 import type { Route } from "next"
 
-export const focusTodayTaskEvent = "daymark:focus-today-task"
+export const focusTodayTaskEvent = "traketo:focus-today-task"
 
 export function questHomeHref(questId: string, selectedDate?: string | null) {
   const params = new URLSearchParams()

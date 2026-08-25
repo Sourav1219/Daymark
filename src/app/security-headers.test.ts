@@ -15,7 +15,7 @@ describe("response security headers", () => {
       globalEntry?.headers.map((header) => [header.key, header.value] as const),
     )
     const csp = proxy(
-      new NextRequest("https://daymark.example.test/sign-in"),
+      new NextRequest("https://traketo.example.test/sign-in"),
     ).headers.get("Content-Security-Policy")
 
     expect(globalEntry).toBeDefined()

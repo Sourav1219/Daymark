@@ -1,7 +1,6 @@
 import type { ReactNode } from "react"
 
 import { AppFrame } from "@/components/shell/app-frame"
-import { Toaster } from "@/components/ui/sonner"
 import { OfflineProvider } from "@/features/offline/components/offline-provider"
 import { offlineScopeKey } from "@/features/offline/domain/types"
 import { AutomaticPushEnrollment } from "@/features/reminders/components/automatic-push-enrollment"
@@ -58,8 +57,6 @@ export function AppShell({
         version={onboarding.version}
       />
       <AutomaticPushEnrollment publicKey={pushPublicKey} />
-
-      <Toaster closeButton position="bottom-center" richColors />
     </div>
   )
 }

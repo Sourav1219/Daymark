@@ -5,6 +5,7 @@ import type { ReactNode } from "react"
 import { BottomTabBar } from "@/components/shell/bottom-tab-bar"
 import { ScrollableMain } from "@/components/shell/scrollable-main"
 import { ShellKeyboardShortcuts } from "@/components/shell/shell-keyboard-shortcuts"
+import { Toaster } from "@/components/ui/sonner"
 import { OfflineStatusBar } from "@/features/offline/components/offline-provider"
 
 type AppFrameProps = Readonly<{
@@ -29,6 +30,7 @@ export function AppFrame({ children }: AppFrameProps) {
       </ScrollableMain>
 
       <BottomTabBar />
+      <Toaster closeButton position="bottom-center" richColors />
     </div>
   )
 }

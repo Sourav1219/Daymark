@@ -72,6 +72,7 @@ function isProtectedPath(pathname: string) {
       "/cleared",
       "/progress",
       "/profile",
+      "/contact",
       "/settings",
     ].includes(pathname)
   )

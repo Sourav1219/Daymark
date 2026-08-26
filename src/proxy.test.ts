@@ -36,6 +36,17 @@ describe("protected route proxy", () => {
     )
   })
 
+  it("protects the profile contact page", () => {
+    const response = proxy(
+      new NextRequest("https://questly.test/contact?topic=account"),
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "https://questly.test/sign-in?next=%2Fcontact%3Ftopic%3Daccount",
+    )
+  })
+
   it("allows a cookie-bearing request through to authoritative server auth", () => {
     const response = proxy(
       new NextRequest("https://questly.test/app", {

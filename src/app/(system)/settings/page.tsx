@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
-import { BellRing, Download } from "lucide-react"
+import Link from "next/link"
+import { BellRing, Download, FileText, ShieldCheck } from "lucide-react"
 
 import { PageHeading } from "@/components/system/page-heading"
 import {
@@ -116,6 +117,42 @@ export default async function SettingsPage() {
               <div className="grid gap-4">
                 <PwaInstallCard />
                 <OfflineStorageControl />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border-soft bg-card/75 shadow-panel xl:col-span-2">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <ShieldCheck
+                  aria-hidden="true"
+                  className="size-5 text-system-blue"
+                />
+                <div>
+                  <CardTitle>Legal and privacy</CardTitle>
+                  <CardDescription>
+                    Review how Traketo handles your data and the rules for using
+                    the service.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border-soft bg-background px-4 py-2 font-semibold text-system-blue transition-colors hover:bg-system-blue/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-system-blue"
+                  href="/terms"
+                >
+                  <FileText aria-hidden="true" className="size-4" />
+                  Terms of Service
+                </Link>
+                <Link
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border-soft bg-background px-4 py-2 font-semibold text-system-blue transition-colors hover:bg-system-blue/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-system-blue"
+                  href="/privacy"
+                >
+                  <ShieldCheck aria-hidden="true" className="size-4" />
+                  Privacy Policy
+                </Link>
               </div>
             </CardContent>
           </Card>

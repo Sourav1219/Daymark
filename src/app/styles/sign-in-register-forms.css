@@ -373,6 +373,29 @@ Sign-in / Register forms — same clean app-width column as the
     background 0.15s;
 }
 
+.auth__legal {
+  max-width: 38ch;
+  margin: 0.05rem auto 0;
+  color: var(--app-text-muted);
+  font-size: 0.68rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.auth__legal a {
+  color: var(--accent-blue);
+  font-weight: 750;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.13rem;
+}
+
+.auth__legal a:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
 .auth__submit:hover:not(:disabled) {
   filter: brightness(1.05);
 }

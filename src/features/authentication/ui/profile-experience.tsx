@@ -1,15 +1,22 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import type { Route } from "next"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   BadgeCheck,
   Building2,
   CalendarDays,
   ChevronDown,
+  ChevronRight,
+  CircleHelp,
+  FileText,
+  Info,
   LockKeyhole,
   LogOut,
   Mail,
+  MessageCircleMore,
   Pencil,
   ShieldCheck,
   UserRound,
@@ -221,6 +228,67 @@ export function ProfileExperience({
             initialSessions={initialSessions}
           />
         </div>
+      </details>
+      <details className="profile-help-settings">
+        <summary className="profile-help-settings__trigger">
+          <span className="profile-help-settings__icon">
+            <CircleHelp aria-hidden="true" />
+          </span>
+          <div>
+            <small>Help &amp; information</small>
+            <strong>Contact &amp; about</strong>
+            <p>Support, app information, and policies</p>
+          </div>
+          <ChevronDown
+            aria-hidden="true"
+            className="profile-help-settings__chevron"
+          />
+        </summary>
+        <nav
+          aria-label="Help and information"
+          className="profile-help-settings__content"
+        >
+          <Link href={"/contact" as Route}>
+            <span>
+              <MessageCircleMore aria-hidden="true" />
+            </span>
+            <div>
+              <strong>Contact us</strong>
+              <small>Choose a topic and send a message</small>
+            </div>
+            <ChevronRight aria-hidden="true" />
+          </Link>
+          <Link href={"/about" as Route}>
+            <span>
+              <Info aria-hidden="true" />
+            </span>
+            <div>
+              <strong>About Traketo</strong>
+              <small>Our purpose and approach</small>
+            </div>
+            <ChevronRight aria-hidden="true" />
+          </Link>
+          <Link href="/privacy">
+            <span>
+              <ShieldCheck aria-hidden="true" />
+            </span>
+            <div>
+              <strong>Privacy Policy</strong>
+              <small>How your information is handled</small>
+            </div>
+            <ChevronRight aria-hidden="true" />
+          </Link>
+          <Link href="/terms">
+            <span>
+              <FileText aria-hidden="true" />
+            </span>
+            <div>
+              <strong>Terms of Service</strong>
+              <small>The ground rules for using Traketo</small>
+            </div>
+            <ChevronRight aria-hidden="true" />
+          </Link>
+        </nav>
       </details>
       <section aria-label="Session controls" className="profile-session-tab">
         <div className="profile-session-tab__intro">

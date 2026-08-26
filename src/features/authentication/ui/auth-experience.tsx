@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRight, ShieldCheck } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
 import { AuthForm } from "@/features/authentication/ui/auth-form"
 import type { GoogleOAuthError } from "@/features/authentication/ui/google-auth-button"
@@ -111,16 +111,6 @@ export function AuthExperience({
               I already have an account
             </button>
           </div>
-
-          <p className="welcome__trust">
-            <ShieldCheck aria-hidden="true" /> Private by default
-          </p>
-
-          <p className="welcome__legal">
-            By continuing, you agree to Traketo’s{" "}
-            <span className="welcome__legal-link">Terms</span> and{" "}
-            <span className="welcome__legal-link">Privacy Policy</span>.
-          </p>
         </section>
       </div>
     </main>

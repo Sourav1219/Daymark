@@ -322,6 +322,14 @@ export function AuthForm({
                 ? "Create"
                 : "Enter"}
           </button>
+
+          {registering ? (
+            <p className="auth__legal">
+              By creating an account, you agree to Traketo&apos;s{" "}
+              <Link href="/terms">Terms of Service</Link> and{" "}
+              <Link href="/privacy">Privacy Policy</Link>.
+            </p>
+          ) : null}
         </form>
       </div>
     </main>

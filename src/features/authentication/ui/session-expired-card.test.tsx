@@ -33,8 +33,8 @@ describe("SessionExpiredCard", () => {
     expect(primaryCta).toHaveAttribute("href", "/sign-in?next=%2Ftoday")
 
     expect(
-      screen.getByRole("link", { name: /Back to homepage/iu }),
-    ).toHaveAttribute("href", "/")
+      screen.getByRole("link", { name: /Go to Sign In/iu }),
+    ).toHaveAttribute("href", "/sign-in")
   })
 
   it("navigates with current pathname when 'Sign in again' is clicked", async () => {

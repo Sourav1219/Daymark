@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect } from "react"
 import type { Route } from "next"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
+import type { MouseEvent } from "react"
 
 import { SessionExpiredCard } from "@/features/authentication/ui/session-expired-card"
 
@@ -11,28 +12,13 @@ type SignOutPageClientProps = Readonly<{
 }>
 
 /**
- * Client-side shell for the /sign-out page.
+ * Client shell for /sign-out.
  *
- * On desktop (viewport wider than 640 px) the full-page session-expired card
- * is not needed — the SessionWatcher overlay already handles that case inside
- * the app shell. Desktop visitors are redirected straight to /sign-in so they
- * can re-authenticate without an extra tap.
- *
- * On mobile (<= 640 px) the dedicated full-screen SessionExpiredCard is shown
- * because the in-app overlay is not suitable for narrow viewports.
+ * Always shows the SessionExpiredCard — on every viewport.
+ * The user stays on this page until they actively click "Sign in again".
+ * No auto-redirect occurs; navigation is purely user-initiated.
  */
 export function SignOutPageClient({ nextPath }: SignOutPageClientProps) {
-  const router = useRouter()
-
-  useEffect(() => {
-    const isDesktop = window.matchMedia("(min-width: 641px)").matches
-    if (isDesktop) {
-      router.replace(
-        `/sign-in?next=${encodeURIComponent(nextPath)}` as Route,
-      )
-    }
-  }, [nextPath, router])
-
   return (
     <SessionExpiredCard
       description="This device was signed out from another active session. Your data remains safe—sign in again whenever you are ready."

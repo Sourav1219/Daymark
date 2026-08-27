@@ -191,13 +191,15 @@
 html {
   min-width: 20rem;
   background: var(--surface-void);
+  overscroll-behavior-y: none;
 }
 
 body {
-  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   background: var(--surface-void);
   font-family: var(--font-sans);
+  overscroll-behavior-y: none;
   text-rendering: optimizeLegibility;
 }
 
@@ -278,8 +280,12 @@ a {
   position: relative;
   isolation: isolate;
   display: flex;
+  height: 100dvh;
   justify-content: center;
   min-height: 100svh;
+  max-height: 100dvh;
+  overflow: clip;
+  overscroll-behavior: none;
   background: var(--surface-base);
 }
 
@@ -322,11 +328,11 @@ a {
   isolation: isolate;
   display: flex;
   width: 100%;
-  height: 100svh;
-  min-height: 100svh;
+  height: 100%;
+  min-height: 0;
   flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: clip;
+  overscroll-behavior: none;
   background: var(--surface-base);
 }
 
@@ -390,8 +396,10 @@ a {
   height: 100%;
   min-width: 0;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: calc(1.25rem + env(safe-area-inset-top, 0px)) 1.25rem 2rem;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .device-main::-webkit-scrollbar {
@@ -420,6 +428,9 @@ a {
 @media (min-width: 640px) {
   .app-stage {
     align-items: center;
+    height: auto;
+    max-height: none;
+    overflow: visible;
     padding: 1.75rem 1rem;
   }
 

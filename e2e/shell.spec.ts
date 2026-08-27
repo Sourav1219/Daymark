@@ -99,6 +99,48 @@ test("mobile-frame shell navigation, feedback primitives, and accessibility pass
   expect(accessibility.violations).toEqual([])
 })
 
+test("the mobile shell pins the outer viewport while content remains scrollable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto("/~offline")
+
+  const scrollContract = await page.evaluate(() => {
+    const stage = document.querySelector<HTMLElement>(".app-stage")
+    const frame = document.querySelector<HTMLElement>(".device-frame")
+    const main = document.querySelector<HTMLElement>(".device-main")
+
+    if (!stage || !frame || !main) {
+      throw new Error("The mobile app shell is incomplete")
+    }
+
+    window.scrollTo(0, 100)
+    frame.scrollTop = 100
+
+    return {
+      documentScrollTop: document.scrollingElement?.scrollTop ?? window.scrollY,
+      frameOverflow: getComputedStyle(frame).overflow,
+      frameScrollTop: frame.scrollTop,
+      mainOverflowY: getComputedStyle(main).overflowY,
+      mainOverscrollY: getComputedStyle(main).overscrollBehaviorY,
+      stageBottom: Math.round(stage.getBoundingClientRect().bottom),
+      stageTop: Math.round(stage.getBoundingClientRect().top),
+      viewportHeight: window.innerHeight,
+    }
+  })
+
+  expect(scrollContract).toEqual({
+    documentScrollTop: 0,
+    frameOverflow: "clip",
+    frameScrollTop: 0,
+    mainOverflowY: "auto",
+    mainOverscrollY: "contain",
+    stageBottom: 844,
+    stageTop: 0,
+    viewportHeight: 844,
+  })
+})
+
 test("the mobile frame and reduced motion stay usable on a small viewport", async ({
   page,
 }) => {

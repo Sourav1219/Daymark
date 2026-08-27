@@ -51,43 +51,51 @@ export async function getCurrentSessionId(): Promise<string | null> {
  * during sign-up), this function attempts one idempotent re-provisioning
  * before giving up. This recovers broken accounts transparently.
  */
-export async function requireWorkspaceAccess(
+const getRequiredWorkspaceAccess = cache(
+  async function getRequiredWorkspaceAccess(
+    workspaceId?: string,
+  ): Promise<AccessContext> {
+    const user = await requireUser()
+    const database = getDatabase()
+
+    if (workspaceId && !z.uuid().safeParse(workspaceId).success) {
+      // The raw value is unvalidated input; never feed it into metric labels.
+      observeAuthorizationDenial("workspace_id_invalid")
+      forbidden()
+    }
+
+    const access = workspaceId
+      ? await findWorkspaceAccess(database, { userId: user.id, workspaceId })
+      : await findPersonalWorkspaceAccess(database, user.id)
+
+    if (!access) {
+      if (!workspaceId) {
+        // Attempt idempotent recovery: re-run provisioning in case it failed
+        // during registration (e.g. the after-create hook threw an error).
+        try {
+          await provisionPersonalWorkspace(database, {
+            id: user.id,
+            name: user.name,
+          })
+          const recovered = await findPersonalWorkspaceAccess(database, user.id)
+          if (recovered) return recovered
+        } catch {
+          // If re-provisioning also fails, fall through to forbidden().
+        }
+      }
+      observeAuthorizationDenial("workspace_denied", {
+        requested_workspace_id: workspaceId ?? null,
+        user_id: user.id,
+      })
+      forbidden()
+    }
+
+    return access
+  },
+)
+
+export function requireWorkspaceAccess(
   workspaceId?: string,
 ): Promise<AccessContext> {
-  const user = await requireUser()
-  const database = getDatabase()
-
-  if (workspaceId && !z.uuid().safeParse(workspaceId).success) {
-    // The raw value is unvalidated input; never feed it into metric labels.
-    observeAuthorizationDenial("workspace_id_invalid")
-    forbidden()
-  }
-
-  const access = workspaceId
-    ? await findWorkspaceAccess(database, { userId: user.id, workspaceId })
-    : await findPersonalWorkspaceAccess(database, user.id)
-
-  if (!access) {
-    if (!workspaceId) {
-      // Attempt idempotent recovery: re-run provisioning in case it failed
-      // during registration (e.g. the after-create hook threw an error).
-      try {
-        await provisionPersonalWorkspace(database, {
-          id: user.id,
-          name: user.name,
-        })
-        const recovered = await findPersonalWorkspaceAccess(database, user.id)
-        if (recovered) return recovered
-      } catch {
-        // If re-provisioning also fails, fall through to forbidden().
-      }
-    }
-    observeAuthorizationDenial("workspace_denied", {
-      requested_workspace_id: workspaceId ?? null,
-      user_id: user.id,
-    })
-    forbidden()
-  }
-
-  return access
+  return getRequiredWorkspaceAccess(workspaceId)
 }

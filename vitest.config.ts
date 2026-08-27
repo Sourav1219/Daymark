@@ -11,7 +11,13 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    exclude: ["e2e/**", "pwa-e2e/**", "node_modules/**", ".next/**"],
+    exclude: [
+      "e2e/**",
+      "pwa-e2e/**",
+      "node_modules/**",
+      ".next/**",
+      ".kilo/**",
+    ],
     fileParallelism: false,
     // Minimal server env so modules that read the validated server
     // configuration (e.g. the canonical CSRF origin) behave deterministically

@@ -2,10 +2,7 @@ import { NextResponse } from "next/server"
 
 import { getDatabase } from "@/db/client"
 import { requireWorkspaceAccess } from "@/features/authentication/server/authorization"
-import {
-  findActiveGroupStudyParticipant,
-  updateParticipantHeartbeat,
-} from "@/features/timer/repositories/group-study-repository"
+import { updateActiveParticipantHeartbeat } from "@/features/timer/repositories/group-study-repository"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 
 export const dynamic = "force-dynamic"
@@ -18,7 +15,7 @@ const responseHeaders = {
 /**
  * Heartbeat endpoint for active Group Study participants.
  *
- * Called by the client every 30 seconds while inside a room. Updates
+ * Called by the client every 60 seconds while inside a room. Updates
  * lastHeartbeatAt on the participant record so the stale-room cron job
  * can detect disconnected participants and clean them up.
  */
@@ -37,14 +34,9 @@ export async function POST(request: Request) {
   }
   const database = getDatabase()
 
-  const participant = await findActiveGroupStudyParticipant(database, access)
-
-  if (!participant) {
-    // Not in a room — nothing to update. Return 204 silently.
-    return new NextResponse(null, { headers: responseHeaders, status: 204 })
-  }
-
-  await updateParticipantHeartbeat(database, access, participant.id)
+  // A single guarded update is a no-op when the caller is not in an active
+  // room, avoiding a separate participant lookup on every heartbeat.
+  await updateActiveParticipantHeartbeat(database, access)
 
   return new NextResponse(null, { headers: responseHeaders, status: 204 })
 }

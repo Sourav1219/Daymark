@@ -21,6 +21,10 @@ import type { ActionResult } from "@/lib/actions/action-result"
 import { validationFailure } from "@/lib/actions/action-helpers"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 import { z } from "zod"
+import {
+  publishRealtimeEvent,
+  sessionRealtimeChannel,
+} from "@/lib/realtime/realtime-events"
 
 export type SessionView = Readonly<{
   createdAt: string
@@ -94,6 +98,11 @@ export async function revokeSessionAction(input: {
     sessionId: parsed.data.sessionId,
     userId: user.id,
   })
+  if (revoked) {
+    await publishRealtimeEvent(sessionRealtimeChannel(parsed.data.sessionId), {
+      revokedAt: Date.now(),
+    })
+  }
   revalidatePath("/profile")
 
   return { data: { revoked }, ok: true }

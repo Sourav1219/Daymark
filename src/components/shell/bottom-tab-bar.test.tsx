@@ -34,10 +34,10 @@ describe("BottomTabBar", () => {
       "href",
       "/profile",
     )
-    expect(screen.getByRole("navigation")).toHaveStyle({
-      "--active-tab-index": "4",
-      "--active-tab-position": "90%",
-    })
+    expect(screen.getByRole("navigation")).toHaveAttribute(
+      "data-active-index",
+      "4",
+    )
     expect(container.querySelector(".tab-liquid-lens")).toHaveAttribute(
       "data-visible",
       "true",

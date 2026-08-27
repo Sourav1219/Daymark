@@ -1718,8 +1718,9 @@ Progress page — a playful, modern progression dashboard that
   color: #4f5fca;
 }
 
-.group-study__code-input {
+.group-study__form > .group-study__code-input {
   color: #3d4f9e;
+  font-size: 1rem;
   font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;

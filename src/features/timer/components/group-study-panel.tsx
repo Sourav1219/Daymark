@@ -36,6 +36,7 @@ import {
   updateGroupStudySettingsAction,
 } from "@/features/timer/application/actions"
 import { calculateTimerElapsedMs } from "@/features/timer/domain/timer"
+import { groupStudySnapshotChanged } from "@/features/timer/domain/group-study-sync"
 import type {
   GroupStudyActivityView,
   GroupStudyHistoryView,
@@ -131,15 +132,28 @@ export function GroupStudyPanel({
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Version-diff polling: fetch the lightweight group-poll endpoint every 3 s.
+  // Version-diff polling: fetch the lightweight group-poll endpoint while the
+  // tab is visible. Stable rooms back off so they do not compete with page
+  // rendering for database capacity.
   // Only call router.refresh() when the room version actually changes, reducing
-  // unnecessary full-page renders. Back off to 5 s after 3 stable polls.
+  // unnecessary full-page renders.
   useEffect(() => {
     if (!sharedSession) return
     let lastVersion = sharedSession.version
+    let lastParticipantCount = sharedSession.participants.length
     let stableCount = 0
 
+    const events = new EventSource(
+      `/api/timer/group-events?roomId=${encodeURIComponent(sharedSession.id)}`,
+    )
+    events.addEventListener("room-changed", () => {
+      stableCount = 0
+      router.refresh()
+    })
+
     const poll = async () => {
+      if (document.visibilityState !== "visible") return
+
       try {
         const response = await fetch(
           `/api/timer/group-poll?roomId=${sharedSession.id}`,
@@ -147,6 +161,7 @@ export function GroupStudyPanel({
         )
         if (!response.ok) return
         const data = (await response.json()) as {
+          participantCount: number
           version: number
           status: string
         }
@@ -155,8 +170,17 @@ export function GroupStudyPanel({
           router.refresh()
           return
         }
-        if (data.version !== lastVersion) {
+        if (
+          groupStudySnapshotChanged(
+            {
+              participantCount: lastParticipantCount,
+              version: lastVersion,
+            },
+            data,
+          )
+        ) {
           lastVersion = data.version
+          lastParticipantCount = data.participantCount
           stableCount = 0
           router.refresh()
         } else {
@@ -167,20 +191,33 @@ export function GroupStudyPanel({
       }
     }
 
-    // Start at 3 s; if 3 consecutive polls show no change, slow to 5 s.
-    const getInterval = () => (stableCount >= 3 ? 5_000 : 3_000)
+    // Start responsively, then back off once the room is stable.
+    const getInterval = () => (stableCount >= 2 ? 15_000 : 5_000)
     let timeout: number
     const schedule = () => {
-      timeout = window.setTimeout(async () => {
-        await poll()
-        schedule()
-      }, getInterval())
+      timeout = window.setTimeout(
+        async () => {
+          await poll()
+          schedule()
+        },
+        document.visibilityState === "visible" ? getInterval() : 15_000,
+      )
     }
     schedule()
-    return () => window.clearTimeout(timeout)
+    const handleVisibilityChange = () => {
+      window.clearTimeout(timeout)
+      if (document.visibilityState === "visible") stableCount = 0
+      schedule()
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => {
+      events.close()
+      window.clearTimeout(timeout)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
   }, [router, sharedSession])
 
-  // Heartbeat: ping /api/timer/heartbeat every 30 s while in an active room
+  // Heartbeat: ping /api/timer/heartbeat every 60 s while in an active room
   // so the server knows this tab is still alive.
   useEffect(() => {
     if (!sharedSession) return
@@ -190,9 +227,9 @@ export function GroupStudyPanel({
         method: "POST",
       }).catch(() => undefined)
 
-    // Send immediately on mount, then every 30 s.
+    // Send immediately on mount, then every 60 s.
     void sendHeartbeat()
-    const interval = window.setInterval(sendHeartbeat, 30_000)
+    const interval = window.setInterval(sendHeartbeat, 60_000)
     return () => window.clearInterval(interval)
   }, [sharedSession])
 

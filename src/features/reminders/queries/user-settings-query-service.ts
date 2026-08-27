@@ -1,5 +1,7 @@
 import "server-only"
 
+import { cache } from "react"
+
 import { getDatabase, type Database } from "@/db/client"
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import { ReminderServiceError } from "@/features/reminders/domain/errors"
@@ -8,9 +10,9 @@ import {
   type UserSettingsRecord,
 } from "@/features/reminders/repositories/user-settings-repository"
 
-export async function getUserSettings(
+const getCachedUserSettings = cache(async function getCachedUserSettings(
   access: AccessContext,
-  database: Database = getDatabase(),
+  database: Database,
 ): Promise<UserSettingsRecord> {
   const settings = await findUserSettingsRecord(database, access)
 
@@ -22,4 +24,11 @@ export async function getUserSettings(
   }
 
   return settings
+})
+
+export function getUserSettings(
+  access: AccessContext,
+  database: Database = getDatabase(),
+): Promise<UserSettingsRecord> {
+  return getCachedUserSettings(access, database)
 }

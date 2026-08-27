@@ -1,5 +1,5 @@
-import { PageSkeleton } from "@/components/system/page-skeleton"
+import { LabelsLoadingState } from "@/components/system/management-loading-states"
 
 export default function LabelsLoading() {
-  return <PageSkeleton />
+  return <LabelsLoadingState />
 }

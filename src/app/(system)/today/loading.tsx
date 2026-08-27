@@ -1,5 +1,5 @@
-import { QuestLoadingState } from "@/features/quests/components/quest-loading-state"
+import { TodayLoadingState } from "@/features/today/components/today-loading-state"
 
 export default function TodayLoading() {
-  return <QuestLoadingState />
+  return <TodayLoadingState />
 }

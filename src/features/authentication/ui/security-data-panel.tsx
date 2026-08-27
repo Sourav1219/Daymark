@@ -163,6 +163,10 @@ function SessionsCard({
     [initialSessions, sessions],
   )
 
+  const confirmingSession = confirmingId
+    ? sessions.find((s) => s.id === confirmingId) ?? null
+    : null
+
   const otherSessions = sessions.filter((s) => s.id !== currentSessionId)
   const currentSession = sessions.find((s) => s.id === currentSessionId)
 
@@ -207,12 +211,9 @@ function SessionsCard({
           {/* Current session always first */}
           {currentSession ? (
             <SessionItem
-              confirmingId={confirmingId}
               isCurrent
               isPending={isPending}
               key={currentSession.id}
-              onCancelConfirm={() => setConfirmingId(null)}
-              onConfirmRevoke={handleRevoke}
               onRequestConfirm={setConfirmingId}
               session={currentSession}
             />
@@ -221,18 +222,23 @@ function SessionsCard({
           {/* Other sessions */}
           {otherSessions.map((session) => (
             <SessionItem
-              confirmingId={confirmingId}
               isCurrent={false}
               isPending={isPending}
               key={session.id}
-              onCancelConfirm={() => setConfirmingId(null)}
-              onConfirmRevoke={handleRevoke}
               onRequestConfirm={setConfirmingId}
               session={session}
             />
           ))}
         </ul>
       )}
+      {confirmingSession ? (
+        <RevokeSessionModal
+          deviceName={deviceLabel(confirmingSession.userAgent).name}
+          isPending={isPending}
+          onCancel={() => setConfirmingId(null)}
+          onConfirm={() => handleRevoke(confirmingSession.id)}
+        />
+      ) : null}
       {signedOutDevice ? (
         <SessionSignedOutPopup
           deviceName={signedOutDevice}
@@ -249,24 +255,17 @@ function SessionsCard({
 // ─── SessionItem ───────────────────────────────────────────────────────────────
 
 function SessionItem({
-  confirmingId,
   isCurrent,
   isPending,
-  onCancelConfirm,
-  onConfirmRevoke,
   onRequestConfirm,
   session,
 }: Readonly<{
-  confirmingId: string | null
   isCurrent: boolean
   isPending: boolean
-  onCancelConfirm: () => void
-  onConfirmRevoke: (id: string) => void
   onRequestConfirm: (id: string) => void
   session: SessionView
 }>) {
   const { kind, name } = deviceLabel(session.userAgent)
-  const isConfirming = confirmingId === session.id
 
   const DeviceIcon =
     kind === "mobile" ? Smartphone : kind === "tablet" ? Tablet : Monitor
@@ -310,46 +309,107 @@ function SessionItem({
       {/* Sign out action — only for other sessions */}
       {!isCurrent ? (
         <div className="security-session__action">
-          {isConfirming ? (
-            <div className="security-session__confirm">
-              <span>Sign out?</span>
-              <Button
-                className="security-session__confirm-yes"
-                disabled={isPending}
-                onClick={() => onConfirmRevoke(session.id)}
-                size="sm"
-                type="button"
-                variant="destructive"
-              >
-                Yes
-              </Button>
-              <Button
-                className="security-session__confirm-no"
-                disabled={isPending}
-                onClick={onCancelConfirm}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                No
-              </Button>
-            </div>
-          ) : (
-            <Button
-              className="security-session__signout"
-              disabled={isPending}
-              onClick={() => onRequestConfirm(session.id)}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <LogOut aria-hidden="true" />
-              Sign out
-            </Button>
-          )}
+          <Button
+            className="security-session__signout"
+            disabled={isPending}
+            onClick={() => onRequestConfirm(session.id)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <LogOut aria-hidden="true" />
+            Sign out
+          </Button>
         </div>
       ) : null}
     </li>
+  )
+}
+
+// ─── RevokeSessionModal ─────────────────────────────────────────────────────────
+
+function RevokeSessionModal({
+  deviceName,
+  isPending,
+  onCancel,
+  onConfirm,
+}: Readonly<{
+  deviceName: string
+  isPending: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}>) {
+  useEffect(() => {
+    const viewport = document.getElementById("app-device-viewport")
+    viewport?.classList.add("has-modal-open")
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onCancel()
+    }
+    document.addEventListener("keydown", closeOnEscape)
+
+    return () => {
+      viewport?.classList.remove("has-modal-open")
+      document.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [onCancel])
+
+  const portalContainer =
+    document.getElementById("app-device-viewport") ?? document.body
+
+  return createPortal(
+    <div
+      aria-labelledby="revoke-session-dialog-title"
+      aria-modal="true"
+      className="revoke-session-modal__overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onCancel()
+      }}
+      role="dialog"
+    >
+      <div className="revoke-session-modal">
+        <div className="revoke-session-modal__visual" aria-hidden="true">
+          <span className="revoke-session-modal__icon">
+            <LogOut />
+          </span>
+        </div>
+
+        <div className="revoke-session-modal__copy">
+          <p className="revoke-session-modal__eyebrow">Remote sign-out</p>
+          <h3
+            className="revoke-session-modal__title"
+            id="revoke-session-dialog-title"
+          >
+            Sign out this device?
+          </h3>
+          <p className="revoke-session-modal__device">
+            <strong>{deviceName}</strong> will be signed out of your account
+            immediately.
+          </p>
+        </div>
+
+        <div className="revoke-session-modal__actions">
+          <Button
+            disabled={isPending}
+            onClick={onCancel}
+            type="button"
+            variant="outline"
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={isPending}
+            onClick={onConfirm}
+            type="button"
+            variant="destructive"
+          >
+            <LogOut aria-hidden="true" />
+            {isPending ? "Signing out…" : "Sign out device"}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    portalContainer,
   )
 }
 

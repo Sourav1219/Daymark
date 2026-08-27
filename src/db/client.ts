@@ -13,7 +13,10 @@ function createPostgresClient(databaseUrl: string, verifyTls: boolean) {
   return postgres(databaseUrl, {
     connect_timeout: 10,
     idle_timeout: 20,
-    max: 1,
+    // The URL targets Supabase's transaction pooler. A tiny bounded pool keeps
+    // background timer polling from serialising every page query behind it,
+    // while remaining conservative for serverless function instances.
+    max: 3,
     max_lifetime: 60,
     prepare: false,
     ...(verifyTls ? { ssl: "require" as const } : {}),

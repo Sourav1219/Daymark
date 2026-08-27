@@ -7,6 +7,7 @@ import { AutomaticPushEnrollment } from "@/features/reminders/components/automat
 import { AutomaticTimezone } from "@/features/onboarding/components/automatic-timezone"
 import { TaskCompletionCelebrationProvider } from "@/features/quests/components/task-completion-celebration-provider"
 import { TimerLifecycleBoundary } from "@/features/timer/components/timer-lifecycle-boundary"
+import { SessionWatcher } from "@/features/authentication/ui/session-watcher"
 
 type AutomaticSetupStatus = Readonly<{
   timezone: string
@@ -57,6 +58,7 @@ export function AppShell({
         version={onboarding.version}
       />
       <AutomaticPushEnrollment publicKey={pushPublicKey} />
+      <SessionWatcher />
     </div>
   )
 }

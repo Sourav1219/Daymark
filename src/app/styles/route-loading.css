@@ -1,0 +1,625 @@
+.route-loading {
+  display: grid;
+  gap: 1.35rem;
+  min-height: 100%;
+  font-family: var(--font-nunito), var(--font-sans);
+}
+
+.route-loading__header {
+  display: grid;
+  gap: 0.2rem;
+  padding-bottom: 1.05rem;
+  border-bottom: 1px solid rgba(70, 91, 164, 0.1);
+}
+
+.route-loading__header > span,
+.route-loading__label {
+  color: #4e75df;
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.route-loading__header h1 {
+  margin: 0;
+  color: var(--app-text);
+  font-family: var(--font-baloo), var(--font-nunito), sans-serif;
+  font-size: clamp(1.55rem, 7vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+}
+
+.route-loading__header p {
+  max-width: 30rem;
+  margin: 0.18rem 0 0;
+  color: var(--app-text-muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.route-loading [data-slot="skeleton"] {
+  position: relative;
+  overflow: hidden;
+  background: #e5ebf6;
+}
+
+.route-loading [data-slot="skeleton"]::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.7) 46%,
+    transparent 67%
+  );
+  content: "";
+  transform: translateX(-120%);
+  animation: route-loading-shimmer 1.45s ease-in-out infinite;
+}
+
+.route-loading__cards,
+.quest-route-loading__cards {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.route-loading__card,
+.route-loading__summary-card,
+.route-loading__profile-card,
+.route-loading__timer-card,
+.quest-route-loading__card {
+  border: 1px solid rgba(71, 92, 168, 0.1);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 18px 35px -31px rgba(37, 63, 137, 0.55);
+}
+
+.route-loading__card {
+  display: grid;
+  grid-template-columns: 2.7rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 6.2rem;
+  padding: 1rem;
+  border-radius: 18px;
+}
+
+.route-loading__card:nth-child(2n) {
+  background: rgba(247, 243, 255, 0.72);
+}
+
+.route-loading__card-icon {
+  width: 2.7rem;
+  height: 2.7rem;
+  border-radius: 13px;
+}
+
+.route-loading__card > div,
+.route-loading__profile-card > div,
+.quest-route-loading__card > div {
+  display: grid;
+  gap: 0.52rem;
+  min-width: 0;
+}
+
+.route-loading__line {
+  display: block;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.route-loading__line--title {
+  width: min(68%, 11rem);
+  height: 0.72rem;
+}
+
+.route-loading__line--body {
+  width: min(88%, 17rem);
+}
+
+.route-loading__line--medium {
+  width: min(74%, 13rem);
+}
+
+.route-loading__line--short {
+  width: min(42%, 7rem);
+  height: 0.46rem;
+}
+
+.route-loading__summary-card {
+  display: grid;
+  gap: 1.1rem;
+  min-height: 10rem;
+  padding: 1.2rem;
+  border-radius: 22px;
+  background: linear-gradient(145deg, #edf3ff, #f4f1ff);
+}
+
+.route-loading__meter {
+  width: 100%;
+  height: 0.75rem;
+  align-self: end;
+  border-radius: 999px;
+}
+
+.route-loading__timer-card {
+  display: grid;
+  min-height: 18rem;
+  place-items: center;
+  padding: 1.4rem;
+  border-radius: 24px;
+  background: linear-gradient(150deg, #eff5ff, #f7f3ff);
+  text-align: center;
+}
+
+.route-loading__timer-card strong {
+  color: #1d3154;
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(2.2rem, 11vw, 3.3rem);
+  letter-spacing: 0.02em;
+}
+
+.route-loading__timer-actions {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.route-loading__timer-actions > span {
+  width: 2.85rem;
+  height: 2.85rem;
+  border-radius: 50%;
+}
+
+.route-loading__profile-card {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  min-height: 15rem;
+  padding: 1.2rem;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #eef4ff, #f6f2ff);
+}
+
+.route-loading__avatar {
+  width: 4.2rem;
+  height: 4.2rem;
+  border-radius: 50%;
+}
+
+.route-loading__profile-details {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.route-loading__profile-details > span {
+  height: 4rem;
+  border-radius: 15px;
+}
+
+.quest-route-loading__tools {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.55rem;
+}
+
+.quest-route-loading__tools > span {
+  display: grid;
+  min-height: 2.7rem;
+  place-items: center;
+  border: 1px solid rgba(67, 92, 176, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+  color: #71809c;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.quest-route-loading__tools > .is-active {
+  border-color: rgba(47, 107, 246, 0.2);
+  background: rgba(216, 229, 255, 0.78);
+  color: #2f6bf6;
+}
+
+.quest-route-loading__card {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 5.8rem;
+  padding: 0.9rem;
+  border-radius: 18px;
+}
+
+.quest-route-loading__card:nth-child(2) {
+  background: rgba(247, 243, 255, 0.7);
+}
+
+.quest-route-loading__card:nth-child(3) {
+  background: rgba(239, 249, 255, 0.72);
+}
+
+.quest-route-loading__check {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+}
+
+.quest-route-loading__meta {
+  display: flex;
+  gap: 0.42rem;
+}
+
+.quest-route-loading__meta > span {
+  width: 3rem;
+  height: 0.46rem;
+  border-radius: 999px;
+}
+
+.public-route-loading {
+  display: grid;
+  min-height: 100svh;
+  place-content: center;
+  justify-items: center;
+  gap: 0.55rem;
+  padding: 1.5rem;
+  background: linear-gradient(155deg, #f4f8ff, #e9f1ff);
+  color: #172c4e;
+  font-family: var(--font-nunito), sans-serif;
+}
+
+.public-route-loading__mark {
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  place-items: center;
+  border-radius: 13px;
+  background: #2f6bf6;
+  color: white;
+  font-weight: 950;
+  box-shadow: 0 16px 28px -16px rgba(47, 107, 246, 0.8);
+}
+
+.public-route-loading strong {
+  font-size: 1.1rem;
+}
+
+.public-route-loading p {
+  margin: 0;
+  color: #71809a;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+@keyframes route-loading-shimmer {
+  to {
+    transform: translateX(120%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-loading [data-slot="skeleton"]::after {
+    animation: none;
+  }
+}
+
+/* Route-accurate loading states reuse the production page classes above and
+   reveal only the values that the server has not resolved yet. */
+.exact-route-loading {
+  min-height: 100%;
+}
+
+.loading-placeholder {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  min-width: 1rem;
+  min-height: 0.55rem;
+  border-radius: 999px;
+  background: rgba(108, 130, 177, 0.13);
+  vertical-align: middle;
+}
+
+.loading-placeholder::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 28%,
+    rgba(255, 255, 255, 0.48) 48%,
+    transparent 68%
+  );
+  content: "";
+  transform: translateX(-120%);
+  animation: route-loading-shimmer 1.8s ease-in-out infinite;
+}
+
+.exact-loading__line {
+  display: block;
+  height: 0.62rem;
+}
+
+.exact-loading__line--title {
+  width: min(10.5rem, 62vw);
+  height: 0.76rem;
+}
+
+.exact-loading__line--body {
+  width: min(16rem, 76vw);
+}
+
+.exact-loading__badge {
+  width: 3.9rem;
+  height: 1.55rem;
+}
+
+.exact-loading__count,
+.exact-loading__inline-number {
+  width: 1.25rem;
+  min-width: 1.25rem;
+}
+
+.exact-loading__inline-value {
+  width: 3.6rem;
+}
+
+.exact-loading__input,
+.exact-loading__select,
+.exact-loading__control,
+.exact-loading__search-input {
+  display: block;
+  width: 100%;
+  height: 2.55rem;
+  border: 1px solid rgba(30, 64, 140, 0.09);
+  border-radius: 12px;
+  background: rgba(229, 235, 246, 0.72);
+}
+
+.exact-loading__search-input {
+  height: 3.35rem;
+  border-radius: 16px;
+}
+
+.exact-loading__select {
+  height: 2.8rem;
+  border-radius: 13px;
+}
+
+.exact-loading__textarea {
+  display: block;
+  width: 100%;
+  height: 5.5rem;
+  border: 1px solid rgba(30, 64, 140, 0.09);
+  border-radius: 12px;
+  background: rgba(229, 235, 246, 0.64);
+}
+
+.exact-loading__submit {
+  width: 7.6rem;
+  height: 2.5rem;
+  border-radius: 12px;
+}
+
+.exact-loading__management-input,
+.exact-loading__management-select {
+  display: block;
+  width: 100%;
+  height: 2rem;
+  border: 1px solid rgba(30, 64, 140, 0.09);
+  border-radius: var(--radius-control);
+}
+
+.exact-loading__management-textarea {
+  display: block;
+  width: 100%;
+  height: 5rem;
+  border: 1px solid rgba(30, 64, 140, 0.09);
+  border-radius: var(--radius-control);
+}
+
+.exact-loading__management-submit {
+  width: 7.6rem;
+  height: 2rem;
+  border-radius: var(--radius-control);
+}
+
+.exact-loading__dot {
+  width: 0.65rem;
+  min-width: 0.65rem;
+  height: 0.65rem;
+}
+
+.exact-loading__version,
+.exact-loading__count-label {
+  width: 3.4rem;
+  height: 0.55rem;
+}
+
+.exact-loading__small-action {
+  width: 5.6rem;
+  height: 2.5rem;
+  border-radius: 12px;
+}
+
+.exact-loading__settings-panel {
+  display: block;
+  width: 100%;
+  height: 5rem;
+  border-radius: 14px;
+}
+
+.exact-route-loading .quest-studio__tab:disabled,
+.exact-route-loading button:disabled,
+.exact-route-loading select:disabled,
+.exact-route-loading textarea:disabled,
+.exact-route-loading input:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.exact-route-loading .quest-schedule__control {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.exact-route-loading .timer-clock,
+.exact-route-loading .timer-status-pill,
+.exact-route-loading .timer-background-note {
+  opacity: 0.88;
+}
+
+.exact-loading__duration {
+  width: 3.2rem;
+  height: 1rem;
+}
+
+.exact-loading__metric {
+  width: 3rem;
+  height: 1rem;
+}
+
+.exact-route-loading .progress-meter > span {
+  width: 42%;
+}
+
+.progress-summary-card .loading-placeholder,
+.progress-level .loading-placeholder {
+  background: rgba(255, 255, 255, 0.27);
+}
+
+.exact-loading__percent {
+  width: 2.1rem;
+  height: 0.55rem;
+}
+
+.exact-loading__level {
+  width: 2rem;
+  height: 2.35rem;
+  border-radius: 10px;
+}
+
+.exact-loading__streak {
+  width: 1rem;
+  height: 1.1rem;
+  background: rgba(164, 86, 43, 0.14);
+}
+
+.exact-loading__history-date {
+  width: 7rem;
+  height: 0.72rem;
+}
+
+.exact-loading__history-points {
+  width: 4.5rem;
+  height: 0.68rem;
+}
+
+.exact-loading__workspace {
+  width: 6.8rem;
+}
+
+.exact-loading__avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.exact-loading__role {
+  width: 2.7rem;
+}
+
+.exact-loading__profile-name {
+  width: 8.6rem;
+  height: 1.25rem;
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.exact-loading__email {
+  width: 10.5rem;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.exact-loading__meta-value {
+  width: 6.4rem;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.exact-loading__account-value {
+  width: min(10rem, 38vw);
+  height: 0.68rem;
+}
+
+.exact-loading__device-count {
+  width: 1rem;
+}
+
+.exact-loading__session-action {
+  width: 5rem;
+  height: 2.35rem;
+  border-radius: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-placeholder::after {
+    animation: none;
+  }
+}
+
+/* A resolved route replaces an identically-sized shell. Keep that handoff to
+   a quiet opacity reveal so the production entrance motion cannot replay with
+   scale or translation and make the page appear to jump. */
+@keyframes route-content-reveal {
+  from {
+    opacity: 0.86;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.device-main
+  :is(
+    .enter-up,
+    .quest-overview,
+    .quest-studio__panel,
+    .quest-create-card,
+    .profile-header,
+    .profile-hero,
+    .profile-editor,
+    .profile-security-settings,
+    .profile-help-settings,
+    .progress-header,
+    .progress-summary-card,
+    .progress-pace-card,
+    .progress-streak-card,
+    .progress-timeline li
+  ) {
+  animation: route-content-reveal 160ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .device-main
+    :is(
+      .enter-up,
+      .quest-overview,
+      .quest-studio__panel,
+      .quest-create-card,
+      .profile-header,
+      .profile-hero,
+      .profile-editor,
+      .profile-security-settings,
+      .profile-help-settings,
+      .progress-header,
+      .progress-summary-card,
+      .progress-pace-card,
+      .progress-streak-card,
+      .progress-timeline li
+    ) {
+    animation: none;
+  }
+}

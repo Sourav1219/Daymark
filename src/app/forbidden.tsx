@@ -1,19 +1,18 @@
-import Link from "next/link"
+import type { Metadata } from "next"
+
+import { SessionExpiredCard } from "@/features/authentication/ui/session-expired-card"
+
+export const metadata: Metadata = {
+  title: "Access Denied",
+  description: "This workspace is outside your access boundary.",
+}
 
 export default function Forbidden() {
   return (
-    <main className="state-shell">
-      <div className="ambient-grid" aria-hidden="true" />
-      <section aria-labelledby="forbidden-title">
-        <p className="eyebrow">403 · Workspace denied</p>
-        <h1 className="state-title" id="forbidden-title">
-          This workspace is outside your access boundary.
-        </h1>
-        <p className="lede">No data from that workspace has been returned.</p>
-        <Link className="health-link" href="/today">
-          Return to Today
-        </Link>
-      </section>
-    </main>
+    <SessionExpiredCard
+      description="You do not have authorization to view or manage this workspace. Your own account and personal data remain safe."
+      eyebrow="403 · Access Denied"
+      heading="This workspace is outside your access boundary."
+    />
   )
 }

@@ -19,6 +19,29 @@ import { getUserSettings } from "@/features/reminders/queries/user-settings-quer
 
 const historyLimit = 50
 
+export async function getCurrentCompletionStreak(
+  access: AccessContext,
+  options: Readonly<{
+    database?: Database
+    now?: Date
+    timezone: string
+  }>,
+) {
+  const awards = await listEffectiveAwards(
+    options.database ?? getDatabase(),
+    access,
+  )
+  const today = localWeekBounds(
+    options.now ?? new Date(),
+    options.timezone,
+  ).today
+
+  return calculateCompletionStreak(
+    awards.map(({ earnedForLocalDate }) => earnedForLocalDate),
+    today,
+  ).current
+}
+
 export async function getDailyXpSummary(
   access: AccessContext,
   localDate: string,
@@ -33,12 +56,14 @@ export async function getProgressionDashboard(
     database?: Database
     historyDate?: string
     now?: Date
+    timezone?: string
   }> = {},
 ) {
   const database = options.database ?? getDatabase()
   const now = options.now ?? new Date()
-  const settings = await getUserSettings(access, database)
-  const week = localWeekBounds(now, settings.timezone)
+  const timezone =
+    options.timezone ?? (await getUserSettings(access, database)).timezone
+  const week = localWeekBounds(now, timezone)
   const [projection, awards, history, pointGoals, periodDeltas] =
     await Promise.all([
       findProgressionRecord(database, access),
@@ -50,7 +75,7 @@ export async function getProgressionDashboard(
         options.historyDate,
       ),
       getQuestPointGoalsRecord(database, access, {
-        timezone: settings.timezone,
+        timezone,
         today: week.today,
         weekEnd: week.end,
         weekStart: week.start,
@@ -90,7 +115,7 @@ export async function getProgressionDashboard(
       occurredAt: entry.occurredAt.toISOString(),
     })),
     level: getLevelProgress(xp),
-    timezone: settings.timezone,
+    timezone,
     totalXp: xp,
     weekly: {
       goal: pointGoals.weekly,

@@ -3,10 +3,7 @@ import { z } from "zod"
 
 import { getDatabase } from "@/db/client"
 import { requireWorkspaceAccess } from "@/features/authentication/server/authorization"
-import {
-  countActiveGroupStudyParticipants,
-  findGroupStudySessionRecord,
-} from "@/features/timer/repositories/group-study-repository"
+import { findGroupStudyPollSnapshot } from "@/features/timer/repositories/group-study-repository"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 
 export const dynamic = "force-dynamic"
@@ -24,7 +21,7 @@ const responseHeaders = {
  * Returns { version, participantCount } for the given roomId.
  * Clients compare the version to their last-seen value and only call
  * router.refresh() when it changes — avoiding a full server render every
- * 3 seconds regardless of whether anything changed.
+ * poll interval regardless of whether anything changed.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -51,27 +48,18 @@ export async function GET(request: Request) {
   }
 
   const database = getDatabase()
-  const room = await findGroupStudySessionRecord(
+  const snapshot = await findGroupStudyPollSnapshot(
     database,
     access,
     parsed.data.roomId,
   )
 
-  if (!room) {
+  if (!snapshot) {
     return NextResponse.json(
       { message: "Room not found." },
       { headers: responseHeaders, status: 404 },
     )
   }
 
-  const participantCount = await countActiveGroupStudyParticipants(
-    database,
-    room.workspaceId,
-    room.id,
-  )
-
-  return NextResponse.json(
-    { participantCount, status: room.status, version: room.version },
-    { headers: responseHeaders },
-  )
+  return NextResponse.json(snapshot, { headers: responseHeaders })
 }

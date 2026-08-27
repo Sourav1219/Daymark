@@ -39,6 +39,10 @@ import {
   validationFailure,
 } from "@/lib/actions/action-helpers"
 import type { RateLimitPolicy } from "@/lib/rate-limit/rate-limiter"
+import {
+  publishRealtimeEvent,
+  roomRealtimeChannel,
+} from "@/lib/realtime/realtime-events"
 
 type TimerTransitionInput = Readonly<{
   expectedVersion: number
@@ -60,7 +64,7 @@ function runTimerMutation(
   })
 }
 
-function runGroupStudyMutation<T>(
+function runGroupStudyMutation<T extends Readonly<{ roomId: string }>>(
   userId: string,
   policy: RateLimitPolicy,
   mutate: () => Promise<T>,
@@ -68,7 +72,13 @@ function runGroupStudyMutation<T>(
   return runActionMutation({
     isExpectedError: (error): error is TimerServiceError =>
       error instanceof TimerServiceError,
-    mutate,
+    mutate: async () => {
+      const result = await mutate()
+      await publishRealtimeEvent(roomRealtimeChannel(result.roomId), {
+        changedAt: Date.now(),
+      })
+      return result
+    },
     paths: ["/timer"],
     rateLimit: { policy, userId },
     system: "Group Study",

@@ -1,7 +1,9 @@
+import { Suspense } from "react"
+
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import { getLabelList } from "@/features/labels/queries/label-query-service"
 import { localDateForInstant } from "@/features/progression/domain/progression"
-import { getProgressionDashboard } from "@/features/progression/queries/progression-query-service"
+import { getCurrentCompletionStreak } from "@/features/progression/queries/progression-query-service"
 import { sweepOverdueQuests } from "@/features/quests/application/sweep-overdue-quests"
 import { getLocalDayWindow } from "@/features/quests/domain/today-window"
 import type {
@@ -15,6 +17,7 @@ import { DailyStudyHistory } from "@/features/timer/components/daily-study-histo
 import { getDailyStudyHistory } from "@/features/timer/queries/timer-query-service"
 import { TodayFilters } from "@/features/today/components/today-filters"
 import { TodayHeader } from "@/features/today/components/today-header"
+import { DailyStudyHistoryLoading } from "@/features/today/components/today-loading-state"
 import { TodayPromo } from "@/features/today/components/today-promo"
 import { TodayTasks } from "@/features/today/components/today-tasks"
 import { formatTodaySchedule } from "@/features/today/domain/today-time-label"
@@ -43,19 +46,20 @@ export async function TodayView({
 
   if (selectedDate === todayDate) await sweepOverdueQuests(access, now)
 
-  const [dashboard, quests, labels, reminderInbox, studyHistory] =
-    await Promise.all([
-      getProgressionDashboard(access),
-      getQuestList(access, "today", {
-        filters,
-        localDate: selectedDate,
-        now,
-      }),
-      getLabelList(access),
-      getReminderInbox(access, { now }),
-      getDailyStudyHistory(access, settings.timezone),
-    ])
-  const timeZone = dashboard.timezone
+  const [streak, quests, labels, reminderInbox] = await Promise.all([
+    getCurrentCompletionStreak(access, {
+      now,
+      timezone: settings.timezone,
+    }),
+    getQuestList(access, "today", {
+      filters,
+      localDate: selectedDate,
+      now,
+    }),
+    getLabelList(access),
+    getReminderInbox(access, { now }),
+  ])
+  const timeZone = settings.timezone
   const toCard = (quest: QuestView): TodayCard => {
     const schedule = formatTodaySchedule(quest.startAt, quest.dueAt, timeZone)
 
@@ -113,7 +117,7 @@ export async function TodayView({
         inbox={reminderInbox}
         referenceNow={now.toISOString()}
         selectedDate={selectedDate}
-        streak={dashboard.currentStreak}
+        streak={streak}
         todayDate={todayDate}
         timezone={timeZone}
       />
@@ -131,7 +135,27 @@ export async function TodayView({
         selectedDate={selectedDate}
         sections={sections}
       />
-      <DailyStudyHistory history={studyHistory} selectedDate={selectedDate} />
+      <Suspense fallback={<DailyStudyHistoryLoading />}>
+        <TodayStudyHistory
+          access={access}
+          selectedDate={selectedDate}
+          timezone={settings.timezone}
+        />
+      </Suspense>
     </div>
   )
+}
+
+async function TodayStudyHistory({
+  access,
+  selectedDate,
+  timezone,
+}: Readonly<{
+  access: AccessContext
+  selectedDate: string
+  timezone: string
+}>) {
+  const history = await getDailyStudyHistory(access, timezone)
+
+  return <DailyStudyHistory history={history} selectedDate={selectedDate} />
 }

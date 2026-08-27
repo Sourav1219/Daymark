@@ -1,5 +1,5 @@
-import { PageSkeleton } from "@/components/system/page-skeleton"
+import { TimerLoadingState } from "@/features/timer/components/timer-loading-state"
 
 export default function TimerLoading() {
-  return <PageSkeleton />
+  return <TimerLoadingState />
 }

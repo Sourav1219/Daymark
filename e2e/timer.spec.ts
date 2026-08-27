@@ -10,6 +10,31 @@ function clockSeconds(value: string | null) {
   return hours * 3600 + minutes * 60 + seconds
 }
 
+test("room code entry keeps an iOS-safe font size without viewport zoom", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto("/~offline")
+
+  const fontSize = await page.evaluate(() => {
+    const form = document.createElement("form")
+    form.className = "group-study__form"
+
+    const input = document.createElement("input")
+    input.className = "group-study__code-input"
+    form.append(input)
+    document.body.append(form)
+
+    const computedFontSize = Number.parseFloat(
+      window.getComputedStyle(input).fontSize,
+    )
+    form.remove()
+    return computedFontSize
+  })
+
+  expect(fontSize).toBeGreaterThanOrEqual(16)
+})
+
 test("runs, pauses, resumes, edits, isolates history, and stops on close", async ({
   context,
   page,

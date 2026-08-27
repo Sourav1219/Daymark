@@ -182,6 +182,35 @@ export async function findGroupStudySessionRecord(
   return record ?? null
 }
 
+/** Minimal room snapshot used by client version polling in one database read. */
+export async function findGroupStudyPollSnapshot(
+  database: DatabaseExecutor,
+  access: AccessContext,
+  groupSessionId: string,
+) {
+  const [record] = await database
+    .select({
+      participantCount: sql<number>`(
+        select count(*)::integer
+        from ${groupStudyParticipants}
+        where ${groupStudyParticipants.groupSessionId} = ${groupStudySessions.id}
+          and ${groupStudyParticipants.leftAt} is null
+      )`,
+      status: groupStudySessions.status,
+      version: groupStudySessions.version,
+    })
+    .from(groupStudySessions)
+    .where(
+      and(
+        eq(groupStudySessions.id, groupSessionId),
+        participantAccessPredicate(database, access, groupSessionId),
+      ),
+    )
+    .limit(1)
+
+  return record ?? null
+}
+
 export async function findActiveGroupStudyParticipant(
   database: DatabaseExecutor,
   access: AccessContext,
@@ -838,6 +867,51 @@ export async function updateParticipantHeartbeat(
                 eq(timerSessions.id, groupStudyParticipants.timerSessionId),
                 eq(timerSessions.workspaceId, access.workspaceId),
                 activeAccessPredicate(database, access),
+              ),
+            ),
+        ),
+      ),
+    )
+}
+
+/** Touches the caller's active room membership without a preceding lookup. */
+export async function updateActiveParticipantHeartbeat(
+  database: DatabaseExecutor,
+  access: AccessContext,
+) {
+  await database
+    .update(groupStudyParticipants)
+    .set({
+      lastHeartbeatAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(groupStudyParticipants.userId, access.userId),
+        isNull(groupStudyParticipants.leftAt),
+        exists(
+          database
+            .select({ id: timerSessions.id })
+            .from(timerSessions)
+            .where(
+              and(
+                eq(timerSessions.id, groupStudyParticipants.timerSessionId),
+                eq(timerSessions.workspaceId, access.workspaceId),
+                activeAccessPredicate(database, access),
+              ),
+            ),
+        ),
+        exists(
+          database
+            .select({ id: groupStudySessions.id })
+            .from(groupStudySessions)
+            .where(
+              and(
+                eq(
+                  groupStudySessions.id,
+                  groupStudyParticipants.groupSessionId,
+                ),
+                eq(groupStudySessions.status, "active"),
               ),
             ),
         ),

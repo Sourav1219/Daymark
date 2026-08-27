@@ -10,19 +10,23 @@ type SessionExpiredCardProps = Readonly<{
   eyebrow?: string
   heading?: string
   description?: string
+  nextPath?: string
 }>
 
 export function SessionExpiredCard({
   eyebrow = "401 · Authentication Required",
   heading = "Your session is missing or expired.",
   description = "You were signed out, or your previous session has ended for your security. Sign in again to get straight back to your quests and workspace.",
+  nextPath,
 }: SessionExpiredCardProps) {
   const router = useRouter()
 
   function handleSignIn(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
-    const nextPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
-    router.push(`/sign-in?next=${encodeURIComponent(nextPath)}` as Route)
+    const destination =
+      nextPath ??
+      `${window.location.pathname}${window.location.search}${window.location.hash}`
+    router.push(`/sign-in?next=${encodeURIComponent(destination)}` as Route)
   }
 
   return (
@@ -95,7 +99,9 @@ export function SessionExpiredCard({
           <div className="session-expired__actions">
             <Link
               className="session-expired__btn-primary"
-              href={"/sign-in?next=%2Ftoday" as Route}
+              href={
+                `/sign-in?next=${encodeURIComponent(nextPath ?? "/today")}` as Route
+              }
               id="session-reauth-btn"
               onClick={handleSignIn}
             >

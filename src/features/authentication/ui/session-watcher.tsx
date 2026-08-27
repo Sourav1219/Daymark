@@ -6,6 +6,7 @@ import type { Route } from "next"
 import { useRouter } from "next/navigation"
 
 import { SessionExpiredCard } from "@/features/authentication/ui/session-expired-card"
+import { ACTIVE_SESSIONS_CHANGED_EVENT } from "@/features/authentication/client/session-events"
 import { clearPrivateOfflineData } from "@/features/offline/storage/offline-database"
 
 /** How often to silently probe the session (ms). */
@@ -15,9 +16,10 @@ const POLL_INTERVAL_MS = 30_000
  * Silent background watcher mounted inside the authenticated app shell.
  *
  * Polls /api/session/ping on a fixed interval and immediately on every
- * tab-focus event. When the server returns 401 (session revoked from
- * another device), it clears local offline data and navigates to the
- * session-expired page — no manual refresh required.
+ * tab-focus event. Account-wide session changes arrive over the same stream,
+ * allowing session lists to update immediately. When the server returns 401
+ * (session revoked from another device), it clears local offline data and
+ * navigates to the real sign-out route — no manual refresh required.
  *
  * Renders nothing; purely an effect component.
  */
@@ -32,7 +34,8 @@ export function SessionWatcher() {
     expiredRef.current = true
     setExpired(true)
     void clearPrivateOfflineData()
-    router.replace("/unauthorized" as Route)
+    const nextPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    router.replace(`/sign-out?next=${encodeURIComponent(nextPath)}` as Route)
   }, [router])
 
   const checkSession = useCallback(async () => {
@@ -44,15 +47,25 @@ export function SessionWatcher() {
 
       if (response.status === 401) {
         expireSession()
+        return false
       }
+      return response.ok
     } catch {
       // Network/fetch error — assume offline, don't sign the user out.
+      return false
     }
   }, [expireSession])
 
   useEffect(() => {
     const events = new EventSource("/api/session/events")
-    events.addEventListener("session-revoked", expireSession)
+    const onSessionsChanged = () => {
+      void checkSession().then((active) => {
+        if (active) {
+          window.dispatchEvent(new Event(ACTIVE_SESSIONS_CHANGED_EVENT))
+        }
+      })
+    }
+    events.addEventListener("sessions-changed", onSessionsChanged)
     events.onerror = () => {
       void checkSession()
     }
@@ -82,7 +95,7 @@ export function SessionWatcher() {
       if (timerRef.current !== null) clearTimeout(timerRef.current)
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
-  }, [checkSession, expireSession])
+  }, [checkSession])
 
   if (!expired || typeof document === "undefined") return null
 

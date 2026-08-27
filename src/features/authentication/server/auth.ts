@@ -17,6 +17,10 @@ import {
 import { provisionPersonalWorkspace } from "@/features/workspaces/application/provision-personal-workspace"
 import { readServerEnv } from "@/lib/env/server"
 import { googleAuthEnvFromServerEnv, type ServerEnv } from "@/lib/env/schema"
+import {
+  publishRealtimeEvent,
+  userSessionRealtimeChannel,
+} from "@/lib/realtime/realtime-events"
 
 function passwordResetUrl(env: ServerEnv, token: string): string {
   const url = new URL("/reset-password", env.BETTER_AUTH_URL)
@@ -45,6 +49,24 @@ export function createAuth(
       usePlural: true,
     }),
     databaseHooks: {
+      session: {
+        create: {
+          after: async (session) => {
+            await publishRealtimeEvent(
+              userSessionRealtimeChannel(session.userId),
+              { kind: "created", sessionId: session.id },
+            )
+          },
+        },
+        delete: {
+          after: async (session) => {
+            await publishRealtimeEvent(
+              userSessionRealtimeChannel(session.userId),
+              { kind: "deleted", sessionId: session.id },
+            )
+          },
+        },
+      },
       user: {
         create: {
           after: async (user) => {

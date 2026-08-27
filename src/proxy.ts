@@ -95,7 +95,14 @@ export function proxy(request: NextRequest) {
   const sessionCookie = getSessionCookie(request, {
     cookiePrefix: AUTH_COOKIE_PREFIX,
   })
-  if (isProtectedPath(request.nextUrl.pathname) && !sessionCookie) {
+  if (
+    request.nextUrl.pathname === "/unauthorized" ||
+    request.nextUrl.pathname === "/session-expired"
+  ) {
+    const signOutUrl = request.nextUrl.clone()
+    signOutUrl.pathname = "/sign-out"
+    response = NextResponse.redirect(signOutUrl)
+  } else if (isProtectedPath(request.nextUrl.pathname) && !sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url)
     signInUrl.searchParams.set(
       "next",

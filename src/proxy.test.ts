@@ -25,6 +25,20 @@ describe("protected route proxy", () => {
     )
   })
 
+  it.each(["/unauthorized", "/session-expired"])(
+    "redirects the legacy %s path to the real sign-out page",
+    (pathname) => {
+      const response = proxy(
+        new NextRequest(`https://questly.test${pathname}?next=%2Fprofile`),
+      )
+
+      expect(response.status).toBe(307)
+      expect(response.headers.get("location")).toBe(
+        "https://questly.test/sign-out?next=%2Fprofile",
+      )
+    },
+  )
+
   it("protects the Phase 3 shell routes", () => {
     const response = proxy(
       new NextRequest("https://questly.test/today?view=compact"),

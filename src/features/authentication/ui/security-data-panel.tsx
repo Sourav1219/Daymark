@@ -31,10 +31,12 @@ import { Label } from "@/components/ui/label"
 import {
   deleteAccountAction,
   exportAccountDataAction,
+  listActiveSessionsAction,
   revokeSessionAction,
   signOutEverywhereAction,
   type SessionView,
 } from "@/features/authentication/application/account-security-actions"
+import { ACTIVE_SESSIONS_CHANGED_EVENT } from "@/features/authentication/client/session-events"
 import { clearPrivateOfflineData } from "@/features/offline/storage/offline-database"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -141,6 +143,34 @@ function SessionsCard({
   const [signedOutDevice, setSignedOutDevice] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  const refreshSessions = useCallback(async () => {
+    try {
+      const result = await listActiveSessionsAction()
+      if (result.ok) setSessions(result.data)
+    } catch {
+      // The global session watcher owns expired-session handling. A transient
+      // network failure should leave the last known device list in place.
+    }
+  }, [])
+
+  useEffect(() => {
+    const refresh = () => void refreshSessions()
+    const interval = window.setInterval(refresh, 30_000)
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") refresh()
+    }
+
+    window.addEventListener(ACTIVE_SESSIONS_CHANGED_EVENT, refresh)
+    document.addEventListener("visibilitychange", onVisibilityChange)
+
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener(ACTIVE_SESSIONS_CHANGED_EVENT, refresh)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
+  }, [refreshSessions])
+
   const handleRevoke = useCallback(
     (sessionId: string) => {
       const label = deviceLabel(
@@ -164,7 +194,7 @@ function SessionsCard({
   )
 
   const confirmingSession = confirmingId
-    ? sessions.find((s) => s.id === confirmingId) ?? null
+    ? (sessions.find((s) => s.id === confirmingId) ?? null)
     : null
 
   const otherSessions = sessions.filter((s) => s.id !== currentSessionId)

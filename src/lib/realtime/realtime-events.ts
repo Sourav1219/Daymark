@@ -26,8 +26,8 @@ export function roomRealtimeChannel(roomId: string) {
   return `traketo:realtime:room:${roomId}`
 }
 
-export function sessionRealtimeChannel(sessionId: string) {
-  return `traketo:realtime:session:${sessionId}`
+export function userSessionRealtimeChannel(userId: string) {
+  return `traketo:realtime:user-sessions:${userId}`
 }
 
 /** Publishes best-effort invalidation without failing the committed mutation. */

@@ -3,7 +3,7 @@ import { headers } from "next/headers"
 import { getAuth } from "@/features/authentication/server/auth"
 import {
   createRealtimeEventResponse,
-  sessionRealtimeChannel,
+  userSessionRealtimeChannel,
 } from "@/lib/realtime/realtime-events"
 
 export const dynamic = "force-dynamic"
@@ -12,7 +12,7 @@ export const runtime = "nodejs"
 
 const noStoreHeaders = { "Cache-Control": "private, no-store" } as const
 
-/** Streams a revocation event to the browser owning the current session. */
+/** Streams account-wide session changes to every signed-in device. */
 export async function GET(request: Request) {
   const session = await getAuth().api.getSession({ headers: await headers() })
   if (!session) {
@@ -21,8 +21,8 @@ export async function GET(request: Request) {
 
   return (
     createRealtimeEventResponse(request, {
-      channel: sessionRealtimeChannel(session.session.id),
-      eventName: "session-revoked",
+      channel: userSessionRealtimeChannel(session.user.id),
+      eventName: "sessions-changed",
     }) ?? new Response(null, { headers: noStoreHeaders, status: 204 })
   )
 }

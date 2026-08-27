@@ -23,7 +23,7 @@ import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 import { z } from "zod"
 import {
   publishRealtimeEvent,
-  sessionRealtimeChannel,
+  userSessionRealtimeChannel,
 } from "@/lib/realtime/realtime-events"
 
 export type SessionView = Readonly<{
@@ -99,8 +99,9 @@ export async function revokeSessionAction(input: {
     userId: user.id,
   })
   if (revoked) {
-    await publishRealtimeEvent(sessionRealtimeChannel(parsed.data.sessionId), {
-      revokedAt: Date.now(),
+    await publishRealtimeEvent(userSessionRealtimeChannel(user.id), {
+      kind: "revoked",
+      sessionId: parsed.data.sessionId,
     })
   }
   revalidatePath("/profile")
@@ -121,6 +122,9 @@ export async function signOutEverywhereAction(): Promise<
 
   await revokeAllSessionRecords(getDatabase(), user.id)
   await getAuth().api.signOut({ headers: await headers() })
+  await publishRealtimeEvent(userSessionRealtimeChannel(user.id), {
+    kind: "revoked-all",
+  })
 
   return { data: { signedOut: true }, ok: true }
 }

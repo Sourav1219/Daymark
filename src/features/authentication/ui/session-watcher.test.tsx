@@ -64,15 +64,31 @@ describe("SessionWatcher", () => {
 
     await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
     expect(FakeEventSource.instances[0]?.url).toBe("/api/session/events")
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 401 }))
 
-    act(() => FakeEventSource.instances[0]?.emit("session-revoked"))
+    act(() => FakeEventSource.instances[0]?.emit("sessions-changed"))
 
-    expect(
-      screen.getByRole("heading", {
-        name: "This device has been signed out.",
-      }),
-    ).toBeInTheDocument()
-    expect(mocks.replace).toHaveBeenCalledWith("/unauthorized")
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", {
+          name: "This device has been signed out.",
+        }),
+      ).toBeInTheDocument()
+    })
+    expect(mocks.replace).toHaveBeenCalledWith("/sign-out?next=%2F")
     expect(mocks.clearPrivateOfflineData).toHaveBeenCalledOnce()
+  })
+
+  it("notifies active-session views when another device signs in", async () => {
+    const listener = vi.fn()
+    window.addEventListener("traketo:active-sessions-changed", listener)
+    render(<SessionWatcher />)
+
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    act(() => FakeEventSource.instances[0]?.emit("sessions-changed"))
+
+    await waitFor(() => expect(listener).toHaveBeenCalledOnce())
+    expect(mocks.replace).not.toHaveBeenCalled()
+    window.removeEventListener("traketo:active-sessions-changed", listener)
   })
 })

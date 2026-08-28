@@ -24,9 +24,13 @@ import type {
   ReminderInboxData,
 } from "@/features/reminders/domain/types"
 import { formatZonedDateTime } from "@/features/reminders/domain/timezone"
+import {
+  cookieConsentChangedEvent,
+  hasPreferenceStorageConsent,
+  readDeadlineStorageKey,
+} from "@/features/privacy/client/optional-browser-storage"
 import { cn } from "@/lib/utils"
 
-const readDeadlineStorageKey = "questly:read-deadline-alerts"
 const readDeadlineStorageEvent = "questly:read-deadline-alerts-changed"
 const deadlineWindowMs = 30 * 60_000
 
@@ -50,7 +54,8 @@ function deadlineAlertId(quest: DueSoonQuestView): string {
 }
 
 function readStoredDeadlineSnapshot(): string {
-  if (typeof window === "undefined") return "[]"
+  if (typeof window === "undefined" || !hasPreferenceStorageConsent())
+    return "[]"
 
   try {
     const stored = window.localStorage.getItem(readDeadlineStorageKey)
@@ -61,6 +66,8 @@ function readStoredDeadlineSnapshot(): string {
 }
 
 function storeReadDeadlineIds(ids: ReadonlySet<string>) {
+  if (!hasPreferenceStorageConsent()) return
+
   try {
     window.localStorage.setItem(
       readDeadlineStorageKey,
@@ -75,9 +82,11 @@ function storeReadDeadlineIds(ids: ReadonlySet<string>) {
 function subscribeToReadDeadlines(onStoreChange: () => void) {
   window.addEventListener("storage", onStoreChange)
   window.addEventListener(readDeadlineStorageEvent, onStoreChange)
+  window.addEventListener(cookieConsentChangedEvent, onStoreChange)
   return () => {
     window.removeEventListener("storage", onStoreChange)
     window.removeEventListener(readDeadlineStorageEvent, onStoreChange)
+    window.removeEventListener(cookieConsentChangedEvent, onStoreChange)
   }
 }
 

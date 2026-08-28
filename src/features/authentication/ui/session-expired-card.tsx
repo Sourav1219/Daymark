@@ -108,9 +108,6 @@ export function SessionExpiredCard({
               <span>Sign in again</span>
               <ArrowRight aria-hidden="true" />
             </Link>
-            <Link className="session-expired__btn-secondary" href="/sign-in">
-              Go to Sign In
-            </Link>
           </div>
 
           {/* Footer Note */}

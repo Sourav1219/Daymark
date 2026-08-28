@@ -3324,8 +3324,6 @@ Redesign — native mobile app shell, motion, and playful depth
   flex: 1;
 }
 
-
-
 .security-action-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -3429,55 +3427,127 @@ Redesign — native mobile app shell, motion, and playful depth
 /* Refined export and deletion actions. */
 .security-action-card {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
-  gap: 0.8rem;
-  padding: 0.9rem;
-  border-color: rgba(55, 93, 193, 0.12);
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "icon copy"
+    ". action";
+  gap: 0.22rem 0.88rem;
+  padding: 1.05rem;
+  border-color: rgba(54, 89, 184, 0.16);
+  border-radius: 22px;
   background:
     radial-gradient(
-      circle at 100% 0,
-      rgba(76, 119, 235, 0.11),
-      transparent 42%
+      circle at 92% 2%,
+      rgba(89, 119, 255, 0.18),
+      transparent 38%
     ),
-    linear-gradient(
-      145deg,
-      rgba(255, 255, 255, 0.92),
-      rgba(239, 245, 255, 0.82)
-    );
-  box-shadow: 0 16px 34px -27px rgba(35, 68, 151, 0.72);
+    linear-gradient(140deg, rgba(255, 255, 255, 0.98), rgba(237, 243, 255, 0.9));
+  box-shadow:
+    0 18px 38px -27px rgba(30, 58, 139, 0.82),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transition:
+    border-color 0.2s var(--ease-system),
+    box-shadow 0.2s var(--ease-system),
+    transform 0.2s var(--ease-system);
 }
 
 .security-action-card::before {
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: linear-gradient(#4f82f5, #6e62da);
+  z-index: 2;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #386ff2, #7a5cf0 68%, transparent);
   content: "";
 }
 
+.security-action-card::after {
+  position: absolute;
+  z-index: -1;
+  top: -2.8rem;
+  right: -2.2rem;
+  width: 7rem;
+  height: 7rem;
+  border: 1px solid rgba(76, 104, 204, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  content: "";
+}
+
+.security-action-card:hover {
+  border-color: rgba(54, 89, 184, 0.24);
+  box-shadow:
+    0 22px 42px -28px rgba(30, 58, 139, 0.92),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
 .security-action-card--danger {
-  border-color: rgba(215, 64, 80, 0.14);
+  border-color: rgba(205, 57, 76, 0.17);
   background:
-    radial-gradient(circle at 100% 0, rgba(238, 99, 112, 0.1), transparent 42%),
+    radial-gradient(
+      circle at 92% 2%,
+      rgba(239, 82, 103, 0.15),
+      transparent 38%
+    ),
     linear-gradient(
-      145deg,
-      rgba(255, 255, 255, 0.94),
-      rgba(255, 241, 244, 0.76)
+      140deg,
+      rgba(255, 255, 255, 0.98),
+      rgba(255, 239, 243, 0.88)
     );
-  box-shadow: 0 16px 34px -27px rgba(145, 44, 61, 0.55);
+  box-shadow:
+    0 18px 38px -28px rgba(145, 35, 57, 0.68),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .security-action-card--danger::before {
-  background: linear-gradient(#ef6672, #cf3e51);
+  background: linear-gradient(90deg, #ef5368, #c9314d 68%, transparent);
+}
+
+.security-action-card--danger::after {
+  border-color: rgba(200, 54, 75, 0.07);
+}
+
+.security-action-card--danger:hover {
+  border-color: rgba(205, 57, 76, 0.26);
+  box-shadow:
+    0 22px 42px -28px rgba(145, 35, 57, 0.78),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .security-action-card__icon {
-  width: 2.55rem;
-  height: 2.55rem;
-  border: 1px solid rgba(255, 255, 255, 0.75);
+  grid-area: icon;
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 1px solid rgba(84, 113, 207, 0.12);
+  border-radius: 15px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.88),
-    0 12px 22px -18px rgba(42, 70, 146, 0.72);
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 24px -18px rgba(42, 70, 146, 0.9);
+}
+
+.security-action-card__icon[data-tone="blue"] {
+  background: linear-gradient(145deg, #eef3ff, #dfe9ff);
+  color: #3869df;
+}
+
+.security-action-card__icon[data-tone="red"] {
+  border-color: rgba(210, 56, 78, 0.1);
+  background: linear-gradient(145deg, #fff0f3, #ffdee5);
+  color: #d23851;
+}
+
+.security-action-card__icon svg {
+  width: 1.12rem;
+  height: 1.12rem;
+  stroke-width: 2.2;
+}
+
+.security-action-card__copy {
+  z-index: 1;
+  grid-area: copy;
+  align-self: center;
 }
 
 .security-action-card__meta {
@@ -3488,20 +3558,22 @@ Redesign — native mobile app shell, motion, and playful depth
 }
 
 .security-action-card__meta > span {
-  color: #6275c9;
-  font-size: 0.5rem;
+  color: #4867c4;
+  font-size: 0.52rem;
   font-weight: 900;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .security-action-card__meta small {
-  padding: 0.18rem 0.38rem;
+  padding: 0.22rem 0.45rem;
+  border: 1px solid rgba(70, 101, 197, 0.08);
   border-radius: 999px;
-  background: rgba(226, 235, 255, 0.84);
-  color: #5570c9;
-  font-size: 0.45rem;
+  background: rgba(228, 236, 255, 0.9);
+  color: #4967c1;
+  font-size: 0.47rem;
   font-weight: 900;
+  letter-spacing: 0.02em;
 }
 
 .security-action-card--danger .security-action-card__meta > span,
@@ -3510,40 +3582,65 @@ Redesign — native mobile app shell, motion, and playful depth
 }
 
 .security-action-card--danger .security-action-card__meta small {
-  background: rgba(255, 225, 230, 0.9);
-  color: #c53f4f;
+  border-color: rgba(202, 52, 73, 0.08);
+  background: rgba(255, 222, 229, 0.92);
+  color: #bd3449;
 }
 
 .security-action-card h3 {
-  margin-top: 0.16rem;
-  font-size: 0.8rem;
+  margin-top: 0.28rem;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+  line-height: 1.08;
 }
 
 .security-action-card p {
-  max-width: 15rem;
-  margin-top: 0.24rem;
-  font-size: 0.57rem;
+  max-width: 16rem;
+  margin: 0.3rem 0 0;
+  color: #71809c;
+  font-size: 0.6rem;
+  line-height: 1.5;
 }
 
 .security-action-card__button {
-  min-height: 2.15rem;
-  margin-top: 0.62rem;
-  padding-inline: 0.8rem;
-  border-color: rgba(62, 103, 209, 0.16) !important;
-  background: rgba(255, 255, 255, 0.88) !important;
-  color: #315fc8 !important;
-  box-shadow: 0 10px 20px -17px rgba(39, 71, 157, 0.72);
+  z-index: 1;
+  grid-area: action;
+  justify-self: start;
+  min-height: 2.2rem;
+  margin-top: 0.58rem;
+  padding-inline: 0.86rem;
+  border-color: transparent !important;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #426fe3, #315bc9) !important;
+  color: #fff !important;
+  box-shadow: 0 11px 22px -14px rgba(38, 75, 174, 0.9);
+  font-weight: 900;
 }
 
 .security-action-card--danger .security-action-card__button {
-  border-color: rgba(207, 62, 81, 0.18) !important;
-  background: rgba(255, 233, 237, 0.9) !important;
-  color: #cc3d4f !important;
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #e34a60, #c8324d) !important;
+  color: #fff !important;
+  box-shadow: 0 11px 22px -14px rgba(164, 39, 61, 0.84);
 }
 
 .security-action-card__button:hover,
 .security-action-card__button:focus-visible {
   transform: translateY(-1px);
+  filter: saturate(1.08) brightness(1.03);
+}
+
+@media (max-width: 360px) {
+  .security-action-card {
+    grid-template-areas:
+      "icon copy"
+      "action action";
+  }
+
+  .security-action-card__button {
+    width: 100%;
+    justify-self: stretch;
+  }
 }
 
 /* Account deletion dialog - a centered, scroll-locking app modal. */

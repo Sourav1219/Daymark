@@ -43,7 +43,7 @@ export function UnauthorizedClient() {
     <main className="unauth" role="main">
       {/* Decorative layers */}
       <div className="unauth__grid" aria-hidden="true" />
-      <div className="unauth__orb"  aria-hidden="true" />
+      <div className="unauth__orb" aria-hidden="true" />
 
       {/* Top bar */}
       <header className="unauth__topbar">
@@ -85,8 +85,8 @@ export function UnauthorizedClient() {
           Sign in to <em>continue</em>.
         </h1>
         <p className="unauth__desc">
-          This page is protected. Sign in to pick up right where you left
-          off — your tasks, streaks, and progress are all still here.
+          This page is protected. Sign in to pick up right where you left off —
+          your tasks, streaks, and progress are all still here.
         </p>
       </div>
 

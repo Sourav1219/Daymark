@@ -99,8 +99,6 @@ export function ProfileLoadingState() {
           <dl>
             <ProfileRow icon="user" label="Display name" />
             <ProfileRow icon="mail" label="Email address" />
-            <ProfileRow icon="building" label="Workspace" />
-            <ProfileRow icon="shield" label="Access" />
           </dl>
         </article>
       </section>
@@ -160,17 +158,10 @@ function ProfileRow({
   icon,
   label,
 }: Readonly<{
-  icon: "building" | "mail" | "shield" | "user"
+  icon: "mail" | "user"
   label: string
 }>) {
-  const Icon =
-    icon === "user"
-      ? UserRound
-      : icon === "mail"
-        ? Mail
-        : icon === "building"
-          ? Building2
-          : ShieldCheck
+  const Icon = icon === "user" ? UserRound : Mail
 
   return (
     <div>

@@ -4,23 +4,35 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Sparkles, X } from "lucide-react"
 
-const storageKey = "questly-today-promo-dismissed"
+import { todayPromoStorageKey } from "@/features/privacy/client/optional-browser-storage"
+import { useCookieConsent } from "@/features/privacy/ui/cookie-consent-provider"
 
 /**
  * Dismissible promo banner. Content is static for now; dismissal persists in
  * localStorage so it stays hidden across reloads.
  */
 export function TodayPromo() {
+  const { preferenceStorageAllowed } = useCookieConsent()
   // "pending" until mounted so the server + first client render match, then
   // resolve to shown/hidden from localStorage.
   const [state, setState] = useState<"hidden" | "pending" | "shown">("pending")
 
   useEffect(() => {
+    let nextState: "hidden" | "shown" = "shown"
+    if (preferenceStorageAllowed) {
+      try {
+        nextState =
+          window.localStorage.getItem(todayPromoStorageKey) === "1"
+            ? "hidden"
+            : "shown"
+      } catch {
+        // The promo stays usable when storage is blocked or unavailable.
+      }
+    }
+
     // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only read of persisted dismissal
-    setState(
-      window.localStorage.getItem(storageKey) === "1" ? "hidden" : "shown",
-    )
-  }, [])
+    setState(nextState)
+  }, [preferenceStorageAllowed])
 
   if (state !== "shown") {
     return null
@@ -43,7 +55,9 @@ export function TodayPromo() {
         aria-label="Dismiss"
         className="today-banner__close"
         onClick={() => {
-          window.localStorage.setItem(storageKey, "1")
+          if (preferenceStorageAllowed) {
+            window.localStorage.setItem(todayPromoStorageKey, "1")
+          }
           setState("hidden")
         }}
         type="button"

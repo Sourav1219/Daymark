@@ -177,7 +177,7 @@ export function ProfileExperience({
             <div>
               <span>Profile details</span>
               <h2 id="profile-overview-heading">About this account</h2>
-              <p>Your saved information and workspace access.</p>
+              <p>The personal details connected to your account.</p>
             </div>
             <UserRound aria-hidden="true" />
           </div>
@@ -190,12 +190,6 @@ export function ProfileExperience({
                 value={displayName}
               />
               <ProfileRow icon={Mail} label="Email address" value={email} />
-              <ProfileRow
-                icon={Building2}
-                label="Workspace"
-                value={workspaceName}
-              />
-              <ProfileRow icon={ShieldCheck} label="Access" value={role} />
             </dl>
           </article>
         </section>

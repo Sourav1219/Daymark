@@ -458,42 +458,42 @@ function DataCard() {
         </div>
         <h3 id="export-heading">Export your data</h3>
         <p>A polished, readable archive of your Traketo activity.</p>
-        <Button
-          className="security-action-card__button"
-          disabled={isPending}
-          onClick={() =>
-            startTransition(async () => {
-              const result = await exportAccountDataAction()
-              if (!result?.ok) {
-                toast.error(
-                  result && !result.ok
-                    ? result.error.message
-                    : "The export could not be created. Try again.",
-                )
-                return
-              }
-              const binary = atob(result.data.pdfBase64)
-              const bytes = Uint8Array.from(binary, (character) =>
-                character.charCodeAt(0),
-              )
-              const blob = new Blob([bytes], {
-                type: "application/pdf",
-              })
-              const url = URL.createObjectURL(blob)
-              const anchor = document.createElement("a")
-              anchor.href = url
-              anchor.download = result.data.filename
-              anchor.click()
-              URL.revokeObjectURL(url)
-            })
-          }
-          type="button"
-          variant="outline"
-        >
-          <FileDown aria-hidden="true" />
-          {isPending ? "Building PDF" : "Download PDF"}
-        </Button>
       </div>
+      <Button
+        className="security-action-card__button"
+        disabled={isPending}
+        onClick={() =>
+          startTransition(async () => {
+            const result = await exportAccountDataAction()
+            if (!result?.ok) {
+              toast.error(
+                result && !result.ok
+                  ? result.error.message
+                  : "The export could not be created. Try again.",
+              )
+              return
+            }
+            const binary = atob(result.data.pdfBase64)
+            const bytes = Uint8Array.from(binary, (character) =>
+              character.charCodeAt(0),
+            )
+            const blob = new Blob([bytes], {
+              type: "application/pdf",
+            })
+            const url = URL.createObjectURL(blob)
+            const anchor = document.createElement("a")
+            anchor.href = url
+            anchor.download = result.data.filename
+            anchor.click()
+            URL.revokeObjectURL(url)
+          })
+        }
+        type="button"
+        variant="outline"
+      >
+        <FileDown aria-hidden="true" />
+        {isPending ? "Building PDF" : "Download PDF"}
+      </Button>
     </section>
   )
 }
@@ -522,16 +522,16 @@ function DeleteAccountCard() {
         </div>
         <h3 id="danger-heading">Delete account</h3>
         <p>Erase your workspace and every connected record forever.</p>
-        <Button
-          className="security-action-card__button"
-          onClick={() => setOpen(true)}
-          type="button"
-          variant="destructive"
-        >
-          <Trash2 aria-hidden="true" />
-          Delete my account
-        </Button>
       </div>
+      <Button
+        className="security-action-card__button"
+        onClick={() => setOpen(true)}
+        type="button"
+        variant="destructive"
+      >
+        <Trash2 aria-hidden="true" />
+        Delete my account
+      </Button>
       {open ? (
         <DeleteAccountDialog
           onClose={() => setOpen(false)}

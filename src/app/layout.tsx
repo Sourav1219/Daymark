@@ -1,6 +1,6 @@
 import { SerwistProvider } from "@serwist/turbopack/react"
 import type { Metadata, Viewport } from "next"
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { connection } from "next/server"
 import Script from "next/script"
 import type { ReactNode } from "react"
@@ -8,6 +8,11 @@ import type { ReactNode } from "react"
 import "./globals.css"
 import { Baloo_2, Caveat, Inter, Nunito } from "next/font/google"
 import { DevServiceWorkerCleanup } from "@/components/system/dev-service-worker-cleanup"
+import {
+  parseCookieConsent,
+  cookieConsentName,
+} from "@/features/privacy/domain/cookie-consent"
+import { CookieConsentProvider } from "@/features/privacy/ui/cookie-consent-provider"
 import { cn } from "@/lib/utils"
 
 const inter = Inter({
@@ -50,7 +55,7 @@ export const metadata: Metadata = {
   },
   description:
     "A calm, private space to turn your intentions into finished tasks.",
-  formatDetection: { telephone: false },
+  formatDetection: { email: false, telephone: false },
   icons: { apple: "/icons/apple-touch-icon.png" },
   openGraph: {
     description:
@@ -77,7 +82,18 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   // A nonce-based CSP must be rendered per request so Next.js can attach the
   // proxy-provided nonce to framework scripts and inline styles.
   await connection()
-  const requestNonce = (await headers()).get("x-nonce") ?? undefined
+  const [requestHeaders, cookieStore] = await Promise.all([
+    headers(),
+    cookies(),
+  ])
+  const requestNonce = requestHeaders.get("x-nonce") ?? undefined
+  const initialCookieConsent = parseCookieConsent(
+    cookieStore.get(cookieConsentName)?.value,
+  )
+  // Keep the consent card easy to review locally without changing the
+  // once-per-browser behavior of production builds.
+  const displayedCookieConsent =
+    process.env.NODE_ENV === "development" ? null : initialCookieConsent
 
   return (
     <html
@@ -91,21 +107,23 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       )}
     >
       <body>
-        {process.env.NODE_ENV !== "production" ? (
-          <Script
-            nonce={requestNonce}
-            src="/dev-cache-cleanup.js"
-            strategy="beforeInteractive"
-          />
-        ) : null}
-        <DevServiceWorkerCleanup />
-        <SerwistProvider
-          disable={process.env.NODE_ENV !== "production"}
-          options={{ scope: "/", updateViaCache: "none" }}
-          swUrl="/serwist/sw.js"
-        >
-          {children}
-        </SerwistProvider>
+        <CookieConsentProvider initialConsent={displayedCookieConsent}>
+          {process.env.NODE_ENV !== "production" ? (
+            <Script
+              nonce={requestNonce}
+              src="/dev-cache-cleanup.js"
+              strategy="beforeInteractive"
+            />
+          ) : null}
+          <DevServiceWorkerCleanup />
+          <SerwistProvider
+            disable={process.env.NODE_ENV !== "production"}
+            options={{ scope: "/", updateViaCache: "none" }}
+            swUrl="/serwist/sw.js"
+          >
+            {children}
+          </SerwistProvider>
+        </CookieConsentProvider>
       </body>
     </html>
   )

@@ -14,9 +14,21 @@
   width: 100%;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 80% 55% at 50% 0%, rgba(124, 92, 255, 0.28) 0%, transparent 65%),
-    radial-gradient(ellipse 60% 45% at 90% 85%, rgba(47, 107, 246, 0.18) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 5% 60%, rgba(56, 189, 248, 0.1) 0%, transparent 50%),
+    radial-gradient(
+      ellipse 80% 55% at 50% 0%,
+      rgba(124, 92, 255, 0.28) 0%,
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 60% 45% at 90% 85%,
+      rgba(47, 107, 246, 0.18) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 5% 60%,
+      rgba(56, 189, 248, 0.1) 0%,
+      transparent 50%
+    ),
     #0b0f1e;
   color: #e8eefe;
   font-family: var(--font-nunito), var(--font-sans);
@@ -61,8 +73,14 @@
 }
 
 @keyframes unauth-orb-pulse {
-  0%   { transform: scale(0.9); opacity: 0.7; }
-  100% { transform: scale(1.15); opacity: 1; }
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
 }
 
 /* ── Top bar ─────────────────────────────────────────────── */
@@ -99,13 +117,19 @@
   border: 2.5px solid #7c5cff;
   border-radius: 3px;
   transform: rotate(45deg);
-  box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.2), 0 0 12px rgba(124, 92, 255, 0.4);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow:
+    0 0 0 3px rgba(124, 92, 255, 0.2),
+    0 0 12px rgba(124, 92, 255, 0.4);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .unauth__wordmark:hover .unauth__diamond {
   transform: rotate(135deg);
-  box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.3), 0 0 20px rgba(124, 92, 255, 0.6);
+  box-shadow:
+    0 0 0 4px rgba(124, 92, 255, 0.3),
+    0 0 20px rgba(124, 92, 255, 0.6);
 }
 
 .unauth__status-pill {
@@ -134,8 +158,15 @@
 }
 
 @keyframes unauth-dot-pulse {
-  0%, 100% { transform: scale(0.9); opacity: 0.75; }
-  50%       { transform: scale(1.2); opacity: 1; }
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
 }
 
 /* ── Centre artwork ──────────────────────────────────────── */
@@ -167,7 +198,9 @@
 }
 
 @keyframes unauth-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Icon box */
@@ -179,7 +212,11 @@
   width: 5rem;
   height: 5rem;
   border-radius: 1.4rem;
-  background: linear-gradient(145deg, rgba(124, 92, 255, 0.22) 0%, rgba(47, 107, 246, 0.18) 100%);
+  background: linear-gradient(
+    145deg,
+    rgba(124, 92, 255, 0.22) 0%,
+    rgba(47, 107, 246, 0.18) 100%
+  );
   border: 1px solid rgba(124, 92, 255, 0.3);
   box-shadow:
     0 0 0 6px rgba(124, 92, 255, 0.08),
@@ -197,8 +234,13 @@
 }
 
 @keyframes unauth-float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50%       { transform: translateY(-6px) rotate(1.5deg); }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(1.5deg);
+  }
 }
 
 /* Small badge chips */
@@ -227,9 +269,15 @@
   color: #7c5cff;
 }
 
-.unauth__chip--tl { top: -0.25rem;    left: -0.75rem; }
-.unauth__chip--br { bottom: -0.25rem; right: -0.75rem;
-  animation-delay: 0.25s; }
+.unauth__chip--tl {
+  top: -0.25rem;
+  left: -0.75rem;
+}
+.unauth__chip--br {
+  bottom: -0.25rem;
+  right: -0.75rem;
+  animation-delay: 0.25s;
+}
 
 /* ── Copy block ──────────────────────────────────────────── */
 .unauth__body {
@@ -366,8 +414,12 @@
   transform: translateY(-2px);
 }
 
-.unauth__btn-primary:hover svg { transform: translateX(3px); }
-.unauth__btn-primary:active  { transform: translateY(1px); }
+.unauth__btn-primary:hover svg {
+  transform: translateX(3px);
+}
+.unauth__btn-primary:active {
+  transform: translateY(1px);
+}
 
 .unauth__btn-secondary {
   display: inline-flex;
@@ -398,7 +450,9 @@
   transform: translateY(-1px);
 }
 
-.unauth__btn-secondary:active { transform: translateY(1px); }
+.unauth__btn-secondary:active {
+  transform: translateY(1px);
+}
 
 /* ── Footer ──────────────────────────────────────────────── */
 .unauth__footer {
@@ -423,7 +477,10 @@
   transition: color 0.15s ease;
 }
 
-.unauth__footer-link:hover { color: #c4b5fd; text-decoration: underline; }
+.unauth__footer-link:hover {
+  color: #c4b5fd;
+  text-decoration: underline;
+}
 
 .unauth__note {
   margin: 0;

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { LegalPage, LegalSection } from "@/components/legal/legal-page"
+import { CookieSettingsButton } from "@/features/privacy/ui/cookie-consent-provider"
 
 export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
@@ -80,13 +81,46 @@ export default function PrivacyPage() {
 
       <LegalSection title="4. Cookies, local storage, and offline data">
         <p>
-          Traketo uses essential cookies to authenticate sessions and protect
-          the service. The app may also store recent encrypted data,
-          preferences, and queued changes on your device so supported features
-          continue to work offline. Recent offline snapshots generally expire
-          after seven days, and you can clear local offline storage from the app
-          settings or your browser. We do not currently use advertising cookies.
+          Traketo separates storage that is essential to provide the service
+          from optional preference storage. We do not use advertising,
+          behavioral-tracking, or analytics cookies.
         </p>
+        <ul>
+          <li>
+            <strong>Authentication and security:</strong> a first-party session
+            cookie keeps you securely signed in and protects private routes. It
+            is essential to the account service and normally expires after seven
+            days.
+          </li>
+          <li>
+            <strong>Consent preference:</strong> a first-party cookie remembers
+            whether you selected essential storage only or allowed preferences.
+            It expires after 180 days so Traketo does not ask on every visit.
+          </li>
+          <li>
+            <strong>Optional interface preferences:</strong> only after you
+            choose “Allow Cookies,” local storage remembers dismissed tips and
+            deadline alerts you have marked as read. Choosing “Decline” removes
+            these saved preferences.
+          </li>
+          <li>
+            <strong>Requested in-session features:</strong> temporary session
+            storage keeps track of an active timer while the browser tab is
+            open.
+          </li>
+          <li>
+            <strong>Encrypted offline data:</strong> offline task snapshots and
+            queued changes use IndexedDB only as part of the separately opt-in
+            offline feature. They are encrypted with your device passcode,
+            generally expire after seven days, and can be cleared in Settings.
+          </li>
+        </ul>
+        <p>
+          You may allow or withdraw optional preference storage at any time.
+          Essential authentication storage remains active while you use a
+          signed-in account.
+        </p>
+        <CookieSettingsButton />
       </LegalSection>
 
       <LegalSection title="5. When information is shared">

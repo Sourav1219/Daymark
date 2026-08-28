@@ -54,7 +54,9 @@ export function LegalPage({
                 <DocumentIcon aria-hidden="true" />
                 {isPrivacyPage ? "Privacy & data" : "Terms & conditions"}
               </span>
-              <span className="legal-date">Effective 26 Aug 2026</span>
+              <span className="legal-date">
+                Effective {isPrivacyPage ? "28 Aug 2026" : "26 Aug 2026"}
+              </span>
             </div>
             <h1 className="legal-title">{title}</h1>
             <p className="legal-summary">{summary}</p>

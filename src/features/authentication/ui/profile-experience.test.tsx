@@ -47,6 +47,13 @@ describe("ProfileExperience", () => {
       screen.getByRole("heading", { name: "Your profile" }),
     ).toBeInTheDocument()
     expect(screen.getByText("About this account")).toBeInTheDocument()
+    expect(screen.getByText("Display name")).toBeInTheDocument()
+    expect(screen.getByText("Email address")).toBeInTheDocument()
+    for (const emailAddress of screen.getAllByText("ada@example.com")) {
+      expect(emailAddress.closest("a")).toBeNull()
+    }
+    expect(screen.queryByText("Workspace")).not.toBeInTheDocument()
+    expect(screen.queryByText("Access")).not.toBeInTheDocument()
     expect(screen.queryByText(/password/iu)).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Log out" })).toBeVisible()
     expect(

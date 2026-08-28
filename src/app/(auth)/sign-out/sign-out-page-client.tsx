@@ -1,10 +1,5 @@
 "use client"
 
-import type { Route } from "next"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import type { MouseEvent } from "react"
-
 import { SessionExpiredCard } from "@/features/authentication/ui/session-expired-card"
 
 type SignOutPageClientProps = Readonly<{

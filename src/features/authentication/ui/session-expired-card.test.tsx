@@ -20,12 +20,16 @@ describe("SessionExpiredCard", () => {
       }),
     ).toBeInTheDocument()
 
-    expect(screen.getByText("401 · Authentication Required")).toBeInTheDocument()
+    expect(
+      screen.getByText("401 · Authentication Required"),
+    ).toBeInTheDocument()
     expect(screen.getByText("Session Ended")).toBeInTheDocument()
     expect(screen.getByText("Security Protected")).toBeInTheDocument()
     expect(screen.getByText("Quick Re-auth")).toBeInTheDocument()
     expect(
-      screen.getByText(/Your tasks, streaks & workspace progress remain completely safe/iu),
+      screen.getByText(
+        /Your tasks, streaks & workspace progress remain completely safe/iu,
+      ),
     ).toBeInTheDocument()
 
     const primaryCta = screen.getByRole("link", { name: /Sign in again/iu })
@@ -33,8 +37,8 @@ describe("SessionExpiredCard", () => {
     expect(primaryCta).toHaveAttribute("href", "/sign-in?next=%2Ftoday")
 
     expect(
-      screen.getByRole("link", { name: /Go to Sign In/iu }),
-    ).toHaveAttribute("href", "/sign-in")
+      screen.queryByRole("link", { name: /Go to Sign In/iu }),
+    ).not.toBeInTheDocument()
   })
 
   it("navigates with current pathname when 'Sign in again' is clicked", async () => {

@@ -63,9 +63,21 @@
   max-width: 27.5rem;
   min-height: min(100dvh, 48rem);
   background:
-    radial-gradient(circle at 95% 4%, rgba(101, 87, 230, 0.08), transparent 28%),
-    radial-gradient(circle at 5% 36%, rgba(57, 120, 244, 0.09), transparent 30%),
-    linear-gradient(168deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 249, 255, 0.94) 100%);
+    radial-gradient(
+      circle at 95% 4%,
+      rgba(101, 87, 230, 0.08),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 5% 36%,
+      rgba(57, 120, 244, 0.09),
+      transparent 30%
+    ),
+    linear-gradient(
+      168deg,
+      rgba(255, 255, 255, 0.96) 0%,
+      rgba(246, 249, 255, 0.94) 100%
+    );
   border: 1px solid rgba(62, 95, 169, 0.14);
   border-radius: 2rem;
   box-shadow:
@@ -159,7 +171,8 @@
 }
 
 @keyframes session-pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(0.95);
     opacity: 0.8;
   }
@@ -262,7 +275,8 @@
 }
 
 @keyframes session-float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0) rotate(0deg);
   }
   50% {

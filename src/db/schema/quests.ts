@@ -125,6 +125,14 @@ export const tasks = pgTable(
     index("tasks_workspace_updated_at_idx")
       .on(table.workspaceId, table.updatedAt)
       .where(sql`${table.deletedAt} is null`),
+    index("tasks_workspace_priority_sort_idx")
+      .on(
+        table.workspaceId,
+        sql`(case ${table.priority} when 'critical' then 0 when 'high' then 1 when 'medium' then 2 else 3 end)`,
+        table.dueAt,
+        table.updatedAt,
+      )
+      .where(sql`${table.deletedAt} is null`),
     index("tasks_workspace_project_idx")
       .on(table.workspaceId, table.projectId)
       .where(

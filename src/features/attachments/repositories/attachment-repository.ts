@@ -4,7 +4,6 @@ import {
   and,
   asc,
   eq,
-  exists,
   inArray,
   isNotNull,
   isNull,
@@ -14,7 +13,7 @@ import {
 } from "drizzle-orm"
 
 import type { DatabaseExecutor } from "@/db/client"
-import { attachments, workspaceMembers, workspaces } from "@/db/schema"
+import { attachments } from "@/db/schema"
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import type {
   AllowedAttachmentMimeType,
@@ -65,26 +64,6 @@ const attachmentListSelection = {
   version: attachments.version,
 }
 
-function activeAccessPredicate(
-  database: DatabaseExecutor,
-  access: AccessContext,
-) {
-  return exists(
-    database
-      .select({ id: workspaceMembers.id })
-      .from(workspaceMembers)
-      .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
-      .where(
-        and(
-          eq(workspaceMembers.userId, access.userId),
-          eq(workspaceMembers.workspaceId, access.workspaceId),
-          isNull(workspaceMembers.deletedAt),
-          isNull(workspaces.deletedAt),
-        ),
-      ),
-  )
-}
-
 export async function createPendingAttachmentRecord(
   database: DatabaseExecutor,
   access: AccessContext,
@@ -128,7 +107,6 @@ export async function findAttachmentRecord(
         eq(attachments.id, attachmentId),
         eq(attachments.workspaceId, access.workspaceId),
         isNull(attachments.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .limit(1)
@@ -139,9 +117,9 @@ export async function findAttachmentRecord(
 export function listAttachmentRecords(
   database: DatabaseExecutor,
   access: AccessContext,
-  questIds: readonly string[],
+  questIds?: readonly string[],
 ) {
-  if (questIds.length === 0) return Promise.resolve([])
+  if (questIds?.length === 0) return Promise.resolve([])
 
   return database
     .select(attachmentListSelection)
@@ -149,10 +127,9 @@ export function listAttachmentRecords(
     .where(
       and(
         eq(attachments.workspaceId, access.workspaceId),
-        inArray(attachments.questId, [...questIds]),
+        questIds ? inArray(attachments.questId, [...questIds]) : undefined,
         inArray(attachments.status, ["pending", "ready"]),
         isNull(attachments.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(asc(attachments.createdAt))
@@ -188,7 +165,6 @@ export async function markAttachmentReady(
         eq(attachments.workspaceId, access.workspaceId),
         eq(attachments.status, "pending"),
         isNull(attachments.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .returning(attachmentSelection)
@@ -218,7 +194,6 @@ export async function markAttachmentFailed(
         eq(attachments.workspaceId, access.workspaceId),
         eq(attachments.status, "pending"),
         isNull(attachments.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .returning({ id: attachments.id })
@@ -247,7 +222,6 @@ export async function markAttachmentDeleting(
         eq(attachments.version, expectedVersion),
         eq(attachments.status, "ready"),
         isNull(attachments.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .returning(attachmentSelection)
@@ -274,7 +248,6 @@ export function restoreAttachmentAfterDeleteFailure(
         eq(attachments.workspaceId, access.workspaceId),
         eq(attachments.status, "deleting"),
         isNull(attachments.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
 }
@@ -299,7 +272,6 @@ export function markAttachmentDeleted(
         eq(attachments.workspaceId, access.workspaceId),
         eq(attachments.status, "deleting"),
         isNull(attachments.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
 }

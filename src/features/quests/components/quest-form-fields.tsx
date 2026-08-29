@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { CalendarDays, Clock3, RotateCcw } from "lucide-react"
-import { DateTime } from "luxon"
 
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -92,15 +91,18 @@ export function QuestFormFields({
   // earlier days are unselectable and earlier times on today are rejected.
   // Editing keeps full freedom: an existing task may already be overdue.
   const enforceFuture = variant === "create"
-  const zonedNow = DateTime.now().setZone(timezone)
+  const [referenceNow] = useState(() => Date.now())
   // Time inputs only preserve minute precision. Start at the next whole minute
   // so a value that passes native validation cannot become a past instant when
   // the server restores the omitted seconds as :00.
-  const earliestSchedule = zonedNow.plus({ minutes: 1 }).startOf("minute")
+  const earliestSchedule = new Date(
+    (Math.floor(referenceNow / 60_000) + 1) * 60_000,
+  )
+  const earliestLocalInput = formatZonedLocalInput(earliestSchedule, timezone)
   const earliestDate = enforceFuture
-    ? earliestSchedule.toFormat("yyyy-MM-dd")
+    ? earliestLocalInput.slice(0, 10)
     : undefined
-  const earliestTime = earliestSchedule.toFormat("HH:mm")
+  const earliestTime = earliestLocalInput.slice(11, 16)
   const titleErrorId = `${idPrefix}-title-error`
   const descriptionErrorId = `${idPrefix}-description-error`
   const priorityErrorId = `${idPrefix}-priority-error`
@@ -129,16 +131,23 @@ export function QuestFormFields({
       return
     }
 
-    const now = DateTime.now().setZone(timezone)
-    const start =
-      preset === "today"
-        ? now.plus({ minutes: 15 - (now.minute % 15) }).startOf("minute")
-        : now.plus({ days: 1 }).startOf("day").set({ hour: 9 })
-    const due =
-      preset === "today" ? start.plus({ hours: 2 }) : start.set({ hour: 17 })
-    const format = (value: DateTime) => value.toFormat("yyyy-MM-dd'T'HH:mm")
+    if (preset === "today") {
+      const start = new Date(Math.ceil((Date.now() + 1) / 900_000) * 900_000)
+      setSchedule({
+        dueAt: formatZonedLocalInput(
+          new Date(start.getTime() + 2 * 60 * 60_000),
+          timezone,
+        ),
+        startAt: formatZonedLocalInput(start, timezone),
+      })
+      return
+    }
 
-    setSchedule({ dueAt: format(due), startAt: format(start) })
+    const today = formatZonedLocalInput(new Date(), timezone).slice(0, 10)
+    const tomorrow = new Date(`${today}T12:00:00Z`)
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+    const date = tomorrow.toISOString().slice(0, 10)
+    setSchedule({ dueAt: `${date}T17:00`, startAt: `${date}T09:00` })
   }
 
   function updateSchedule(

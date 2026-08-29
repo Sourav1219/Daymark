@@ -185,6 +185,7 @@ export async function POST(request: Request) {
         access,
         command.data,
         parsed.data.id,
+        parsed.data.id,
       )
       return json({ mutationId: parsed.data.id, quest, status: "applied" })
     }
@@ -202,7 +203,12 @@ export async function POST(request: Request) {
           422,
         )
       }
-      const quest = await editQuest(database, access, command.data)
+      const quest = await editQuest(
+        database,
+        access,
+        command.data,
+        parsed.data.id,
+      )
       return json({ mutationId: parsed.data.id, quest, status: "applied" })
     }
 
@@ -227,7 +233,7 @@ export async function POST(request: Request) {
         database,
         access,
         parsed.data.payload.questId,
-        parsed.data.type === "delete",
+        parsed.data.type === "delete" || parsed.data.type === "edit",
       )
 
       const desiredStateAlreadyApplied =

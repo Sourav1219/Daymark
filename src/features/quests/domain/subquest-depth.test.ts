@@ -7,7 +7,8 @@ import {
 import {
   defaultQuestFilters,
   isQuestFiltered,
-  questListLimit,
+  questMutationBatchLimit,
+  questPageSize,
 } from "@/features/quests/domain/types"
 
 describe("Subquest depth policy", () => {
@@ -52,6 +53,7 @@ describe("isQuestFiltered", () => {
   })
 
   it("keeps list queries bounded by a hard cap", () => {
-    expect(questListLimit).toBe(200)
+    expect(questPageSize).toBe(50)
+    expect(questMutationBatchLimit).toBe(1_000)
   })
 })

@@ -66,5 +66,13 @@ describe("RFC 5545 recurrence calculations", () => {
         "America/New_York",
       )?.toISOString(),
     ).toBe("2026-03-08T07:30:00.000Z")
+
+    expect(
+      calculateNextOccurrence(
+        "RRULE:FREQ=DAILY",
+        "America/New_York",
+        new Date("2026-03-07T07:30:00.000Z"),
+      )?.toISOString(),
+    ).toBe("2026-03-09T06:30:00.000Z")
   })
 })

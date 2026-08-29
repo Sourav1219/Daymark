@@ -1,6 +1,6 @@
 import "server-only"
 
-import { and, asc, eq, exists, inArray, isNull, sql } from "drizzle-orm"
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm"
 
 import type { DatabaseExecutor } from "@/db/client"
 import {
@@ -34,26 +34,6 @@ const labelSelection = {
   version: labels.version,
 }
 
-function activeAccessPredicate(
-  database: DatabaseExecutor,
-  access: AccessContext,
-) {
-  return exists(
-    database
-      .select({ id: workspaceMembers.id })
-      .from(workspaceMembers)
-      .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
-      .where(
-        and(
-          eq(workspaceMembers.userId, access.userId),
-          eq(workspaceMembers.workspaceId, access.workspaceId),
-          isNull(workspaceMembers.deletedAt),
-          isNull(workspaces.deletedAt),
-        ),
-      ),
-  )
-}
-
 function labelIdentityPredicate(
   database: DatabaseExecutor,
   access: AccessContext,
@@ -63,7 +43,6 @@ function labelIdentityPredicate(
     eq(labels.id, labelId),
     eq(labels.workspaceId, access.workspaceId),
     isNull(labels.deletedAt),
-    activeAccessPredicate(database, access),
   )
 }
 
@@ -120,11 +99,7 @@ export async function listLabelRecords(
     .select(labelSelection)
     .from(labels)
     .where(
-      and(
-        eq(labels.workspaceId, access.workspaceId),
-        isNull(labels.deletedAt),
-        activeAccessPredicate(database, access),
-      ),
+      and(eq(labels.workspaceId, access.workspaceId), isNull(labels.deletedAt)),
     )
     .orderBy(asc(labels.name))
 }
@@ -226,7 +201,6 @@ export async function setQuestLabels(
         eq(tasks.workspaceId, access.workspaceId),
         eq(tasks.version, expectedVersion),
         isNull(tasks.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .returning({ version: tasks.version })
@@ -240,7 +214,6 @@ export async function setQuestLabels(
           eq(tasks.id, questId),
           eq(tasks.workspaceId, access.workspaceId),
           isNull(tasks.deletedAt),
-          activeAccessPredicate(database, access),
         ),
       )
       .limit(1)
@@ -316,7 +289,6 @@ export async function getQuestLabelIds(
       and(
         eq(questLabels.questId, questId),
         eq(questLabels.workspaceId, access.workspaceId),
-        activeAccessPredicate(database, access),
       ),
     )
 

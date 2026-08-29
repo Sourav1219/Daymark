@@ -8,6 +8,7 @@ import {
   markGroupStudyParticipantLeft,
   lockGroupStudySessionRecord,
   createGroupStudyActivityRecord,
+  transferGroupStudyHostRecord,
 } from "@/features/timer/repositories/group-study-repository"
 import { completeGroupStudyParticipantTimer } from "@/features/timer/repositories/group-study-repository"
 import { calculateTimerElapsedMs } from "@/features/timer/domain/timer"
@@ -45,6 +46,22 @@ async function runStaleRoomsCleanup(request: Request) {
     return NextResponse.json({ message: "Unauthorized." }, { status: 401 })
   }
 
+  try {
+    return await cleanStaleRooms()
+  } catch (error) {
+    logger.error(
+      "Stale room cleanup incident",
+      error instanceof Error ? error : undefined,
+    )
+    observeCronOutcome("stale-rooms", "failure")
+    return NextResponse.json(
+      { message: "Stale room cleanup failed." },
+      { headers: { "Cache-Control": "no-store" }, status: 500 },
+    )
+  }
+}
+
+async function cleanStaleRooms() {
   const database = getDatabase()
   const now = new Date()
   const cutoff = new Date(now.getTime() - STALE_THRESHOLD_MS)
@@ -126,6 +143,14 @@ async function runStaleRoomsCleanup(request: Request) {
             workspaceId: participant.workspaceId,
           })
           roomsClosed++
+        } else if (room.hostUserId === participant.userId) {
+          await transferGroupStudyHostRecord(transaction, {
+            departedUserId: participant.userId,
+            expectedVersion: room.version,
+            groupSessionId: room.id,
+            now,
+            workspaceId: participant.workspaceId,
+          })
         }
       })
     } catch (error) {

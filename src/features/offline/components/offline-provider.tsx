@@ -93,7 +93,7 @@ function optimisticQuest(id: string, payload: OfflineCreatePayload): QuestView {
     description: payload.description.trim(),
     dueAt: null,
     gateName: null,
-    id: `offline-${id}`,
+    id,
     labels: [],
     parentTaskId: payload.parentTaskId || null,
     position: Number.MAX_SAFE_INTEGER,
@@ -179,6 +179,39 @@ function logOfflineFailure(message: string) {
   }
 }
 
+function compareOfflineMutations(
+  left: OfflineMutation,
+  right: OfflineMutation,
+) {
+  const rightQuestId =
+    right.type === "create" ? null : String(right.payload.questId)
+  const leftQuestId =
+    left.type === "create" ? null : String(left.payload.questId)
+
+  if (left.type === "create" && rightQuestId === left.id) return -1
+  if (right.type === "create" && leftQuestId === right.id) return 1
+
+  const createdOrder = left.createdAt.localeCompare(right.createdAt)
+  return createdOrder === 0 ? left.id.localeCompare(right.id) : createdOrder
+}
+
+function mutationQuestId(mutation: OfflineMutation): string | null {
+  return mutation.type === "create" ? mutation.id : mutation.payload.questId
+}
+
+function withExpectedVersion(
+  mutation: OfflineMutation,
+  expectedVersion: number | undefined,
+): OfflineMutation {
+  if (mutation.type === "create" || expectedVersion === undefined) {
+    return mutation
+  }
+  return {
+    ...mutation,
+    payload: { ...mutation.payload, expectedVersion },
+  } as OfflineMutation
+}
+
 export function OfflineProvider({
   children,
   scope,
@@ -204,17 +237,42 @@ export function OfflineProvider({
       replaying.current = true
       let applied = 0
       let retryTransientFailure = false
+      const latestVersions = new Map<string, number>()
 
       try {
         const pending = (await listOfflineMutations(scope.key))
           .filter(({ status }) => status === "pending")
-          .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+          .sort(compareOfflineMutations)
 
         for (const mutation of pending) {
           try {
-            const result = await postMutation(mutation)
+            const questId = mutationQuestId(mutation)
+            const replayMutation = withExpectedVersion(
+              mutation,
+              questId ? latestVersions.get(questId) : undefined,
+            )
+            const result = await postMutation(replayMutation)
             if (result.status === "applied") {
               await removeOfflineMutation(mutation.id)
+              latestVersions.set(result.quest.id, result.quest.version)
+              // Persist the authoritative version into every queued follow-up
+              // before replaying it. If the browser closes between mutations,
+              // the next replay still resumes with the correct version.
+              await Promise.all(
+                pending
+                  .filter(
+                    (candidate) =>
+                      candidate.id !== mutation.id &&
+                      candidate.type !== "create" &&
+                      candidate.payload.questId === result.quest.id,
+                  )
+                  .map((candidate) =>
+                    retryOfflineMutationWithVersion(
+                      candidate.id,
+                      result.quest.version,
+                    ),
+                  ),
+              )
               applied += 1
             } else if (result.status === "conflict") {
               await markOfflineMutationConflict(mutation.id, result.conflict)

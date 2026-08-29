@@ -225,6 +225,12 @@ integrationDescribe("Group Study timer isolation", () => {
         roomId: created.roomId,
       }),
     ).rejects.toThrow("active room host")
+    await expect(
+      setGroupStudyJoinLocked(database, second, {
+        joinLocked: true,
+        roomId: created.roomId,
+      }),
+    ).resolves.toMatchObject({ joinLocked: true })
 
     await stopTimer(
       database,

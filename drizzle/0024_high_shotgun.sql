@@ -1,0 +1,6 @@
+CREATE INDEX "group_study_participants_active_heartbeat_idx" ON "group_study_participants" USING btree ("group_session_id","last_heartbeat_at") WHERE "group_study_participants"."left_at" is null;--> statement-breakpoint
+CREATE INDEX "tasks_workspace_updated_at_idx" ON "tasks" USING btree ("workspace_id","updated_at") WHERE "tasks"."deleted_at" is null;--> statement-breakpoint
+CREATE INDEX "tasks_workspace_priority_sort_idx" ON "tasks" USING btree ("workspace_id",(case "priority" when 'critical' then 0 when 'high' then 1 when 'medium' then 2 else 3 end),"due_at","updated_at") WHERE "tasks"."deleted_at" is null;--> statement-breakpoint
+CREATE INDEX "tasks_workspace_project_idx" ON "tasks" USING btree ("workspace_id","project_id") WHERE "tasks"."project_id" is not null and "tasks"."deleted_at" is null;--> statement-breakpoint
+CREATE INDEX "tasks_workspace_parent_task_idx" ON "tasks" USING btree ("workspace_id","parent_task_id") WHERE "tasks"."parent_task_id" is not null and "tasks"."deleted_at" is null;--> statement-breakpoint
+CREATE INDEX "in_app_notifications_workspace_user_created_idx" ON "in_app_notifications" USING btree ("workspace_id","user_id","created_at");

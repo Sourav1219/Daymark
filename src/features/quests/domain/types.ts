@@ -6,6 +6,7 @@ export const questPriorities = ["low", "medium", "high", "critical"] as const
  * review and delete them; the XP penalty is not refunded on deletion.
  */
 export const questStatuses = ["open", "completed", "failed"] as const
+export const trashRetentionMilliseconds = 30 * 24 * 60 * 60 * 1_000
 
 export type QuestStatus = (typeof questStatuses)[number]
 export type QuestPriority = (typeof questPriorities)[number]
@@ -90,8 +91,15 @@ export const defaultQuestFilters: QuestListFilters = {
   status: "open",
 }
 
-/** Hard cap applied by server-side query services to keep list queries bounded. */
-export const questListLimit = 200
+/** Page size used by task-list routes; one extra row is read to detect more. */
+export const questPageSize = 50
+/** Bounded mutation/helper reads are separate from user-visible pagination. */
+export const questMutationBatchLimit = 1_000
+
+export function parseQuestPage(value: string | string[] | undefined): number {
+  if (typeof value !== "string" || !/^\d+$/u.test(value)) return 1
+  return Math.min(Math.max(Number(value), 1), 10_000)
+}
 
 export function isQuestFiltered(filters: QuestListFilters): boolean {
   return (

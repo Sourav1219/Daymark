@@ -1,5 +1,7 @@
 import { Suspense } from "react"
 
+import "@/app/styles/today-page.css"
+
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import { getLabelList } from "@/features/labels/queries/label-query-service"
 import { localDateForInstant } from "@/features/progression/domain/progression"
@@ -9,6 +11,8 @@ import type {
   QuestListFilters,
   QuestView,
 } from "@/features/quests/domain/types"
+import { questPageSize } from "@/features/quests/domain/types"
+import { QuestPagination } from "@/features/quests/components/quest-pagination"
 import { getQuestList } from "@/features/quests/queries/quest-query-service"
 import { getUserSettings } from "@/features/reminders/queries/user-settings-query-service"
 import { getReminderInbox } from "@/features/reminders/queries/reminder-query-service"
@@ -26,6 +30,7 @@ type TodayViewProps = Readonly<{
   access: AccessContext
   filters: QuestListFilters
   focusedQuestId?: string | undefined
+  page?: number
   requestedDate?: string | undefined
 }>
 
@@ -33,6 +38,7 @@ export async function TodayView({
   access,
   filters,
   focusedQuestId,
+  page = 1,
   requestedDate,
 }: TodayViewProps) {
   const now = new Date()
@@ -53,13 +59,17 @@ export async function TodayView({
     }),
     getQuestList(access, "today", {
       filters,
+      limit: questPageSize + 1,
       localDate: selectedDate,
       now,
+      offset: (page - 1) * questPageSize,
     }),
     labelsPromise,
     reminderInboxPromise,
   ])
   const timeZone = settings.timezone
+  const hasNextPage = quests.length > questPageSize
+  const visibleQuests = quests.slice(0, questPageSize)
   const toCard = (quest: QuestView): TodayCard => {
     const schedule = formatTodaySchedule(quest.startAt, quest.dueAt, timeZone)
 
@@ -80,11 +90,11 @@ export async function TodayView({
   const historical = selectedDate < todayDate
   const openQuests = historical
     ? []
-    : quests.filter(({ status }) => status === "open")
+    : visibleQuests.filter(({ status }) => status === "open")
   const completedQuests = historical
-    ? quests.filter(({ status }) => status === "completed")
+    ? visibleQuests.filter(({ status }) => status === "completed")
     : []
-  const missedQuests = quests.filter(({ status }) => status === "failed")
+  const missedQuests = visibleQuests.filter(({ status }) => status === "failed")
   const order: string[] = []
   const grouped = new Map<string, QuestView[]>()
 
@@ -135,6 +145,7 @@ export async function TodayView({
         selectedDate={selectedDate}
         sections={sections}
       />
+      <QuestPagination hasNextPage={hasNextPage} page={page} />
       <Suspense fallback={<DailyStudyHistoryLoading />}>
         <TodayStudyHistory
           access={access}

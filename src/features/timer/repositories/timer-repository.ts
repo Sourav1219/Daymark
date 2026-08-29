@@ -1,9 +1,9 @@
 import "server-only"
 
-import { and, desc, eq, exists, gte, isNull, lte, or } from "drizzle-orm"
+import { and, desc, eq, gte, lte, or, sql } from "drizzle-orm"
 
 import type { DatabaseExecutor } from "@/db/client"
-import { timerSessions, workspaceMembers, workspaces } from "@/db/schema"
+import { timerSessions } from "@/db/schema"
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import type { TimerSessionStatus } from "@/features/timer/domain/types"
 
@@ -33,26 +33,6 @@ const selection = {
   version: timerSessions.version,
 }
 
-function activeAccessPredicate(
-  database: DatabaseExecutor,
-  access: AccessContext,
-) {
-  return exists(
-    database
-      .select({ id: workspaceMembers.id })
-      .from(workspaceMembers)
-      .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
-      .where(
-        and(
-          eq(workspaceMembers.userId, access.userId),
-          eq(workspaceMembers.workspaceId, access.workspaceId),
-          isNull(workspaceMembers.deletedAt),
-          isNull(workspaces.deletedAt),
-        ),
-      ),
-  )
-}
-
 function sessionPredicate(
   database: DatabaseExecutor,
   access: AccessContext,
@@ -62,7 +42,6 @@ function sessionPredicate(
     eq(timerSessions.id, sessionId),
     eq(timerSessions.workspaceId, access.workspaceId),
     eq(timerSessions.userId, access.userId),
-    activeAccessPredicate(database, access),
   )
 }
 
@@ -95,7 +74,6 @@ export async function findActiveTimerSessionRecord(
           eq(timerSessions.status, "running"),
           eq(timerSessions.status, "paused"),
         ),
-        activeAccessPredicate(database, access),
       ),
     )
     .limit(1)
@@ -119,7 +97,6 @@ export async function listTimerSessionRecords(
         eq(timerSessions.workspaceId, access.workspaceId),
         eq(timerSessions.userId, access.userId),
         since ? gte(timerSessions.startedAt, since) : undefined,
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(desc(timerSessions.startedAt))
@@ -147,10 +124,68 @@ export async function listTodayCompletedTimerSessions(
         eq(timerSessions.status, "completed"),
         gte(timerSessions.endedAt, dayStart),
         lte(timerSessions.endedAt, dayEnd),
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(desc(timerSessions.startedAt))
+}
+
+/**
+ * Aggregates the bounded chart window inside PostgreSQL. Sessions spanning
+ * midnight are split at local-day boundaries, including 23/25-hour DST days.
+ */
+export async function listDailyStudySummaryRecords(
+  database: DatabaseExecutor,
+  access: AccessContext,
+  timezone: string,
+  since: Date,
+) {
+  const rows = await database.execute(sql`
+    with completed as (
+      select started_at, ended_at, accumulated_ms
+      from ${timerSessions}
+      where workspace_id = ${access.workspaceId}::uuid
+        and user_id = ${access.userId}::uuid
+        and status = 'completed'
+        and ended_at is not null
+        and ended_at >= ${since.toISOString()}::timestamptz
+    ), segments as (
+      select
+        completed.*,
+        local_day,
+        greatest(
+          completed.started_at,
+          local_day at time zone ${timezone}
+        ) as segment_start,
+        least(
+          completed.ended_at,
+          (local_day + interval '1 day') at time zone ${timezone}
+        ) as segment_end
+      from completed
+      cross join lateral generate_series(
+        date_trunc('day', timezone(${timezone}, completed.started_at)),
+        date_trunc('day', timezone(${timezone}, completed.ended_at)),
+        interval '1 day'
+      ) as local_day
+    )
+    select
+      to_char(local_day, 'YYYY-MM-DD') as "localDate",
+      count(*) filter (
+        where date_trunc('day', timezone(${timezone}, ended_at)) = local_day
+      )::integer as "sessionCount",
+      round(sum(
+        greatest(0, extract(epoch from (segment_end - segment_start)) * 1000)
+      ))::bigint as "totalMs"
+    from segments
+    where segment_end > segment_start
+    group by local_day
+    order by local_day desc
+  `)
+
+  return rows.map((row) => ({
+    localDate: String(row.localDate),
+    sessionCount: Number(row.sessionCount),
+    totalMs: Number(row.totalMs),
+  }))
 }
 
 export async function createTimerSessionRecord(

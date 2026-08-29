@@ -171,6 +171,7 @@ describe("offline mutation replay route", () => {
       expect.objectContaining({ workspaceId }),
       expect.any(Object),
       mutationId,
+      mutationId,
     )
     expect(response.headers.get("cache-control")).toContain("no-store")
   })
@@ -227,6 +228,7 @@ describe("offline mutation replay route", () => {
       {},
       expect.objectContaining({ workspaceId }),
       payload,
+      mutationId,
     )
   })
 })

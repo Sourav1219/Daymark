@@ -3,7 +3,6 @@ import "server-only"
 import {
   and,
   asc,
-  count,
   desc,
   eq,
   exists,
@@ -78,6 +77,7 @@ export type QuestOrderRecord = Readonly<{
 }>
 
 export type CreateQuestRecord = Readonly<{
+  id?: string
   title: string
   description: string
   priority: QuestPriority
@@ -110,6 +110,7 @@ export type QuestListOptions = Readonly<{
   labelId?: string
   limit?: number
   noGate?: boolean
+  offset?: number
   /** Instant used to derive the read-only lifecycle of elapsed open tasks. */
   now?: Date
   priority?: QuestPriority
@@ -140,26 +141,6 @@ const questSelection = {
   status: tasks.status,
   title: tasks.title,
   version: tasks.version,
-}
-
-function activeAccessPredicate(
-  database: DatabaseExecutor,
-  access: AccessContext,
-) {
-  return exists(
-    database
-      .select({ id: workspaceMembers.id })
-      .from(workspaceMembers)
-      .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
-      .where(
-        and(
-          eq(workspaceMembers.userId, access.userId),
-          eq(workspaceMembers.workspaceId, access.workspaceId),
-          isNull(workspaceMembers.deletedAt),
-          isNull(workspaces.deletedAt),
-        ),
-      ),
-  )
 }
 
 function effectiveQuestStatus(now: Date) {
@@ -310,7 +291,6 @@ function filterPredicates(
   }
 
   if (options.dayStart && options.dayEnd) {
-    const effectiveStatus = effectiveQuestStatus(now)
     const scheduledInWindow = or(
       and(
         isNotNull(tasks.startAt),
@@ -328,7 +308,7 @@ function filterPredicates(
     predicates.push(
       or(
         and(
-          eq(effectiveStatus, "open"),
+          effectiveStatusPredicate("open", now),
           isNull(tasks.deletedAt),
           or(
             scheduledInWindow,
@@ -338,14 +318,14 @@ function filterPredicates(
           ),
         ),
         and(
-          eq(effectiveStatus, "completed"),
+          effectiveStatusPredicate("completed", now),
           isNull(tasks.deletedAt),
           isNotNull(tasks.completedAt),
           gte(tasks.completedAt, options.dayStart),
           lt(tasks.completedAt, options.dayEnd),
         ),
         and(
-          eq(effectiveStatus, "failed"),
+          effectiveStatusPredicate("failed", now),
           isNull(tasks.deletedAt),
           isNotNull(tasks.dueAt),
           gte(tasks.dueAt, options.dayStart),
@@ -390,11 +370,7 @@ function questIdentityPredicate(
   access: AccessContext,
   questId: string,
 ) {
-  return and(
-    eq(tasks.id, questId),
-    eq(tasks.workspaceId, access.workspaceId),
-    activeAccessPredicate(database, access),
-  )
+  return and(eq(tasks.id, questId), eq(tasks.workspaceId, access.workspaceId))
 }
 
 export async function createQuestRecord(
@@ -407,7 +383,7 @@ export async function createQuestRecord(
     .select(
       database
         .select({
-          id: sql<string>`gen_random_uuid()`.as("id"),
+          id: sql<string>`${input.id ?? sql`gen_random_uuid()`}::uuid`.as("id"),
           workspaceId: sql<string>`${access.workspaceId}::uuid`.as(
             "workspace_id",
           ),
@@ -504,46 +480,35 @@ export async function listQuestRecords(
     kind === "active" || kind === "today"
       ? effectiveQuestStatus(now)
       : tasks.status
-  const subquestCounts = database
-    .select({
-      parentId: tasks.parentTaskId,
-      subquestCount: count().as("subquest_count"),
-    })
-    .from(tasks)
-    .where(
-      and(
-        eq(tasks.workspaceId, access.workspaceId),
-        isNull(tasks.deletedAt),
-        isNotNull(tasks.parentTaskId),
-      ),
-    )
-    .groupBy(tasks.parentTaskId)
-    .as("subquest_counts")
-
   return database
     .select({
       ...questSelection,
       gateName: gates.name,
       status: visibleStatus,
-      subquestCount: sql<number>`coalesce(${subquestCounts.subquestCount}, 0)::integer`,
+      subquestCount: sql<number>`(
+        select count(*)::integer
+        from ${tasks} as child_task
+        where child_task.workspace_id = ${access.workspaceId}::uuid
+          and child_task.parent_task_id = ${tasks.id}
+          and child_task.deleted_at is null
+      )`,
     })
     .from(tasks)
     .leftJoin(
       gates,
       and(eq(gates.id, tasks.projectId), isNull(gates.deletedAt)),
     )
-    .leftJoin(subquestCounts, eq(subquestCounts.parentId, tasks.id))
     .where(
       and(
         eq(tasks.workspaceId, access.workspaceId),
         isNull(tasks.purgedAt),
-        activeAccessPredicate(database, access),
         lifecyclePredicate(kind, options, now),
         ...filterPredicates(database, access, options, now),
       ),
     )
     .orderBy(...sortClauses(options.sort))
-    .limit(options.limit ?? 200)
+    .limit(options.limit ?? 50)
+    .offset(options.offset ?? 0)
 }
 
 export function listQuestParentRecords(
@@ -559,11 +524,7 @@ export function listQuestParentRecords(
     })
     .from(tasks)
     .where(
-      and(
-        eq(tasks.workspaceId, access.workspaceId),
-        isNull(tasks.deletedAt),
-        activeAccessPredicate(database, access),
-      ),
+      and(eq(tasks.workspaceId, access.workspaceId), isNull(tasks.deletedAt)),
     )
     .orderBy(desc(tasks.updatedAt), asc(tasks.title))
     .limit(limit)
@@ -582,7 +543,6 @@ export function listQuestOrderRecordsForUpdate(
         eq(tasks.workspaceId, access.workspaceId),
         eq(tasks.status, "open"),
         isNull(tasks.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(asc(tasks.position), asc(tasks.dueAt), desc(tasks.updatedAt))
@@ -658,7 +618,6 @@ export async function findQuestByOfflineMutationId(
         eq(tasks.workspaceId, access.workspaceId),
         eq(tasks.offlineMutationId, offlineMutationId),
         isNull(tasks.purgedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .limit(1)
@@ -881,7 +840,6 @@ export function listOverdueQuestRecords(
         isNull(tasks.deletedAt),
         isNotNull(tasks.dueAt),
         lt(tasks.dueAt, now),
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(asc(tasks.dueAt), asc(tasks.position))
@@ -953,6 +911,35 @@ export function softDeleteQuestRecord(
   )
 }
 
+export async function softDeleteQuestDescendants(
+  database: DatabaseExecutor,
+  access: AccessContext,
+  questId: string,
+  deletedAt: Date,
+): Promise<number> {
+  const rows = await database.execute(sql`
+    with recursive descendants(id) as (
+      select child.id
+      from ${tasks} as child
+      where child.workspace_id = ${access.workspaceId}::uuid
+        and child.parent_task_id = ${questId}::uuid
+        and child.deleted_at is null
+      union all
+      select child.id
+      from ${tasks} as child
+      join descendants on child.parent_task_id = descendants.id
+      where child.workspace_id = ${access.workspaceId}::uuid
+        and child.deleted_at is null
+    )
+    update ${tasks} as task
+    set deleted_at = ${deletedAt}, updated_at = ${deletedAt}, version = task.version + 1
+    where task.id in (select id from descendants)
+      and task.workspace_id = ${access.workspaceId}::uuid
+    returning task.id
+  `)
+  return rows.length
+}
+
 export function restoreQuestRecord(
   database: DatabaseExecutor,
   access: AccessContext,
@@ -967,6 +954,35 @@ export function restoreQuestRecord(
     { deletedAt: null },
     "deleted",
   )
+}
+
+export async function restoreQuestDescendants(
+  database: DatabaseExecutor,
+  access: AccessContext,
+  questId: string,
+  deletedAt: Date,
+): Promise<number> {
+  const rows = await database.execute(sql`
+    with recursive descendants(id) as (
+      select child.id
+      from ${tasks} as child
+      where child.workspace_id = ${access.workspaceId}::uuid
+        and child.parent_task_id = ${questId}::uuid
+        and child.deleted_at = ${deletedAt}
+      union all
+      select child.id
+      from ${tasks} as child
+      join descendants on child.parent_task_id = descendants.id
+      where child.workspace_id = ${access.workspaceId}::uuid
+        and child.deleted_at = ${deletedAt}
+    )
+    update ${tasks} as task
+    set deleted_at = null, updated_at = now(), version = task.version + 1
+    where task.id in (select id from descendants)
+      and task.workspace_id = ${access.workspaceId}::uuid
+    returning task.id
+  `)
+  return rows.length
 }
 
 export function restoreQuestWithScheduleRecord(
@@ -1018,6 +1034,37 @@ export function purgeQuestRecord(
   )
 }
 
+export async function purgeQuestDescendants(
+  database: DatabaseExecutor,
+  access: AccessContext,
+  questId: string,
+  deletedAt: Date,
+  purgedAt: Date,
+): Promise<number> {
+  const rows = await database.execute(sql`
+    with recursive descendants(id) as (
+      select child.id
+      from ${tasks} as child
+      where child.workspace_id = ${access.workspaceId}::uuid
+        and child.parent_task_id = ${questId}::uuid
+        and child.deleted_at = ${deletedAt}
+      union all
+      select child.id
+      from ${tasks} as child
+      join descendants on child.parent_task_id = descendants.id
+      where child.workspace_id = ${access.workspaceId}::uuid
+        and child.deleted_at = ${deletedAt}
+    )
+    update ${tasks} as task
+    set purged_at = ${purgedAt}, updated_at = ${purgedAt}, version = task.version + 1
+    where task.id in (select id from descendants)
+      and task.workspace_id = ${access.workspaceId}::uuid
+      and task.purged_at is null
+    returning task.id
+  `)
+  return rows.length
+}
+
 /**
  * Walks the parent chain upward within the workspace, returning ancestor
  * Quest IDs from nearest parent upward. Bounded by the subquest depth
@@ -1028,32 +1075,30 @@ export async function getQuestAncestorIds(
   access: AccessContext,
   questId: string,
 ): Promise<readonly string[]> {
-  const ancestors: string[] = []
-  let currentId = questId
+  const rows = await database.execute(sql`
+    with recursive ancestors(id, parent_task_id, depth, path) as (
+      select task.id, task.parent_task_id, 0, array[task.id]
+      from ${tasks} as task
+      where task.id = ${questId}::uuid
+        and task.workspace_id = ${access.workspaceId}::uuid
+        and task.deleted_at is null
+      union all
+      select parent.id, parent.parent_task_id, ancestors.depth + 1,
+             ancestors.path || parent.id
+      from ancestors
+      join ${tasks} as parent on parent.id = ancestors.parent_task_id
+      where parent.workspace_id = ${access.workspaceId}::uuid
+        and parent.deleted_at is null
+        and ancestors.depth < ${maxSubquestDepth + 2}
+        and not parent.id = any(ancestors.path)
+    )
+    select id
+    from ancestors
+    where depth > 0
+    order by depth
+  `)
 
-  for (let step = 0; step <= maxSubquestDepth + 2; step += 1) {
-    const [current] = await database
-      .select({ parentTaskId: tasks.parentTaskId })
-      .from(tasks)
-      .where(
-        and(
-          eq(tasks.id, currentId),
-          eq(tasks.workspaceId, access.workspaceId),
-          isNull(tasks.deletedAt),
-          activeAccessPredicate(database, access),
-        ),
-      )
-      .limit(1)
-
-    if (!current?.parentTaskId || ancestors.includes(current.parentTaskId)) {
-      break
-    }
-
-    ancestors.push(current.parentTaskId)
-    currentId = current.parentTaskId
-  }
-
-  return ancestors
+  return rows.map((row) => String(row.id))
 }
 
 /**
@@ -1085,7 +1130,6 @@ export async function getQuestLabelBadges(
         inArray(questLabels.questId, [...questIds]),
         eq(questLabels.workspaceId, access.workspaceId),
         isNull(labels.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(asc(labels.name))

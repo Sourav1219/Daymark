@@ -2,6 +2,7 @@ import "server-only"
 
 import {
   and,
+  asc,
   count,
   desc,
   eq,
@@ -23,8 +24,6 @@ import {
   groupStudySessions,
   timerSessions,
   users,
-  workspaceMembers,
-  workspaces,
 } from "@/db/schema"
 import type { GroupStudyActivityAction } from "@/features/timer/domain/types"
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
@@ -55,26 +54,6 @@ const participantSelection = {
   version: groupStudyParticipants.version,
 }
 
-function activeAccessPredicate(
-  database: DatabaseExecutor,
-  access: AccessContext,
-) {
-  return exists(
-    database
-      .select({ id: workspaceMembers.id })
-      .from(workspaceMembers)
-      .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
-      .where(
-        and(
-          eq(workspaceMembers.userId, access.userId),
-          eq(workspaceMembers.workspaceId, access.workspaceId),
-          isNull(workspaceMembers.deletedAt),
-          isNull(workspaces.deletedAt),
-        ),
-      ),
-  )
-}
-
 function participantAccessPredicate(
   database: DatabaseExecutor,
   access: AccessContext,
@@ -95,7 +74,6 @@ function participantAccessPredicate(
           eq(groupStudyParticipants.userId, access.userId),
           eq(timerSessions.workspaceId, access.workspaceId),
           activeOnly ? isNull(groupStudyParticipants.leftAt) : undefined,
-          activeAccessPredicate(database, access),
         ),
       ),
   )
@@ -113,7 +91,6 @@ export async function findGroupStudySessionByCode(
       and(
         eq(groupStudySessions.joinCode, joinCode),
         eq(groupStudySessions.status, "active"),
-        activeAccessPredicate(database, access),
       ),
     )
     .limit(1)
@@ -232,7 +209,38 @@ export async function findActiveGroupStudyParticipant(
         eq(timerSessions.workspaceId, access.workspaceId),
         isNull(groupStudyParticipants.leftAt),
         eq(groupStudySessions.status, "active"),
-        activeAccessPredicate(database, access),
+      ),
+    )
+    .limit(1)
+
+  return record ?? null
+}
+
+/** Resolves the caller's active membership and its room in one indexed read. */
+export async function findActiveGroupStudyContext(
+  database: DatabaseExecutor,
+  access: AccessContext,
+) {
+  const [record] = await database
+    .select({
+      membership: participantSelection,
+      room: sessionSelection,
+    })
+    .from(groupStudyParticipants)
+    .innerJoin(
+      groupStudySessions,
+      eq(groupStudySessions.id, groupStudyParticipants.groupSessionId),
+    )
+    .innerJoin(
+      timerSessions,
+      eq(timerSessions.id, groupStudyParticipants.timerSessionId),
+    )
+    .where(
+      and(
+        eq(groupStudyParticipants.userId, access.userId),
+        eq(timerSessions.workspaceId, access.workspaceId),
+        isNull(groupStudyParticipants.leftAt),
+        eq(groupStudySessions.status, "active"),
       ),
     )
     .limit(1)
@@ -263,7 +271,6 @@ export async function findActiveGroupStudyParticipantForTimer(
         eq(groupStudyParticipants.timerSessionId, timerSessionId),
         isNull(groupStudyParticipants.leftAt),
         eq(groupStudySessions.status, "active"),
-        activeAccessPredicate(database, access),
       ),
     )
     .limit(1)
@@ -472,6 +479,51 @@ export async function countActiveGroupStudyParticipants(
     )
 
   return result?.value ?? 0
+}
+
+/**
+ * Hands an active room to the longest-standing remaining participant when its
+ * host leaves. The room row is already locked by callers, and the version
+ * guard prevents two departure paths from choosing competing hosts.
+ */
+export async function transferGroupStudyHostRecord(
+  database: DatabaseExecutor,
+  input: Readonly<{
+    departedUserId: string
+    expectedVersion: number
+    groupSessionId: string
+    now: Date
+    workspaceId: string
+  }>,
+) {
+  const [record] = await database
+    .update(groupStudySessions)
+    .set({
+      hostUserId: sql`(
+        select ${groupStudyParticipants.userId}
+        from ${groupStudyParticipants}
+        where ${groupStudyParticipants.groupSessionId} = ${input.groupSessionId}::uuid
+          and ${groupStudyParticipants.userId} <> ${input.departedUserId}::uuid
+          and ${groupStudyParticipants.leftAt} is null
+        order by ${groupStudyParticipants.joinedAt} asc,
+          ${groupStudyParticipants.id} asc
+        limit 1
+      )`,
+      updatedAt: input.now,
+      version: input.expectedVersion + 1,
+    })
+    .where(
+      and(
+        eq(groupStudySessions.id, input.groupSessionId),
+        eq(groupStudySessions.workspaceId, input.workspaceId),
+        eq(groupStudySessions.hostUserId, input.departedUserId),
+        eq(groupStudySessions.status, "active"),
+        eq(groupStudySessions.version, input.expectedVersion),
+      ),
+    )
+    .returning(sessionSelection)
+
+  return record ?? null
 }
 
 export async function findGroupStudyBlock(
@@ -726,7 +778,6 @@ export async function listGroupStudyMembershipHistory(
         options.leftAfter
           ? gte(groupStudyParticipants.leftAt, options.leftAfter)
           : undefined,
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(desc(groupStudyParticipants.joinedAt))
@@ -866,7 +917,6 @@ export async function updateParticipantHeartbeat(
               and(
                 eq(timerSessions.id, groupStudyParticipants.timerSessionId),
                 eq(timerSessions.workspaceId, access.workspaceId),
-                activeAccessPredicate(database, access),
               ),
             ),
         ),
@@ -897,7 +947,6 @@ export async function updateActiveParticipantHeartbeat(
               and(
                 eq(timerSessions.id, groupStudyParticipants.timerSessionId),
                 eq(timerSessions.workspaceId, access.workspaceId),
-                activeAccessPredicate(database, access),
               ),
             ),
         ),
@@ -968,6 +1017,8 @@ export async function findStaleParticipants(
         )`,
       ),
     )
+    .orderBy(asc(groupStudyParticipants.lastHeartbeatAt))
+    .limit(500)
 }
 
 export async function findPendingJoinRequestForUser(

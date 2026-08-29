@@ -22,7 +22,7 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         purpose: "maskable",
         sizes: "512x512",
-        src: "/icons/traketo-icon-512.png",
+        src: "/icons/traketo-icon-maskable-512.png",
         type: "image/png",
       },
     ],

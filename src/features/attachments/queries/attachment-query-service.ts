@@ -9,7 +9,7 @@ import { readServerEnv } from "@/lib/env/server"
 
 export async function getAttachmentsByQuest(
   access: AccessContext,
-  questIds: readonly string[],
+  questIds?: readonly string[],
   database: Database = getDatabase(),
 ) {
   const records = await listAttachmentRecords(database, access, questIds)

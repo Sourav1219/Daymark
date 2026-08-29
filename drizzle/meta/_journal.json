@@ -169,6 +169,13 @@
       "when": 1787404051700,
       "tag": "0023_amusing_wrecker",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788033184731,
+      "tag": "0024_high_shotgun",
+      "breakpoints": true
     }
   ]
 }

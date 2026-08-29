@@ -1,15 +1,6 @@
 import "server-only"
 
-import {
-  and,
-  asc,
-  count,
-  eq,
-  exists,
-  isNotNull,
-  isNull,
-  sql,
-} from "drizzle-orm"
+import { and, asc, count, eq, isNotNull, isNull, sql } from "drizzle-orm"
 
 import type { DatabaseExecutor } from "@/db/client"
 import { gates, tasks, workspaceMembers, workspaces } from "@/db/schema"
@@ -49,26 +40,6 @@ const gateSelection = {
   version: gates.version,
 }
 
-function activeAccessPredicate(
-  database: DatabaseExecutor,
-  access: AccessContext,
-) {
-  return exists(
-    database
-      .select({ id: workspaceMembers.id })
-      .from(workspaceMembers)
-      .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
-      .where(
-        and(
-          eq(workspaceMembers.userId, access.userId),
-          eq(workspaceMembers.workspaceId, access.workspaceId),
-          isNull(workspaceMembers.deletedAt),
-          isNull(workspaces.deletedAt),
-        ),
-      ),
-  )
-}
-
 function gateIdentityPredicate(
   database: DatabaseExecutor,
   access: AccessContext,
@@ -78,7 +49,6 @@ function gateIdentityPredicate(
     eq(gates.id, gateId),
     eq(gates.workspaceId, access.workspaceId),
     isNull(gates.deletedAt),
-    activeAccessPredicate(database, access),
   )
 }
 
@@ -138,37 +108,26 @@ export async function listGateRecords(
   access: AccessContext,
   kind: GateListKind,
 ): Promise<readonly GateWithCount[]> {
-  const questCountSubquery = database
-    .select({
-      gateId: tasks.projectId,
-      questCount: count().as("quest_count"),
-    })
-    .from(tasks)
-    .where(
-      and(
-        eq(tasks.workspaceId, access.workspaceId),
-        isNotNull(tasks.projectId),
-      ),
-    )
-    .groupBy(tasks.projectId)
-    .as("quest_counts")
-
   const lifecycleFilter =
     kind === "archived" ? isNotNull(gates.archivedAt) : isNull(gates.archivedAt)
 
   const results = await database
     .select({
       ...gateSelection,
-      questCount: sql<number>`coalesce(${questCountSubquery.questCount}, 0)::integer`,
+      questCount: sql<number>`(
+        select count(*)::integer
+        from ${tasks} gate_task
+        where gate_task.workspace_id = ${access.workspaceId}::uuid
+          and gate_task.project_id = ${gates.id}
+          and gate_task.deleted_at is null
+      )`,
     })
     .from(gates)
-    .leftJoin(questCountSubquery, eq(questCountSubquery.gateId, gates.id))
     .where(
       and(
         eq(gates.workspaceId, access.workspaceId),
         isNull(gates.deletedAt),
         lifecycleFilter,
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(asc(gates.position), asc(gates.name))
@@ -303,7 +262,6 @@ export async function countGateQuests(
       and(
         eq(tasks.projectId, gateId),
         eq(tasks.workspaceId, access.workspaceId),
-        activeAccessPredicate(database, access),
       ),
     )
 

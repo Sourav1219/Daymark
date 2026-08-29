@@ -24,13 +24,17 @@ import {
   getQuestAncestorIds,
   listOverdueQuestRecords,
   listQuestOrderRecordsForUpdate,
+  purgeQuestDescendants,
   purgeQuestRecord,
   reopenQuestRecord,
   reorderQuestRecords,
+  restoreQuestDescendants,
   restoreQuestRecord,
   restoreQuestWithScheduleRecord,
+  softDeleteQuestDescendants,
   softDeleteQuestRecord,
 } from "@/features/quests/repositories/quest-repository"
+import { trashRetentionMilliseconds } from "@/features/quests/domain/types"
 import { calculateNextOccurrence } from "@/features/reminders/domain/recurrence"
 import { findUserSettingsRecord } from "@/features/reminders/repositories/user-settings-repository"
 import { clonePendingRemindersForOccurrence } from "@/features/reminders/repositories/reminder-repository"
@@ -232,6 +236,7 @@ export async function createQuest(
   access: AccessContext,
   command: CreateQuestCommand,
   offlineMutationId?: string,
+  questId?: string,
 ): Promise<QuestMutationSummary> {
   authorizeQuestAccess(access)
   return withWorkspaceMutation(database, access, async (transaction) => {
@@ -258,6 +263,7 @@ export async function createQuest(
     })
     const created = await createQuestRecord(transaction, access, {
       ...command,
+      ...(questId ? { id: questId } : {}),
       offlineMutationId: offlineMutationId ?? null,
       ...(await recurrenceFields(transaction, access, command)),
     })
@@ -277,6 +283,7 @@ export async function editQuest(
   database: Database,
   access: AccessContext,
   command: EditQuestCommand,
+  offlineMutationId?: string,
 ): Promise<QuestMutationSummary> {
   authorizeQuestAccess(access)
   return withWorkspaceMutation(database, access, async (transaction) => {
@@ -284,6 +291,10 @@ export async function editQuest(
 
     if (!current) {
       throw new QuestServiceError("NOT_FOUND", "Task not found.")
+    }
+
+    if (offlineMutationId && current.offlineMutationId === offlineMutationId) {
+      return summary(current)
     }
 
     await validatePlacement(transaction, access, {
@@ -297,6 +308,7 @@ export async function editQuest(
     })
     const updated = await editQuestRecord(transaction, access, {
       ...command,
+      ...(offlineMutationId ? { offlineMutationId } : {}),
       ...(await recurrenceFields(transaction, access, command, current)),
     })
 
@@ -653,6 +665,13 @@ export async function softDeleteQuest(
 
     if (!updated) return mutationFailure(transaction, access, command)
 
+    await softDeleteQuestDescendants(
+      transaction,
+      access,
+      command.questId,
+      deletedAt,
+    )
+
     const settings = await findUserSettingsRecord(transaction, access)
     if (!settings) {
       throw new QuestServiceError(
@@ -692,21 +711,15 @@ export async function restoreQuest(
     if (!current) {
       throw new QuestServiceError("NOT_FOUND", "Task not found.")
     }
-    const settings = await findUserSettingsRecord(transaction, access)
-    if (!settings) {
-      throw new QuestServiceError(
-        "FORBIDDEN",
-        "Timezone settings are unavailable for this workspace.",
-      )
-    }
     if (
       !current.deletedAt ||
-      localDateForInstant(current.deletedAt, settings.timezone) !==
-        localDateForInstant(restoredAt, settings.timezone)
+      restoredAt.getTime() - current.deletedAt.getTime() < 0 ||
+      restoredAt.getTime() - current.deletedAt.getTime() >
+        trashRetentionMilliseconds
     ) {
       throw new QuestServiceError(
         "CONFLICT",
-        "This task's recovery window ended with the day. Its activity remains in history.",
+        "This task's 30-day recovery window has ended.",
       )
     }
     const updated = await restoreQuestRecord(
@@ -718,6 +731,21 @@ export async function restoreQuest(
 
     if (!updated) {
       return mutationFailure(transaction, access, command, true)
+    }
+
+    await restoreQuestDescendants(
+      transaction,
+      access,
+      command.questId,
+      current.deletedAt,
+    )
+
+    const settings = await findUserSettingsRecord(transaction, access)
+    if (!settings) {
+      throw new QuestServiceError(
+        "FORBIDDEN",
+        "Timezone settings are unavailable for this workspace.",
+      )
     }
 
     const restoreXp = current.status === "completed" && current.xpReward > 0
@@ -768,6 +796,14 @@ export async function permanentlyDeleteQuest(
       return mutationFailure(transaction, access, command, true)
     }
 
+    await purgeQuestDescendants(
+      transaction,
+      access,
+      command.questId,
+      current.deletedAt,
+      purgedAt,
+    )
+
     return summary(purged)
   })
 }
@@ -790,21 +826,15 @@ export async function restoreQuestWithSchedule(
       throw new QuestServiceError("NOT_FOUND", "Task not found.")
     }
 
-    const settings = await findUserSettingsRecord(transaction, access)
-    if (!settings) {
-      throw new QuestServiceError(
-        "FORBIDDEN",
-        "Timezone settings are unavailable for this workspace.",
-      )
-    }
     if (
       !current.deletedAt ||
-      localDateForInstant(current.deletedAt, settings.timezone) !==
-        localDateForInstant(restoredAt, settings.timezone)
+      restoredAt.getTime() - current.deletedAt.getTime() < 0 ||
+      restoredAt.getTime() - current.deletedAt.getTime() >
+        trashRetentionMilliseconds
     ) {
       throw new QuestServiceError(
         "CONFLICT",
-        "This task's recovery window ended with the day and it can no longer be restored.",
+        "This task's 30-day recovery window has ended.",
       )
     }
 
@@ -815,6 +845,21 @@ export async function restoreQuestWithSchedule(
     )
     if (!updated) {
       return mutationFailure(transaction, access, command, true)
+    }
+
+    await restoreQuestDescendants(
+      transaction,
+      access,
+      command.questId,
+      current.deletedAt,
+    )
+
+    const settings = await findUserSettingsRecord(transaction, access)
+    if (!settings) {
+      throw new QuestServiceError(
+        "FORBIDDEN",
+        "Timezone settings are unavailable for this workspace.",
+      )
     }
 
     const progression = await recordQuestProgression(transaction, access, {

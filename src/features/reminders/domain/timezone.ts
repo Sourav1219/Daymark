@@ -1,5 +1,3 @@
-import { DateTime } from "luxon"
-
 /**
  * Zone every new workspace and user starts on. Keep this in sync with the
  * `timezone` column defaults in the workspaces and user_settings schemas.
@@ -39,15 +37,90 @@ export function parseZonedLocalDateTime(
 ): Date | null {
   if (!isValidTimezone(timezone)) return null
 
-  const parsed = DateTime.fromFormat(value, "yyyy-MM-dd'T'HH:mm", {
-    locale: "en",
-    setZone: true,
-    zone: timezone,
-  })
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/u.exec(value)
+  if (!match) return null
 
-  return parsed.isValid && parsed.toFormat("yyyy-MM-dd'T'HH:mm") === value
-    ? parsed.toUTC().toJSDate()
+  const requested = {
+    day: Number(match[3]),
+    hour: Number(match[4]),
+    minute: Number(match[5]),
+    month: Number(match[2]),
+    year: Number(match[1]),
+  }
+  const nominalUtc = Date.UTC(
+    requested.year,
+    requested.month - 1,
+    requested.day,
+    requested.hour,
+    requested.minute,
+  )
+  const nominal = new Date(nominalUtc)
+  if (
+    nominal.getUTCFullYear() !== requested.year ||
+    nominal.getUTCMonth() + 1 !== requested.month ||
+    nominal.getUTCDate() !== requested.day ||
+    requested.hour > 23 ||
+    requested.minute > 59
+  ) {
+    return null
+  }
+
+  // Resolve the zone offset as a fixed point. The final round-trip rejects
+  // spring-forward gaps instead of silently normalising them.
+  let candidate = nominalUtc
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    const parts = zonedParts(new Date(candidate), timezone)
+    const representedUtc = Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day,
+      parts.hour,
+      parts.minute,
+    )
+    const next = nominalUtc - (representedUtc - candidate)
+    if (next === candidate) break
+    candidate = next
+  }
+
+  const roundTrip = zonedParts(new Date(candidate), timezone)
+  return roundTrip.year === requested.year &&
+    roundTrip.month === requested.month &&
+    roundTrip.day === requested.day &&
+    roundTrip.hour === requested.hour &&
+    roundTrip.minute === requested.minute
+    ? new Date(candidate)
     : null
+}
+
+const zonedPartsFormatters = new Map<string, Intl.DateTimeFormat>()
+
+function zonedParts(instant: Date, timezone: string) {
+  let formatter = zonedPartsFormatters.get(timezone)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US-u-ca-gregory-nu-latn", {
+      day: "2-digit",
+      hour: "2-digit",
+      hour12: false,
+      minute: "2-digit",
+      month: "2-digit",
+      timeZone: timezone,
+      year: "numeric",
+    })
+    zonedPartsFormatters.set(timezone, formatter)
+  }
+  const values = Object.fromEntries(
+    formatter
+      .formatToParts(instant)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)]),
+  )
+  return {
+    day: values.day ?? 1,
+    hour: values.hour === 24 ? 0 : (values.hour ?? 0),
+    minute: values.minute ?? 0,
+    month: values.month ?? 1,
+    year: values.year ?? 1970,
+  }
 }
 
 export function formatZonedLocalInput(
@@ -57,9 +130,9 @@ export function formatZonedLocalInput(
   if (!value) return ""
   const instant = typeof value === "string" ? new Date(value) : value
 
-  return DateTime.fromJSDate(instant, { zone: "utc" })
-    .setZone(timezone)
-    .toFormat("yyyy-MM-dd'T'HH:mm")
+  const parts = zonedParts(instant, timezone)
+  const pad = (part: number) => String(part).padStart(2, "0")
+  return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`
 }
 
 export function formatZonedDateTime(value: Date, timezone: string): string {

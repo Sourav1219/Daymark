@@ -523,7 +523,7 @@ describe("Quest organisation controls", () => {
     await user.click(screen.getByRole("tab", { name: /Trash/i }))
     expect(screen.getByText("Quest recoverable")).toBeVisible()
     expect(screen.getByText("Ready to recover")).toBeVisible()
-    expect(screen.getByText("Restorable until midnight")).toBeVisible()
+    expect(screen.getByText("Restorable for 30 days")).toBeVisible()
     expect(screen.getByText(/Moved to Trash/u)).toBeVisible()
     expect(screen.getByRole("button", { name: "Restore Task" })).toBeVisible()
     expect(screen.getByRole("button", { name: "Delete Task" })).toBeVisible()
@@ -606,7 +606,7 @@ describe("Quest organisation controls", () => {
         quests={[
           {
             ...quest("expired-copy"),
-            deletedAt: "2026-08-12T09:00:00.000Z",
+            deletedAt: "2026-07-12T09:00:00.000Z",
           },
         ]}
         referenceNow="2026-08-13T12:00:00.000Z"

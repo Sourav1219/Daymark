@@ -9,6 +9,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
+import "@/app/styles/progress-page.css"
+
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import { questHomeHref } from "@/features/quests/domain/quest-links"
 import { getProgressionDashboard } from "@/features/progression/queries/progression-query-service"

@@ -6,10 +6,7 @@ import { getDatabase, type Database } from "@/db/client"
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import { localDateForInstant } from "@/features/progression/domain/progression"
 import { defaultTimezone } from "@/features/reminders/domain/timezone"
-import {
-  isTimerRecordOnLocalDate,
-  summarizeDailyStudy,
-} from "@/features/timer/domain/daily-study-history"
+import { isTimerRecordOnLocalDate } from "@/features/timer/domain/daily-study-history"
 import type {
   DailyStudySummaryView,
   GroupStudyActivityView,
@@ -19,8 +16,7 @@ import type {
   TimerSessionView,
 } from "@/features/timer/domain/types"
 import {
-  findActiveGroupStudyParticipant,
-  findGroupStudySessionRecord,
+  findActiveGroupStudyContext,
   findPendingJoinRequestsForRoom,
   listActiveGroupStudyParticipants,
   listGroupStudyActivities,
@@ -32,9 +28,10 @@ import { groupStudyJoinRequests } from "@/db/schema"
 import { eq, and } from "drizzle-orm"
 import {
   findActiveTimerSessionRecord,
-  listTimerSessionRecords,
+  listDailyStudySummaryRecords,
   listTodayCompletedTimerSessions,
 } from "@/features/timer/repositories/timer-repository"
+import type { TimerSessionRecord } from "@/features/timer/repositories/timer-repository"
 import { getAuthorizedWorkspaceSummary } from "@/features/workspaces/application/get-workspace-summary"
 
 /** Rooms surfaced in shared history per request. */
@@ -50,9 +47,7 @@ type ParticipantSummary = Readonly<{
   userId: string
 }>
 
-function toView(
-  record: Awaited<ReturnType<typeof listTimerSessionRecords>>[number],
-): TimerSessionView {
+function toView(record: TimerSessionRecord): TimerSessionView {
   return {
     accumulatedMs: record.accumulatedMs,
     createdAt: record.createdAt.toISOString(),
@@ -71,15 +66,9 @@ async function getActiveGroupStudyView(
   database: Database,
   access: AccessContext,
 ): Promise<GroupStudySessionView | null> {
-  const membership = await findActiveGroupStudyParticipant(database, access)
-  if (!membership) return null
-
-  const room = await findGroupStudySessionRecord(
-    database,
-    access,
-    membership.groupSessionId,
-  )
-  if (!room || room.status !== "active") return null
+  const context = await findActiveGroupStudyContext(database, access)
+  if (!context) return null
+  const { membership, room } = context
 
   const [participantRecords, activityRecords] = await Promise.all([
     listActiveGroupStudyParticipants(
@@ -294,6 +283,23 @@ export async function getTimerDashboard(
   database: Database = getDatabase(),
   now: Date = new Date(),
 ): Promise<TimerDashboardView> {
+  const activeSessionPromise = findActiveTimerSessionRecord(database, access)
+  const sharedSessionPromise = getActiveGroupStudyView(database, access)
+  const pendingJoinRequestPromise = database
+    .select({
+      id: groupStudyJoinRequests.id,
+      userId: groupStudyJoinRequests.userId,
+      createdAt: groupStudyJoinRequests.createdAt,
+    })
+    .from(groupStudyJoinRequests)
+    .where(
+      and(
+        eq(groupStudyJoinRequests.userId, access.userId),
+        eq(groupStudyJoinRequests.status, "pending"),
+      ),
+    )
+    .limit(1)
+    .then((res) => res[0] ?? null)
   const timezone =
     (await getAuthorizedWorkspaceSummary(access, database))?.timezone ??
     defaultTimezone
@@ -318,25 +324,11 @@ export async function getTimerDashboard(
     pendingJoinRequestRecord,
   ] = await Promise.all([
     // Dedicated single-row active lookup instead of loading every session.
-    findActiveTimerSessionRecord(database, access),
+    activeSessionPromise,
     listTodayCompletedTimerSessions(database, access, dayStart, dayEnd),
     getGroupStudyHistory(database, access, dayStart),
-    getActiveGroupStudyView(database, access),
-    database
-      .select({
-        id: groupStudyJoinRequests.id,
-        userId: groupStudyJoinRequests.userId,
-        createdAt: groupStudyJoinRequests.createdAt,
-      })
-      .from(groupStudyJoinRequests)
-      .where(
-        and(
-          eq(groupStudyJoinRequests.userId, access.userId),
-          eq(groupStudyJoinRequests.status, "pending"),
-        ),
-      )
-      .limit(1)
-      .then((res) => res[0] ?? null),
+    sharedSessionPromise,
+    pendingJoinRequestPromise,
   ])
 
   const activeSession = activeSessionRecord ? toView(activeSessionRecord) : null
@@ -375,8 +367,8 @@ export async function getDailyStudyHistory(
   timezone: string,
   database: Database = getDatabase(),
 ): Promise<readonly DailyStudySummaryView[]> {
-  // Bound the read window and row count so aggregation cost stays flat.
+  // The database returns at most one aggregate per local day instead of
+  // transferring an arbitrary number of timer rows to the application.
   const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
-  const records = await listTimerSessionRecords(database, access, since, 1_000)
-  return summarizeDailyStudy(records, timezone)
+  return listDailyStudySummaryRecords(database, access, timezone, since)
 }

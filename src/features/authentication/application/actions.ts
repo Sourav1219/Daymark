@@ -200,6 +200,17 @@ function emailRequestResponse(
   }
 }
 
+function emailServiceUnavailable(): ActionFailure {
+  return {
+    error: {
+      code: "INTERNAL_ERROR",
+      message:
+        "Email delivery is temporarily unavailable. Please try again shortly.",
+    },
+    ok: false,
+  }
+}
+
 export async function resendVerificationAction(
   _previousState: AuthActionState,
   formData: FormData,
@@ -215,6 +226,7 @@ export async function resendVerificationAction(
   }
 
   const startedAt = Date.now()
+  let infrastructureFailure = false
   try {
     await withHealthyAuth(async (auth) =>
       auth.api.sendVerificationOTP({
@@ -226,13 +238,21 @@ export async function resendVerificationAction(
       }),
     )
   } catch (error) {
-    logger.error(
-      "authentication.verification_request_failed",
-      error instanceof Error ? error : undefined,
-    )
+    // Expected API rejections stay generic to prevent account enumeration.
+    // Transport, configuration, and database failures must be honest about
+    // the fact that no email could be queued.
+    if (!isAPIError(error) || error.statusCode >= 500) {
+      infrastructureFailure = true
+      logger.error(
+        "authentication.verification_request_failed",
+        error instanceof Error ? error : undefined,
+      )
+    }
   } finally {
     await normalizeAccountTiming(startedAt)
   }
+
+  if (infrastructureFailure) return emailServiceUnavailable()
 
   return emailRequestResponse(
     "If this address has an unverified account, a new 6-digit code has been sent.",
@@ -304,6 +324,7 @@ export async function requestPasswordResetAction(
   }
 
   const startedAt = Date.now()
+  let infrastructureFailure = false
   try {
     await withHealthyAuth(async (auth) =>
       auth.api.requestPasswordReset({
@@ -312,13 +333,18 @@ export async function requestPasswordResetAction(
       }),
     )
   } catch (error) {
-    logger.error(
-      "authentication.password_reset_request_failed",
-      error instanceof Error ? error : undefined,
-    )
+    if (!isAPIError(error) || error.statusCode >= 500) {
+      infrastructureFailure = true
+      logger.error(
+        "authentication.password_reset_request_failed",
+        error instanceof Error ? error : undefined,
+      )
+    }
   } finally {
     await normalizeAccountTiming(startedAt)
   }
+
+  if (infrastructureFailure) return emailServiceUnavailable()
 
   return emailRequestResponse(
     "If an eligible account exists, a password-reset link has been sent.",

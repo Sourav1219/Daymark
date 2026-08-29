@@ -1,5 +1,7 @@
 import type { ReactNode } from "react"
 
+import "@/app/styles/quest-studio.css"
+
 import { PageHeading } from "@/components/system/page-heading"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -15,6 +17,7 @@ import { QuestList } from "@/features/quests/components/quest-list"
 import {
   defaultQuestFilters,
   isQuestFiltered,
+  questPageSize,
   type QuestListFilters,
 } from "@/features/quests/domain/types"
 import {
@@ -22,6 +25,7 @@ import {
   getQuestParentOptions,
 } from "@/features/quests/queries/quest-query-service"
 import { getUserSettings } from "@/features/reminders/queries/user-settings-query-service"
+import { QuestPagination } from "@/features/quests/components/quest-pagination"
 
 type QuestRouteKind = "cleared" | "quests" | "today"
 
@@ -31,6 +35,8 @@ type QuestRouteProps = Readonly<{
   /** Optional custom heading node that replaces the default PageHeading. */
   heading?: ReactNode
   kind: QuestRouteKind
+  page?: number
+  trashPage?: number
 }>
 
 const routeCopy = {
@@ -74,6 +80,8 @@ export async function QuestRoute({
   filters,
   heading,
   kind,
+  page = 1,
+  trashPage = 1,
 }: QuestRouteProps) {
   const copy = routeCopy[kind]
   const now = new Date()
@@ -82,32 +90,49 @@ export async function QuestRoute({
     const activeFilters = filters ?? defaultQuestFilters
     const filtered = isQuestFiltered(activeFilters)
 
-    const [active, deleted, gates, labels, parentOptions, settings] =
-      await Promise.all([
-        getQuestList(access, "active", { filters: activeFilters, now }),
-        getQuestList(access, "deleted", { now }),
-        getGateList(access, "active"),
-        getLabelList(access),
-        getQuestParentOptions(access),
-        getUserSettings(access),
-      ])
+    const [
+      active,
+      deleted,
+      gates,
+      labels,
+      parentOptions,
+      settings,
+      attachmentsByQuest,
+    ] = await Promise.all([
+      getQuestList(access, "active", {
+        filters: activeFilters,
+        limit: questPageSize + 1,
+        now,
+        offset: (page - 1) * questPageSize,
+      }),
+      getQuestList(access, "deleted", {
+        limit: questPageSize + 1,
+        now,
+        offset: (trashPage - 1) * questPageSize,
+      }),
+      getGateList(access, "active"),
+      getLabelList(access),
+      getQuestParentOptions(access),
+      getUserSettings(access),
+      getAttachmentsByQuest(access),
+    ])
     const gateOptions = gates.map((gate) => ({ id: gate.id, name: gate.name }))
     const labelOptions = labels.map((label) => ({
       colorToken: label.colorToken,
       id: label.id,
       name: label.name,
     }))
-    const attachmentsByQuest = await getAttachmentsByQuest(
-      access,
-      active.map(({ id }) => id),
-    )
     const storageAvailable = attachmentStorageAvailable()
+    const activeHasNextPage = active.length > questPageSize
+    const trashHasNextPage = deleted.length > questPageSize
 
     return (
       <div className="quest-studio-page">
         <QuestActiveBoard
           attachmentsByQuest={attachmentsByQuest}
-          deletedQuests={deleted}
+          activeHasNextPage={activeHasNextPage}
+          activePage={page}
+          deletedQuests={deleted.slice(0, questPageSize)}
           emptyDescription={
             filtered ? filteredCopy.emptyDescription : copy.emptyDescription
           }
@@ -117,10 +142,12 @@ export async function QuestRoute({
           isFiltered={filtered}
           labels={labelOptions}
           parentOptions={parentOptions}
-          quests={active}
+          quests={active.slice(0, questPageSize)}
           referenceNow={now.toISOString()}
           storageAvailable={storageAvailable}
           timezone={settings.timezone}
+          trashHasNextPage={trashHasNextPage}
+          trashPage={trashPage}
         />
       </div>
     )
@@ -135,32 +162,36 @@ export async function QuestRoute({
   } satisfies QuestListFilters
   const filtered = isQuestFiltered(fixedViewFilters)
 
-  const [quests, gates, labels, parentOptions, settings] = await Promise.all([
-    getQuestList(access, kind === "today" ? "today" : "cleared", {
-      filters: fixedViewFilters,
-      now,
-    }),
-    getGateList(access, "active"),
-    getLabelList(access),
-    getQuestParentOptions(access),
-    getUserSettings(access),
-  ])
+  const [quests, gates, labels, parentOptions, settings, attachmentsByQuest] =
+    await Promise.all([
+      getQuestList(access, kind === "today" ? "today" : "cleared", {
+        filters: fixedViewFilters,
+        limit: questPageSize + 1,
+        now,
+        offset: (page - 1) * questPageSize,
+      }),
+      getGateList(access, "active"),
+      getLabelList(access),
+      getQuestParentOptions(access),
+      getUserSettings(access),
+      getAttachmentsByQuest(access),
+    ])
   const gateOptions = gates.map((gate) => ({ id: gate.id, name: gate.name }))
   const labelOptions = labels.map((label) => ({
     colorToken: label.colorToken,
     id: label.id,
     name: label.name,
   }))
-  const attachmentsByQuest = await getAttachmentsByQuest(
-    access,
-    quests.map(({ id }) => id),
-  )
   const storageAvailable = attachmentStorageAvailable()
+  const hasNextPage = quests.length > questPageSize
+  const visibleQuests = quests.slice(0, questPageSize)
   return (
     <div className="grid gap-section">
       {heading ?? (
         <PageHeading
-          actions={<Badge variant="outline">{quests.length} visible</Badge>}
+          actions={
+            <Badge variant="outline">{visibleQuests.length} visible</Badge>
+          }
           description={copy.description}
           eyebrow={copy.eyebrow}
           title={copy.title}
@@ -183,10 +214,11 @@ export async function QuestRoute({
         labels={labelOptions}
         mode={kind}
         parentOptions={parentOptions}
-        quests={quests}
+        quests={visibleQuests}
         storageAvailable={storageAvailable}
         timezone={settings.timezone}
       />
+      <QuestPagination hasNextPage={hasNextPage} page={page} />
     </div>
   )
 }

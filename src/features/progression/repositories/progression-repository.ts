@@ -4,7 +4,6 @@ import {
   and,
   desc,
   eq,
-  exists,
   gt,
   gte,
   isNotNull,
@@ -21,8 +20,6 @@ import {
   activityEvents,
   tasks,
   userProgression,
-  workspaceMembers,
-  workspaces,
   xpLedger,
   type XpLedgerReason,
 } from "@/db/schema"
@@ -70,26 +67,6 @@ type RecordProgressionInput = Readonly<{
 }>
 
 const reversedLedger = alias(xpLedger, "reversed_ledger")
-
-function activeAccessPredicate(
-  database: DatabaseExecutor,
-  access: AccessContext,
-) {
-  return exists(
-    database
-      .select({ id: workspaceMembers.id })
-      .from(workspaceMembers)
-      .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
-      .where(
-        and(
-          eq(workspaceMembers.userId, access.userId),
-          eq(workspaceMembers.workspaceId, access.workspaceId),
-          isNull(workspaceMembers.deletedAt),
-          isNull(workspaces.deletedAt),
-        ),
-      ),
-  )
-}
 
 async function currentProjection(
   database: DatabaseExecutor,
@@ -412,7 +389,6 @@ export async function findProgressionEventFeedback(
         eq(activityEvents.workspaceId, access.workspaceId),
         eq(activityEvents.actorUserId, access.userId),
         eq(activityEvents.idempotencyKey, idempotencyKey),
-        activeAccessPredicate(database, access),
       ),
     )
     .limit(1)
@@ -456,7 +432,6 @@ export function listEffectiveAwards(
               ),
             ),
         ),
-        activeAccessPredicate(database, access),
       ),
     )
 }
@@ -479,7 +454,6 @@ export function listXpDeltasForLocalDateRange(
         eq(xpLedger.userId, access.userId),
         gte(xpLedger.earnedForLocalDate, start),
         lte(xpLedger.earnedForLocalDate, end),
-        activeAccessPredicate(database, access),
       ),
     )
 }
@@ -515,7 +489,6 @@ export async function getQuestPointGoalsRecord(
         ),
         gte(scoreLocalDate, options.weekStart),
         lte(scoreLocalDate, options.weekEnd),
-        activeAccessPredicate(database, access),
       ),
     )
 
@@ -547,7 +520,6 @@ export async function findProgressionRecord(
       and(
         eq(userProgression.workspaceId, access.workspaceId),
         eq(userProgression.userId, access.userId),
-        activeAccessPredicate(database, access),
       ),
     )
     .limit(1)
@@ -592,7 +564,6 @@ export function listProgressionHistoryRecords(
         eq(xpLedger.userId, access.userId),
         isNotNull(xpLedger.earnedForLocalDate),
         localDate ? eq(xpLedger.earnedForLocalDate, localDate) : undefined,
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(desc(activityEvents.occurredAt), desc(xpLedger.createdAt))
@@ -616,7 +587,6 @@ export async function getDailyXpSummaryRecord(
         eq(xpLedger.workspaceId, access.workspaceId),
         eq(xpLedger.userId, access.userId),
         eq(xpLedger.earnedForLocalDate, localDate),
-        activeAccessPredicate(database, access),
       ),
     )
 

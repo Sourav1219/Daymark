@@ -9,14 +9,11 @@ import { SessionExpiredCard } from "@/features/authentication/ui/session-expired
 import { ACTIVE_SESSIONS_CHANGED_EVENT } from "@/features/authentication/client/session-events"
 import { clearPrivateOfflineData } from "@/features/offline/storage/offline-database"
 
-/** How often to silently probe the session (ms). */
-const POLL_INTERVAL_MS = 5 * 60_000
-
 /**
  * Silent background watcher mounted inside the authenticated app shell.
  *
- * Polls /api/session/ping on a fixed interval and immediately on every
- * tab-focus event. Account-wide session changes arrive over the same stream,
+ * Checks /api/session/ping initially and on every tab-focus event.
+ * Account-wide session changes arrive over the same stream,
  * allowing session lists to update immediately. When the server returns 401
  * (session revoked from another device), it clears local offline data and
  * navigates to the real sign-out route — no manual refresh required.
@@ -25,7 +22,6 @@ const POLL_INTERVAL_MS = 5 * 60_000
  */
 export function SessionWatcher() {
   const router = useRouter()
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const expiredRef = useRef(false)
   const [expired, setExpired] = useState(false)
 
@@ -74,16 +70,6 @@ export function SessionWatcher() {
 
     void checkSession()
 
-    // Recursive schedule: waits for each check to finish before setting the
-    // next timer, so we never have overlapping probes.
-    function schedule() {
-      timerRef.current = setTimeout(() => {
-        void checkSession().finally(schedule)
-      }, POLL_INTERVAL_MS)
-    }
-
-    schedule()
-
     // Also probe immediately when the user switches back to this tab.
     function onVisibilityChange() {
       if (document.visibilityState === "visible") {
@@ -94,7 +80,6 @@ export function SessionWatcher() {
 
     return () => {
       events.close()
-      if (timerRef.current !== null) clearTimeout(timerRef.current)
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
   }, [checkSession])

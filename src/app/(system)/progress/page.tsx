@@ -1,10 +1,12 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 
 import { requireWorkspaceAccess } from "@/features/authentication/server/authorization"
 import { ProgressRoute } from "@/features/progression/components/progress-route"
 import { localDateForInstant } from "@/features/progression/domain/progression"
 import { getLocalDayWindow } from "@/features/quests/domain/today-window"
 import { getUserSettings } from "@/features/reminders/queries/user-settings-query-service"
+import { ProgressLoadingState } from "@/features/progression/components/progress-loading-state"
 
 export const metadata: Metadata = { title: "Progress" }
 
@@ -28,10 +30,12 @@ export default async function ProgressPage({
       : todayDate
 
   return (
-    <ProgressRoute
-      access={access}
-      selectedDate={selectedDate}
-      timezone={settings.timezone}
-    />
+    <Suspense fallback={<ProgressLoadingState />}>
+      <ProgressRoute
+        access={access}
+        selectedDate={selectedDate}
+        timezone={settings.timezone}
+      />
+    </Suspense>
   )
 }

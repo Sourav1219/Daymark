@@ -9,7 +9,6 @@ import {
   History,
   Sparkles,
 } from "lucide-react"
-import { DateTime } from "luxon"
 import { toast } from "sonner"
 
 import {
@@ -32,17 +31,24 @@ import {
 import type { RestoredTaskNotice } from "@/features/quests/components/task-restored-popup"
 import { QuestDatePicker } from "@/features/quests/components/quest-date-picker"
 import { QuestTimePicker } from "@/features/quests/components/quest-time-picker"
-import { timezoneAbbreviation } from "@/features/reminders/domain/timezone"
+import {
+  formatZonedLocalInput,
+  parseZonedLocalDateTime,
+  timezoneAbbreviation,
+} from "@/features/reminders/domain/timezone"
 
 function initialTimeline(referenceNow: string, timezone: string) {
-  const now = DateTime.fromISO(referenceNow, { setZone: true }).setZone(
-    timezone,
+  const reference = new Date(referenceNow)
+  const start = new Date(
+    Math.ceil((reference.getTime() + 1) / 900_000) * 900_000,
   )
-  const start = now.plus({ minutes: 15 - (now.minute % 15) }).startOf("minute")
 
   return {
-    dueAt: start.plus({ hours: 1 }).toFormat("yyyy-MM-dd'T'HH:mm"),
-    startAt: start.toFormat("yyyy-MM-dd'T'HH:mm"),
+    dueAt: formatZonedLocalInput(
+      new Date(start.getTime() + 60 * 60_000),
+      timezone,
+    ),
+    startAt: formatZonedLocalInput(start, timezone),
   }
 }
 
@@ -71,11 +77,11 @@ export function RestoreQuestScheduleDialog({
   )
   const [isPending, startTransition] = useTransition()
   const zoneLabel = timezoneAbbreviation(timezone)
-  const minimum = DateTime.fromISO(referenceNow, { setZone: true })
-    .setZone(timezone)
-    .plus({ minutes: 1 })
-    .startOf("minute")
-    .toFormat("yyyy-MM-dd'T'HH:mm")
+  const referenceTime = new Date(referenceNow).getTime()
+  const minimum = formatZonedLocalInput(
+    new Date((Math.floor(referenceTime / 60_000) + 1) * 60_000),
+    timezone,
+  )
   const invalidOrder = timeline.dueAt < timeline.startAt
   const elapsed = timeline.startAt < minimum || timeline.dueAt < minimum
   const invalid =
@@ -97,12 +103,13 @@ export function RestoreQuestScheduleDialog({
       const next = { ...current, [key]: nextValue }
 
       if (key === "startAt" && nextValue && current.dueAt < nextValue) {
-        const shiftedDue = DateTime.fromFormat(
-          nextValue,
-          "yyyy-MM-dd'T'HH:mm",
-          { zone: timezone },
-        ).plus({ hours: 1 })
-        next.dueAt = shiftedDue.toFormat("yyyy-MM-dd'T'HH:mm")
+        const shiftedDue = parseZonedLocalDateTime(nextValue, timezone)
+        if (shiftedDue) {
+          next.dueAt = formatZonedLocalInput(
+            new Date(shiftedDue.getTime() + 60 * 60_000),
+            timezone,
+          )
+        }
       }
 
       return next

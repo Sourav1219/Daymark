@@ -10,7 +10,9 @@
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --experimental-strip-types scripts/validate-server-env.ts",
     "build": "next build",
+    "prestart": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --experimental-strip-types scripts/validate-server-env.ts",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",

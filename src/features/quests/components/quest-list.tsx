@@ -59,10 +59,13 @@ import {
   type RestoredTaskNotice,
 } from "@/features/quests/components/task-restored-popup"
 import { maxSubquestDepth } from "@/features/quests/domain/subquest-depth"
-import type { QuestPriority, QuestView } from "@/features/quests/domain/types"
+import {
+  trashRetentionMilliseconds,
+  type QuestPriority,
+  type QuestView,
+} from "@/features/quests/domain/types"
 import type { ActionResult } from "@/lib/actions/action-result"
 import type { QuestMutationSummary } from "@/features/quests/mutations/quest-mutation-service"
-import { localDateForInstant } from "@/features/progression/domain/progression"
 import {
   defaultTimezone,
   formatZonedDateTime,
@@ -443,8 +446,10 @@ function QuestCard({
     depth < maxSubquestDepth
   const restorable =
     quest.deletedAt !== null &&
-    localDateForInstant(new Date(quest.deletedAt), timezone) ===
-      localDateForInstant(new Date(referenceNow), timezone)
+    new Date(referenceNow).getTime() - new Date(quest.deletedAt).getTime() >=
+      0 &&
+    new Date(referenceNow).getTime() - new Date(quest.deletedAt).getTime() <=
+      trashRetentionMilliseconds
 
   if (mode === "deleted") {
     return (
@@ -509,7 +514,7 @@ function QuestCard({
               <div>
                 <strong>
                   {restorable
-                    ? "Restorable until midnight"
+                    ? "Restorable for 30 days"
                     : "Restore window expired"}
                 </strong>
                 <span>

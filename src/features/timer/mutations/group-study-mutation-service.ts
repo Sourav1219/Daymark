@@ -27,6 +27,7 @@ import {
   lockActiveGroupStudyParticipantForModeration,
   lockGroupStudySessionRecord,
   markGroupStudyParticipantLeft,
+  transferGroupStudyHostRecord,
   updateGroupStudySessionRecord,
   updateGroupStudyJoinRequestStatus,
 } from "@/features/timer/repositories/group-study-repository"
@@ -670,15 +671,21 @@ export async function leaveGroupStudyForTimer(
     userId: access.userId,
   })
 
-  if (
-    room.status === "active" &&
-    (await countActiveGroupStudyParticipants(
-      database,
-      room.workspaceId,
-      participant.groupSessionId,
-    )) === 0
-  ) {
+  const remaining = await countActiveGroupStudyParticipants(
+    database,
+    room.workspaceId,
+    participant.groupSessionId,
+  )
+  if (room.status === "active" && remaining === 0) {
     await closeGroupStudySessionRecord(database, {
+      expectedVersion: room.version,
+      groupSessionId: room.id,
+      now: input.now,
+      workspaceId: room.workspaceId,
+    })
+  } else if (room.status === "active" && room.hostUserId === access.userId) {
+    await transferGroupStudyHostRecord(database, {
+      departedUserId: access.userId,
       expectedVersion: room.version,
       groupSessionId: room.id,
       now: input.now,

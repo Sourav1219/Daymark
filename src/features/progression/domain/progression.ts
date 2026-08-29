@@ -1,5 +1,3 @@
-import { DateTime } from "luxon"
-
 import type { QuestPriority } from "@/features/quests/domain/types"
 
 export const maximumExperiencePoints = 2_000_000_000
@@ -155,16 +153,16 @@ export function calculateCompletionStreak(
   let best = 1
   let run = 1
   for (let index = 1; index < sortedDates.length; index += 1) {
-    const previous = DateTime.fromISO(sortedDates[index - 1]!, { zone: "utc" })
-    const current = DateTime.fromISO(sortedDates[index]!, { zone: "utc" })
-    run = current.diff(previous, "days").days === 1 ? run + 1 : 1
+    const previous = Date.parse(`${sortedDates[index - 1]}T00:00:00Z`)
+    const current = Date.parse(`${sortedDates[index]}T00:00:00Z`)
+    run = (current - previous) / 86_400_000 === 1 ? run + 1 : 1
     best = Math.max(best, run)
   }
 
   const last = sortedDates.at(-1)!
-  const today = DateTime.fromISO(todayLocalDate, { zone: "utc" })
-  const lastDate = DateTime.fromISO(last, { zone: "utc" })
-  const daysSinceClear = today.diff(lastDate, "days").days
+  const today = Date.parse(`${todayLocalDate}T00:00:00Z`)
+  const lastDate = Date.parse(`${last}T00:00:00Z`)
+  const daysSinceClear = (today - lastDate) / 86_400_000
 
   if (daysSinceClear !== 0 && daysSinceClear !== 1) {
     return { best, current: 0, lastClearedLocalDate: last }
@@ -172,9 +170,9 @@ export function calculateCompletionStreak(
 
   let current = 1
   for (let index = sortedDates.length - 1; index > 0; index -= 1) {
-    const later = DateTime.fromISO(sortedDates[index]!, { zone: "utc" })
-    const earlier = DateTime.fromISO(sortedDates[index - 1]!, { zone: "utc" })
-    if (later.diff(earlier, "days").days !== 1) break
+    const later = Date.parse(`${sortedDates[index]}T00:00:00Z`)
+    const earlier = Date.parse(`${sortedDates[index - 1]}T00:00:00Z`)
+    if ((later - earlier) / 86_400_000 !== 1) break
     current += 1
   }
 
@@ -182,20 +180,36 @@ export function calculateCompletionStreak(
 }
 
 export function localDateForInstant(instant: Date, timezone: string): string {
-  return DateTime.fromJSDate(instant, { zone: "utc" })
-    .setZone(timezone)
-    .toISODate()!
+  const values = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US-u-ca-gregory-nu-latn", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: timezone,
+      year: "numeric",
+    })
+      .formatToParts(instant)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  )
+  return `${values.year}-${values.month}-${values.day}`
 }
 
 export function localWeekBounds(
   instant: Date,
   timezone: string,
 ): Readonly<{ end: string; start: string; today: string }> {
-  const local = DateTime.fromJSDate(instant, { zone: "utc" }).setZone(timezone)
+  const today = localDateForInstant(instant, timezone)
+  const local = new Date(`${today}T00:00:00Z`)
+  const weekday = local.getUTCDay() || 7
+  const shift = (days: number) => {
+    const value = new Date(local)
+    value.setUTCDate(value.getUTCDate() + days)
+    return value.toISOString().slice(0, 10)
+  }
 
   return {
-    end: local.endOf("week").toISODate()!,
-    start: local.startOf("week").toISODate()!,
-    today: local.toISODate()!,
+    end: shift(7 - weekday),
+    start: shift(1 - weekday),
+    today,
   }
 }

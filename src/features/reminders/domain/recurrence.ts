@@ -35,20 +35,30 @@ function asZonedFloating(instant: Date, timezone: string): Date {
 }
 
 function floatingToInstant(value: Date, timezone: string): Date {
-  const zoned = DateTime.fromObject(
-    {
-      day: value.getUTCDate(),
-      hour: value.getUTCHours(),
-      millisecond: value.getUTCMilliseconds(),
-      minute: value.getUTCMinutes(),
-      month: value.getUTCMonth() + 1,
-      second: value.getUTCSeconds(),
-      year: value.getUTCFullYear(),
-    },
-    { zone: timezone },
-  )
+  const requested = {
+    day: value.getUTCDate(),
+    hour: value.getUTCHours(),
+    millisecond: value.getUTCMilliseconds(),
+    minute: value.getUTCMinutes(),
+    month: value.getUTCMonth() + 1,
+    second: value.getUTCSeconds(),
+    year: value.getUTCFullYear(),
+  }
+  const zoned = DateTime.fromObject(requested, { zone: timezone })
 
-  if (!zoned.isValid) {
+  // Luxon normalizes spring-forward gaps (for example 02:30 to 03:30)
+  // instead of marking them invalid. Round-trip every wall-clock component so
+  // recurrence generation never silently changes the requested local time.
+  if (
+    !zoned.isValid ||
+    zoned.year !== requested.year ||
+    zoned.month !== requested.month ||
+    zoned.day !== requested.day ||
+    zoned.hour !== requested.hour ||
+    zoned.minute !== requested.minute ||
+    zoned.second !== requested.second ||
+    zoned.millisecond !== requested.millisecond
+  ) {
     throw new RecurrenceRuleError(
       "The recurrence falls on an invalid local time.",
     )
@@ -113,7 +123,18 @@ export function calculateNextOccurrence(
     tzid: null,
     until: parsed.until ? asZonedFloating(parsed.until, timezone) : null,
   })
-  const next = rule.after(asZonedFloating(after, timezone), false)
+  let next = rule.after(asZonedFloating(after, timezone), false)
+  while (next) {
+    try {
+      return floatingToInstant(next, timezone)
+    } catch (error) {
+      if (!(error instanceof RecurrenceRuleError)) throw error
+      // A spring-forward gap has no corresponding instant. Consume only that
+      // occurrence and ask the floating rule for the next wall-clock value;
+      // this preserves the configured hour instead of shifting the series.
+      next = rule.after(next, false)
+    }
+  }
 
-  return next ? floatingToInstant(next, timezone) : null
+  return null
 }

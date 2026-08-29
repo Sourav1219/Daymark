@@ -10,7 +10,8 @@ import {
 } from "@/features/quests/domain/today-window"
 import {
   defaultQuestFilters,
-  questListLimit,
+  questMutationBatchLimit,
+  questPageSize,
   type QuestLabelBadge,
   type QuestListFilters,
   type QuestListKind,
@@ -33,6 +34,7 @@ type QuestQueryOptions = Readonly<{
   filters?: Partial<QuestListFilters>
   limit?: number
   now?: Date
+  offset?: number
 }>
 
 type MutableListOptions = {
@@ -49,7 +51,7 @@ export async function getQuestParentOptions(
   return listQuestParentRecords(
     database,
     access,
-    options.limit ?? questListLimit,
+    options.limit ?? questMutationBatchLimit,
   )
 }
 
@@ -97,7 +99,8 @@ export async function getQuestList(
   const now = options.now ?? new Date()
 
   const listOptions: MutableListOptions = {
-    limit: options.limit ?? questListLimit,
+    limit: options.limit ?? questPageSize,
+    offset: options.offset ?? 0,
     now,
   }
 

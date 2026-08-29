@@ -5,6 +5,7 @@ import { ListOrdered, Plus, Search, Trash2 } from "lucide-react"
 
 import { QuestCreateForm } from "@/features/quests/components/quest-create-form"
 import { QuestFilterBar } from "@/features/quests/components/quest-filter-bar"
+import { QuestPagination } from "@/features/quests/components/quest-pagination"
 import type { AttachmentView } from "@/features/attachments/domain/types"
 import type {
   QuestGateOption,
@@ -22,6 +23,8 @@ import { useOffline } from "@/features/offline/components/offline-provider"
 
 type QuestActiveBoardProps = Readonly<{
   attachmentsByQuest: Readonly<Record<string, readonly AttachmentView[]>>
+  activePage?: number
+  activeHasNextPage?: boolean
   deletedQuests: readonly QuestView[]
   emptyDescription: string
   emptyTitle: string
@@ -34,10 +37,14 @@ type QuestActiveBoardProps = Readonly<{
   referenceNow?: string
   storageAvailable: boolean
   timezone: string
+  trashPage?: number
+  trashHasNextPage?: boolean
 }>
 
 export function QuestActiveBoard({
   attachmentsByQuest,
+  activeHasNextPage = false,
+  activePage = 1,
   deletedQuests,
   emptyDescription,
   emptyTitle,
@@ -50,6 +57,8 @@ export function QuestActiveBoard({
   referenceNow = new Date().toISOString(),
   storageAvailable,
   timezone,
+  trashHasNextPage = false,
+  trashPage = 1,
 }: QuestActiveBoardProps) {
   const [activeTab, setActiveTab] = useState<"create" | "search" | "trash">(
     isFiltered ? "search" : "create",
@@ -232,6 +241,10 @@ export function QuestActiveBoard({
               storageAvailable={storageAvailable}
               timezone={timezone}
             />
+            <QuestPagination
+              hasNextPage={activeHasNextPage}
+              page={activePage}
+            />
           </div>
         ) : (
           <div className="quest-search-empty quest-search-empty--no-results">
@@ -254,7 +267,7 @@ export function QuestActiveBoard({
         role="tabpanel"
       >
         <QuestList
-          emptyDescription="Tasks moved to Trash appear here. Same-day deletions can be restored; older tasks can be copied for today."
+          emptyDescription="Tasks moved to Trash appear here. Deletions can be restored for 30 days."
           emptyTitle="Trash is empty"
           gates={gates}
           mode="deleted"
@@ -263,6 +276,11 @@ export function QuestActiveBoard({
           referenceNow={referenceNow}
           storageAvailable={storageAvailable}
           timezone={timezone}
+        />
+        <QuestPagination
+          hasNextPage={trashHasNextPage}
+          page={trashPage}
+          paramName="trashPage"
         />
       </section>
     </div>

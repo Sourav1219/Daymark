@@ -64,6 +64,7 @@ export async function processDueReminders(
         reminder,
         delivery.providerMessageId,
         delivery.deliveredAt ?? now,
+        false,
       )
       delivered += 1
       continue
@@ -86,23 +87,32 @@ export async function processDueReminders(
           now,
         ),
       )
-      // Push mirrors the in-app reminder channel; it never creates a second,
-      // push-only class of alerts.
-      if (options.push && reminder.channel === "in_app") {
-        await sendPushReminder(
-          database,
-          reminder.userId,
-          reminder.questId,
-          options.push,
-        )
-      }
       delivered += 1
+
+      // Push mirrors an already-durable in-app notification. A transient push
+      // outage must not overwrite the successful reminder delivery.
+      if (options.push && reminder.channel === "in_app") {
+        try {
+          await sendPushReminder(
+            database,
+            reminder.userId,
+            reminder.questId,
+            options.push,
+          )
+        } catch (error) {
+          logger.error(
+            "Reminder push mirror failed",
+            error instanceof Error ? error : undefined,
+            { reminder_id: reminder.id },
+          )
+        }
+      }
     } catch (error) {
       const code = errorCode(error)
+      const attemptedCount = reminder.attemptCount + 1
       const delay =
-        retryDelays[
-          Math.min(reminder.attemptCount - 1, retryDelays.length - 1)
-        ] ?? 15 * 60_000
+        retryDelays[Math.min(attemptedCount - 1, retryDelays.length - 1)] ??
+        15 * 60_000
       const status = await database.transaction((transaction) =>
         failReminderDeliveryRecord(
           transaction,
@@ -117,13 +127,15 @@ export async function processDueReminders(
         "Reminder delivery failed",
         error instanceof Error ? error : undefined,
         {
-          attempt: reminder.attemptCount,
+          attempt: attemptedCount,
           code,
           reminder_id: reminder.id,
           terminal: status === "failed",
         },
       )
-      if (status === "failed") {
+      if (status === "delivered") {
+        delivered += 1
+      } else if (status === "failed") {
         failed += 1
       } else {
         retried += 1

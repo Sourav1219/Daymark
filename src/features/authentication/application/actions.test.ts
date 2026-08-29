@@ -189,7 +189,7 @@ describe("account email requests", () => {
     )
   })
 
-  it("returns a generic verification response regardless of delivery outcome", async () => {
+  it("reports infrastructure failure instead of claiming verification was sent", async () => {
     sendVerificationOTP.mockResolvedValueOnce({ status: true })
     const sent = await finishNormalizedRequest(
       resendVerificationAction(null, emailForm()),
@@ -199,7 +199,14 @@ describe("account email requests", () => {
       resendVerificationAction(null, emailForm()),
     )
 
-    expect(failed).toEqual(sent)
+    expect(failed).toEqual({
+      error: {
+        code: "INTERNAL_ERROR",
+        message:
+          "Email delivery is temporarily unavailable. Please try again shortly.",
+      },
+      ok: false,
+    })
     expect(sent).toEqual({
       data: {
         email: "person@example.test",
@@ -231,6 +238,21 @@ describe("account email requests", () => {
         },
       }),
     )
+  })
+
+  it("reports a password-reset delivery outage", async () => {
+    requestPasswordReset.mockRejectedValue(new Error("provider down"))
+
+    await expect(
+      finishNormalizedRequest(requestPasswordResetAction(null, emailForm())),
+    ).resolves.toEqual({
+      error: {
+        code: "INTERNAL_ERROR",
+        message:
+          "Email delivery is temporarily unavailable. Please try again shortly.",
+      },
+      ok: false,
+    })
   })
 })
 

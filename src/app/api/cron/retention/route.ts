@@ -11,12 +11,11 @@ import {
   purgeStaleDeletedTasks,
 } from "@/features/quests/repositories/task-retention-repository"
 import { deleteJoinRequestsForSessionsEndedBefore } from "@/features/timer/repositories/group-study-retention-repository"
+import { trashRetentionMilliseconds } from "@/features/quests/domain/types"
 
 export const dynamic = "force-dynamic"
 
 /** Trash rows older than this are auto-purged, matching permanent delete. */
-const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000
-
 /** Fully purged tombstones are hard deleted after a second grace period. */
 const TOMBSTONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000
 
@@ -74,7 +73,7 @@ async function runRetentionSweep(request: Request) {
     async () => {
       purgedTasks = await purgeStaleDeletedTasks(
         database,
-        new Date(now.getTime() - TRASH_RETENTION_MS),
+        new Date(now.getTime() - trashRetentionMilliseconds),
         now,
       )
     },

@@ -14,6 +14,7 @@ import {
   isNull,
   lt,
   lte,
+  ne,
   or,
   sql,
 } from "drizzle-orm"
@@ -73,26 +74,6 @@ const reminderSelection = {
   workspaceId: reminders.workspaceId,
 }
 
-function activeAccessPredicate(
-  database: DatabaseExecutor,
-  access: AccessContext,
-) {
-  return exists(
-    database
-      .select({ id: workspaceMembers.id })
-      .from(workspaceMembers)
-      .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
-      .where(
-        and(
-          eq(workspaceMembers.userId, access.userId),
-          eq(workspaceMembers.workspaceId, access.workspaceId),
-          isNull(workspaceMembers.deletedAt),
-          isNull(workspaces.deletedAt),
-        ),
-      ),
-  )
-}
-
 export async function createReminderRecord(
   database: DatabaseExecutor,
   access: AccessContext,
@@ -113,7 +94,6 @@ export async function createReminderRecord(
         eq(tasks.workspaceId, access.workspaceId),
         eq(tasks.status, "open"),
         isNull(tasks.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .limit(1)
@@ -152,7 +132,6 @@ export async function findReminderRecord(
         eq(reminders.workspaceId, access.workspaceId),
         eq(reminders.userId, access.userId),
         isNull(reminders.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .limit(1)
@@ -209,7 +188,6 @@ export async function updateReminderRecord(
         inArray(reminders.status, ["pending", "retrying"]),
         isNull(reminders.deletedAt),
         questIsActive,
-        activeAccessPredicate(database, access),
       ),
     )
     .returning(reminderSelection)
@@ -239,7 +217,6 @@ export async function cancelReminderRecord(
         eq(reminders.version, input.expectedVersion),
         inArray(reminders.status, ["pending", "retrying"]),
         isNull(reminders.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .returning(reminderSelection)
@@ -277,7 +254,6 @@ export async function listReminderViews(
         eq(reminders.workspaceId, access.workspaceId),
         eq(reminders.userId, access.userId),
         isNull(reminders.deletedAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(asc(reminders.remindAt), desc(reminders.updatedAt))
@@ -315,7 +291,6 @@ export async function listNotificationViews(
       and(
         eq(inAppNotifications.workspaceId, access.workspaceId),
         eq(inAppNotifications.userId, access.userId),
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(desc(inAppNotifications.createdAt))
@@ -345,7 +320,6 @@ export async function listDueSoonQuestViews(
         isNotNull(tasks.dueAt),
         gt(tasks.dueAt, options.now),
         lt(tasks.dueAt, options.until),
-        activeAccessPredicate(database, access),
       ),
     )
     .orderBy(asc(tasks.dueAt))
@@ -372,7 +346,6 @@ export async function markNotificationReadRecord(
         eq(inAppNotifications.workspaceId, access.workspaceId),
         eq(inAppNotifications.userId, access.userId),
         isNull(inAppNotifications.readAt),
-        activeAccessPredicate(database, access),
       ),
     )
     .returning({ id: inAppNotifications.id })
@@ -559,7 +532,6 @@ export async function claimDueReminderRecords(
   const rows = await database
     .update(reminders)
     .set({
-      attemptCount: sql`${reminders.attemptCount} + 1`,
       processingStartedAt: now,
       status: "processing",
       updatedAt: now,
@@ -602,7 +574,7 @@ export async function beginReminderDeliveryRecord(
   const [delivery] = await database
     .insert(reminderDeliveries)
     .values({
-      attemptCount: reminder.attemptCount,
+      attemptCount: reminder.attemptCount + 1,
       channel: reminder.channel,
       idempotencyKey: reminder.idempotencyKey,
       reminderId: reminder.id,
@@ -612,7 +584,7 @@ export async function beginReminderDeliveryRecord(
     .onConflictDoUpdate({
       target: reminderDeliveries.idempotencyKey,
       set: {
-        attemptCount: reminder.attemptCount,
+        attemptCount: sql`case when ${reminderDeliveries.status} = 'delivered' then ${reminderDeliveries.attemptCount} else ${reminder.attemptCount + 1} end`,
         status: sql`case when ${reminderDeliveries.status} = 'delivered' then 'delivered' else 'processing' end`,
         updatedAt: new Date(),
       },
@@ -627,6 +599,7 @@ export async function completeReminderDeliveryRecord(
   reminder: ClaimedReminder,
   providerMessageId: string | null,
   deliveredAt: Date,
+  chargeAttempt = true,
 ): Promise<void> {
   await database
     .update(reminderDeliveries)
@@ -652,6 +625,9 @@ export async function completeReminderDeliveryRecord(
   await database
     .update(reminders)
     .set({
+      ...(chargeAttempt
+        ? { attemptCount: sql`${reminders.attemptCount} + 1` }
+        : {}),
       deliveredAt,
       lastErrorCode: null,
       processingStartedAt: null,
@@ -670,18 +646,54 @@ export async function failReminderDeliveryRecord(
   errorCode: string,
   nextAttemptAt: Date,
   failedAt: Date,
-): Promise<"failed" | "retrying"> {
-  const terminal = reminder.attemptCount >= reminder.maxAttempts
+): Promise<"delivered" | "failed" | "retrying"> {
+  const attemptedCount = reminder.attemptCount + 1
+  const terminal = attemptedCount >= reminder.maxAttempts
   const status = terminal ? "failed" : "retrying"
 
-  await database
+  const [failedDelivery] = await database
     .update(reminderDeliveries)
     .set({ errorCode, status: "failed", updatedAt: failedAt })
-    .where(eq(reminderDeliveries.idempotencyKey, reminder.idempotencyKey))
+    .where(
+      and(
+        eq(reminderDeliveries.idempotencyKey, reminder.idempotencyKey),
+        ne(reminderDeliveries.status, "delivered"),
+      ),
+    )
+    .returning({ id: reminderDeliveries.id })
+
+  // A concurrent worker may have committed delivery while this worker was
+  // handling a provider error. Never downgrade that durable outcome.
+  if (!failedDelivery) {
+    const [delivered] = await database
+      .select({
+        deliveredAt: reminderDeliveries.deliveredAt,
+        providerMessageId: reminderDeliveries.providerMessageId,
+      })
+      .from(reminderDeliveries)
+      .where(
+        and(
+          eq(reminderDeliveries.idempotencyKey, reminder.idempotencyKey),
+          eq(reminderDeliveries.status, "delivered"),
+        ),
+      )
+      .limit(1)
+    if (delivered) {
+      await completeReminderDeliveryRecord(
+        database,
+        reminder,
+        delivered.providerMessageId,
+        delivered.deliveredAt ?? failedAt,
+        false,
+      )
+      return "delivered"
+    }
+  }
 
   await database
     .update(reminders)
     .set({
+      attemptCount: attemptedCount,
       lastErrorCode: errorCode,
       nextAttemptAt,
       processingStartedAt: null,

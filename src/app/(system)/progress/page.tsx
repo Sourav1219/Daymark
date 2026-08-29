@@ -27,5 +27,11 @@ export default async function ProgressPage({
       ? requestedDate
       : todayDate
 
-  return <ProgressRoute access={access} selectedDate={selectedDate} />
+  return (
+    <ProgressRoute
+      access={access}
+      selectedDate={selectedDate}
+      timezone={settings.timezone}
+    />
+  )
 }

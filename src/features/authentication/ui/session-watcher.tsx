@@ -10,7 +10,7 @@ import { ACTIVE_SESSIONS_CHANGED_EVENT } from "@/features/authentication/client/
 import { clearPrivateOfflineData } from "@/features/offline/storage/offline-database"
 
 /** How often to silently probe the session (ms). */
-const POLL_INTERVAL_MS = 30_000
+const POLL_INTERVAL_MS = 5 * 60_000
 
 /**
  * Silent background watcher mounted inside the authenticated app shell.
@@ -39,6 +39,8 @@ export function SessionWatcher() {
   }, [router])
 
   const checkSession = useCallback(async () => {
+    if (document.visibilityState !== "visible") return false
+
     try {
       const response = await fetch("/api/session/ping", {
         cache: "no-store",

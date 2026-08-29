@@ -32,6 +32,7 @@ import type {
 } from "@/features/attachments/validation/attachment-validation"
 import { findQuestRecord } from "@/features/quests/repositories/quest-repository"
 import { lockWorkspaceForMutation } from "@/features/workspaces/infrastructure/workspace-access-repository"
+import { logger } from "@/lib/observability/logger"
 import { attachmentQuotaAvailable } from "@/lib/resource-quotas"
 
 export type AttachmentUploadReceipt = Readonly<{
@@ -206,7 +207,12 @@ export async function finalizeAttachmentUpload(
   let inspection: Awaited<ReturnType<AttachmentStorage["inspectObject"]>>
   try {
     inspection = await storage.inspectObject(record.storageKey)
-  } catch {
+  } catch (error) {
+    logger.error(
+      "Attachment object inspection failed",
+      error instanceof Error ? error : undefined,
+      { attachment_id: record.id },
+    )
     throw new AttachmentServiceError(
       "STORAGE_UNAVAILABLE",
       "The uploaded object could not be verified. Retry shortly.",
@@ -252,10 +258,20 @@ export async function finalizeAttachmentUpload(
       throw new Error("Promoted object verification failed")
     }
     await storage.deleteObject(record.storageKey)
-  } catch {
+  } catch (error) {
+    logger.error(
+      "Attachment object promotion failed",
+      error instanceof Error ? error : undefined,
+      { attachment_id: record.id },
+    )
     try {
       await storage.deleteObject(permanentStorageKey)
-    } catch {
+    } catch (cleanupError) {
+      logger.error(
+        "Attachment promotion cleanup failed",
+        cleanupError instanceof Error ? cleanupError : undefined,
+        { attachment_id: record.id },
+      )
       // The final key is random and has no metadata reference. A bucket
       // lifecycle rule is the last-resort cleanup if this removal fails.
     }
@@ -347,7 +363,12 @@ export async function deleteAttachment(
 
   try {
     await storage.deleteObject(deleting.storageKey)
-  } catch {
+  } catch (error) {
+    logger.error(
+      "Attachment object deletion failed",
+      error instanceof Error ? error : undefined,
+      { attachment_id: deleting.id },
+    )
     await withWorkspaceMutation(database, access, (transaction) =>
       restoreAttachmentAfterDeleteFailure(
         transaction,
@@ -397,7 +418,12 @@ export async function cleanupAbandonedAttachments(
         now,
       )
       removed += 1
-    } catch {
+    } catch (error) {
+      logger.error(
+        "Abandoned attachment cleanup failed",
+        error instanceof Error ? error : undefined,
+        { attachment_id: record.id },
+      )
       failed += 1
     }
   }

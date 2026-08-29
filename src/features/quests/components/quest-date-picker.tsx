@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { format } from "date-fns"
 import { CalendarDays, ChevronDown } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -12,6 +11,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+
+const compactDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+})
+const expandedDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  weekday: "long",
+})
 
 function calendarDate(value: string): Date | undefined {
   const [year, month, day] = value.split("-").map(Number)
@@ -62,7 +72,7 @@ export function QuestDatePicker({
         >
           <CalendarDays aria-hidden="true" />
           <span>
-            {selected ? format(selected, "d MMM yyyy") : "Choose date"}
+            {selected ? compactDateFormatter.format(selected) : "Choose date"}
           </span>
           <ChevronDown
             aria-hidden="true"
@@ -80,7 +90,9 @@ export function QuestDatePicker({
           <div>
             <strong>Select a date</strong>
             <span>
-              {selected ? format(selected, "EEEE, d MMMM") : "No date selected"}
+              {selected
+                ? expandedDateFormatter.format(selected)
+                : "No date selected"}
             </span>
           </div>
         </div>

@@ -12,7 +12,7 @@ type ErrorStateProps = Readonly<{
 }>
 
 export function ErrorState({
-  description = "The interface could not complete that request. Your data has not been changed.",
+  description = "The interface could not complete that request. Check the latest state before trying again.",
   onRetry,
   title = "The signal broke formation.",
 }: ErrorStateProps) {

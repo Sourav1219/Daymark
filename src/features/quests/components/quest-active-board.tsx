@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { ListOrdered, Plus, Search, Trash2 } from "lucide-react"
 
 import { QuestCreateForm } from "@/features/quests/components/quest-create-form"
@@ -16,10 +16,8 @@ import {
 } from "@/features/quests/components/quest-list"
 import type {
   QuestListFilters,
-  QuestPriority,
   QuestView,
 } from "@/features/quests/domain/types"
-import { parseZonedLocalDateTime } from "@/features/reminders/domain/timezone"
 import { useOffline } from "@/features/offline/components/offline-provider"
 
 type QuestActiveBoardProps = Readonly<{
@@ -37,12 +35,6 @@ type QuestActiveBoardProps = Readonly<{
   storageAvailable: boolean
   timezone: string
 }>
-
-function optionalZonedIso(value: FormDataEntryValue | null, timezone: string) {
-  return typeof value === "string" && value
-    ? (parseZonedLocalDateTime(value, timezone)?.toISOString() ?? null)
-    : null
-}
 
 export function QuestActiveBoard({
   attachmentsByQuest,
@@ -62,10 +54,6 @@ export function QuestActiveBoard({
   const [activeTab, setActiveTab] = useState<"create" | "search" | "trash">(
     isFiltered ? "search" : "create",
   )
-  const [pendingQuest, setPendingQuest] = useState<
-    (QuestView & Readonly<{ optimistic: true }>) | null
-  >(null)
-  const [announcement, setAnnouncement] = useState("")
   const [offlineQueuedQuests, setOfflineQueuedQuests] = useState<
     readonly QuestView[]
   >([])
@@ -74,7 +62,6 @@ export function QuestActiveBoard({
     synced: filters.search,
   }))
   const [showAllForOrdering, setShowAllForOrdering] = useState(false)
-  const pendingTitle = useRef<string | null>(null)
   const { isOffline, pendingCount, snapshotQuests } = useOffline()
 
   useEffect(() => {
@@ -91,56 +78,6 @@ export function QuestActiveBoard({
     }
   }, [isOffline, pendingCount, quests, snapshotQuests])
 
-  const beginCreate = useCallback(
-    (formData: FormData) => {
-      const projectId = String(formData.get("projectId") ?? "") || null
-      const parentTaskId = String(formData.get("parentTaskId") ?? "") || null
-      const title = String(formData.get("title") ?? "").trim()
-      pendingTitle.current = title
-
-      setPendingQuest({
-        completedAt: null,
-        deletedAt: null,
-        description: String(formData.get("description") ?? "").trim(),
-        dueAt: optionalZonedIso(formData.get("dueAt"), timezone),
-        gateName: gates.find(({ id }) => id === projectId)?.name ?? null,
-        id: `optimistic-${crypto.randomUUID()}`,
-        labels: [],
-        optimistic: true,
-        parentTaskId,
-        position: quests.length,
-        priority: String(formData.get("priority") ?? "medium") as QuestPriority,
-        projectId,
-        recurrenceOccurrenceAt: null,
-        recurrenceRule:
-          String(formData.get("recurrenceRule") ?? "")
-            .trim()
-            .toUpperCase() || null,
-        recurrenceSequence: null,
-        recurrenceSeriesId: null,
-        recurrenceTimezone: null,
-        startAt: optionalZonedIso(formData.get("startAt"), timezone),
-        status: "open",
-        subquestCount: 0,
-        title,
-        version: 1,
-      })
-      setAnnouncement(`${title} is being created.`)
-    },
-    [gates, quests.length, timezone],
-  )
-  const settleCreate = useCallback((succeeded: boolean) => {
-    const title = pendingTitle.current
-    setPendingQuest(null)
-    if (title) {
-      setAnnouncement(
-        succeeded
-          ? `${title} was created.`
-          : `${title} could not be added. The optimistic task was removed.`,
-      )
-    }
-    pendingTitle.current = null
-  }, [])
   const hasSearchCriteria =
     searchState.draft.trim().length > 0 ||
     filters.due !== "any" ||
@@ -166,15 +103,6 @@ export function QuestActiveBoard({
 
   return (
     <div className="quest-studio">
-      <p
-        aria-atomic="true"
-        aria-live="polite"
-        className="sr-only"
-        role="status"
-      >
-        {announcement}
-      </p>
-
       <header className="quest-overview">
         <div className="quest-overview__heading">
           <div>
@@ -240,30 +168,12 @@ export function QuestActiveBoard({
       >
         <QuestCreateForm
           gates={gates}
-          onOptimisticCreate={beginCreate}
           onOfflineQueued={(quest) =>
             setOfflineQueuedQuests((current) => [...current, quest])
           }
-          onSettled={settleCreate}
           parentOptions={parentOptions}
           timezone={timezone}
         />
-        {pendingQuest ? (
-          <div aria-label="Pending task creation" className="mt-5">
-            <QuestList
-              attachmentsByQuest={{}}
-              emptyDescription={emptyDescription}
-              emptyTitle={emptyTitle}
-              gates={gates}
-              labels={labels}
-              mode="active"
-              parentOptions={parentOptions}
-              quests={[pendingQuest]}
-              storageAvailable={storageAvailable}
-              timezone={timezone}
-            />
-          </div>
-        ) : null}
       </section>
 
       <section

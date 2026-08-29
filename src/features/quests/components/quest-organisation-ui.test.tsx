@@ -422,6 +422,52 @@ describe("Quest organisation controls", () => {
     expect(await screen.findByText("Creation undone")).toBeVisible()
   })
 
+  it("keeps creation off the list and returns to the current Home day", async () => {
+    let finishCreation: (() => void) | undefined
+    questActions.createQuestAction.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishCreation = () =>
+            resolve({ data: { id: "created-task", version: 1 }, ok: true })
+        }),
+    )
+    const user = userEvent.setup()
+
+    render(
+      <QuestActiveBoard
+        attachmentsByQuest={{}}
+        deletedQuests={[]}
+        emptyDescription="Try a different search"
+        emptyTitle="No matching tasks"
+        filters={defaultQuestFilters}
+        gates={[]}
+        isFiltered={false}
+        labels={[]}
+        parentOptions={[]}
+        quests={[]}
+        storageAvailable
+        timezone="UTC"
+      />,
+    )
+
+    await user.type(screen.getByLabelText("Task title"), "Invisible draft")
+    await user.click(screen.getByRole("button", { name: "Create Task" }))
+
+    expect(screen.getByRole("button", { name: "Creating Task" })).toBeDisabled()
+    expect(
+      screen.queryByRole("article", { name: "Invisible draft" }),
+    ).not.toBeInTheDocument()
+
+    finishCreation?.()
+    const createdDialog = await screen.findByRole("dialog", {
+      name: "Task created!",
+    })
+    expect(createdDialog).toBeVisible()
+    expect(
+      within(createdDialog).getByRole("link", { name: "Continue" }),
+    ).toHaveAttribute("href", "/today?task=created-task")
+  })
+
   it("keeps Search empty until a query is entered and then shows only matches", async () => {
     questActions.permanentlyDeleteQuestAction.mockResolvedValue({
       data: { id: "recoverable", version: 2 },

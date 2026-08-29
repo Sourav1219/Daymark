@@ -15,9 +15,10 @@ export type OverdueProcessorSummary = Readonly<{
 const defaultOwnerLimit = 50
 
 /**
- * Scheduled counterpart to the on-request sweep. Walks the owners who currently
- * hold overdue tasks and settles each one under its own access context, so a
- * background job can never cross a workspace boundary.
+ * Scheduled overdue-task processor. Walks the owners who currently hold
+ * overdue tasks and settles each one under its own access context, so a
+ * background job can never cross a workspace boundary. Read paths derive the
+ * visible missed state without performing this mutation.
  *
  * @param options.now Instant treated as "now", injectable for tests.
  * @param options.ownerLimit Maximum owners handled in one run.

@@ -150,6 +150,12 @@ export const groupStudyParticipants = pgTable(
       table.leftAt,
     ),
     index("group_study_participants_heartbeat_idx").on(table.lastHeartbeatAt),
+    // Eviction scans for active participants whose heartbeat went stale. The
+    // bare lastHeartbeatAt index above also covers departed participants, who
+    // are never evicted, so the sweep reads far more rows than it needs.
+    index("group_study_participants_active_heartbeat_idx")
+      .on(table.groupSessionId, table.lastHeartbeatAt)
+      .where(sql`${table.leftAt} is null`),
   ],
 )
 

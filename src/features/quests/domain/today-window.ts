@@ -64,33 +64,45 @@ function addCalendarDays(date: CalendarDate, days: number): CalendarDate {
   }
 }
 
-function localMidnightToUtc(date: CalendarDate, timeZone: string): Date {
-  const desired = Date.UTC(date.year, date.month - 1, date.day)
-  let candidate = new Date(desired)
+function calendarDateValue(date: CalendarDate) {
+  return Date.UTC(date.year, date.month - 1, date.day)
+}
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const current = partsAt(candidate, timeZone)
-    const represented = Date.UTC(
-      current.year,
-      current.month - 1,
-      current.day,
-      current.hour,
-      current.minute,
-      current.second,
+/** Finds the first instant represented by a local calendar day. */
+function localMidnightToUtc(date: CalendarDate, timeZone: string): Date | null {
+  const desired = calendarDateValue(date)
+  const searchRadiusMs = 36 * 60 * 60 * 1_000
+  let lower = desired - searchRadiusMs
+  let upper = desired + searchRadiusMs
+
+  // Calendar dates are monotonic even across offset changes. Searching for
+  // the first instant whose represented date is at least the requested date
+  // handles midnight gaps and overlaps without a fixed-point oscillation.
+  while (lower < upper) {
+    const midpoint = lower + Math.floor((upper - lower) / 2)
+    const represented = calendarDateValue(
+      calendarDateAt(new Date(midpoint), timeZone),
     )
-    candidate = new Date(candidate.getTime() + desired - represented)
+    if (represented < desired) lower = midpoint + 1
+    else upper = midpoint
   }
 
-  return candidate
+  const candidate = new Date(lower)
+  return calendarDateValue(calendarDateAt(candidate, timeZone)) === desired
+    ? candidate
+    : null
 }
 
 export function getTodayWindow(now: Date, timeZone: string) {
   const today = calendarDateAt(now, timeZone)
+  const start = localMidnightToUtc(today, timeZone)
+  const end = localMidnightToUtc(addCalendarDays(today, 1), timeZone)
 
-  return {
-    end: localMidnightToUtc(addCalendarDays(today, 1), timeZone),
-    start: localMidnightToUtc(today, timeZone),
+  if (!start || !end) {
+    throw new RangeError("The current local day could not be resolved.")
   }
+
+  return { end, start }
 }
 
 export function getLocalDayWindow(localDate: string, timeZone: string) {
@@ -110,8 +122,20 @@ export function getLocalDayWindow(localDate: string, timeZone: string) {
   }
 
   const calendarDate = { day, month, year }
-  return {
-    end: localMidnightToUtc(addCalendarDays(calendarDate, 1), timeZone),
-    start: localMidnightToUtc(calendarDate, timeZone),
-  }
+  const start = localMidnightToUtc(calendarDate, timeZone)
+  const end = localMidnightToUtc(addCalendarDays(calendarDate, 1), timeZone)
+
+  return start && end ? { end, start } : null
+}
+
+export function resolveTodayDate(
+  requestedDate: string | undefined,
+  todayDate: string,
+  timeZone: string,
+) {
+  return requestedDate &&
+    requestedDate <= todayDate &&
+    getLocalDayWindow(requestedDate, timeZone)
+    ? requestedDate
+    : todayDate
 }

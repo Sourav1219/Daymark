@@ -55,6 +55,16 @@ const attachmentSelection = {
   workspaceId: attachments.workspaceId,
 }
 
+const attachmentListSelection = {
+  byteSize: attachments.byteSize,
+  contentType: attachments.contentType,
+  displayName: attachments.displayName,
+  id: attachments.id,
+  questId: attachments.questId,
+  status: attachments.status,
+  version: attachments.version,
+}
+
 function activeAccessPredicate(
   database: DatabaseExecutor,
   access: AccessContext,
@@ -134,7 +144,7 @@ export function listAttachmentRecords(
   if (questIds.length === 0) return Promise.resolve([])
 
   return database
-    .select(attachmentSelection)
+    .select(attachmentListSelection)
     .from(attachments)
     .where(
       and(

@@ -692,4 +692,56 @@ integrationDescribe("Quest repository and application services", () => {
       getDailyXpSummary(fixture.first, "2026-08-08", database),
     ).resolves.toEqual({ earned: 35, lost: 35, net: 0 })
   })
+
+  it("derives elapsed tasks as missed in reads without mutating during render", async () => {
+    const created = await createQuest(
+      database,
+      fixture.first,
+      questCommand({
+        dueAt: "2026-08-08T16:00",
+        startAt: "2026-08-08T15:00",
+        title: "Elapsed but unsettled task",
+      }),
+    )
+    const now = new Date("2026-08-08T18:00:00.000Z")
+
+    await expect(
+      getQuestList(fixture.first, "active", {
+        database,
+        filters: { status: "open" },
+        now,
+      }),
+    ).resolves.not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: created.id })]),
+    )
+    await expect(
+      getQuestList(fixture.first, "active", {
+        database,
+        filters: { status: "failed" },
+        now,
+      }),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: created.id, status: "failed" }),
+      ]),
+    )
+    await expect(
+      getQuestList(fixture.first, "today", {
+        database,
+        localDate: "2026-08-08",
+        now,
+      }),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: created.id, status: "failed" }),
+      ]),
+    )
+
+    const [persisted] = await database
+      .select({ status: tasks.status })
+      .from(tasks)
+      .where(eq(tasks.id, created.id))
+      .limit(1)
+    expect(persisted?.status).toBe("open")
+  })
 })

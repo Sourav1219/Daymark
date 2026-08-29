@@ -353,7 +353,22 @@ export async function resetPasswordAction(
         headers: await headers(),
       }),
     )
-  } catch {
+  } catch (error) {
+    // Every rejection returns the same message so the response never reveals
+    // why a token failed — expired, already consumed, and malformed tokens are
+    // indistinguishable to the caller.
+    //
+    // Anything that is not a Better Auth APIError is an unexpected
+    // infrastructure failure. It still returns the generic message, but it is
+    // now logged: a database outage used to be reported to the user as an
+    // expired link while leaving no trace anywhere.
+    if (!isAPIError(error)) {
+      logger.error(
+        "Password reset failed unexpectedly",
+        error instanceof Error ? error : undefined,
+      )
+    }
+
     return {
       error: {
         code: "AUTHENTICATION_REQUIRED",

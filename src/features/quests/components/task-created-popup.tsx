@@ -10,7 +10,6 @@ import { softDeleteQuestAction } from "@/features/quests/application/actions"
 import { questHomeHref } from "@/features/quests/domain/quest-links"
 
 export type CreatedTaskNotice = Readonly<{
-  homeDate?: string | null
   id: string
   title: string
   version: number
@@ -26,7 +25,7 @@ export function TaskCreatedPopup({
   task: CreatedTaskNotice
 }>) {
   const router = useRouter()
-  const homeHref = questHomeHref(task.id, task.homeDate)
+  const homeHref = questHomeHref(task.id)
   const [phase, setPhase] = useState<NoticePhase>("created")
   const [pending, startTransition] = useTransition()
 

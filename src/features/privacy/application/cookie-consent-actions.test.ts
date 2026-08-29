@@ -40,10 +40,10 @@ describe("saveCookieConsentAction", () => {
     )
   })
 
-  it("rejects an unknown consent category", async () => {
+  it("ignores an unknown consent category without throwing", async () => {
     await expect(
       saveCookieConsentAction("analytics" as "essential"),
-    ).rejects.toThrow()
+    ).resolves.toBeNull()
     expect(mocks.set).not.toHaveBeenCalled()
   })
 })

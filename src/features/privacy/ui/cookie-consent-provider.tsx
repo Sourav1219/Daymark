@@ -57,6 +57,10 @@ export function CookieConsentProvider({
     startTransition(async () => {
       try {
         const savedConsent = await saveCookieConsentAction(nextConsent)
+        if (!savedConsent) {
+          setError("Your preference could not be saved. Please try again.")
+          return
+        }
         if (savedConsent === "essential") clearOptionalBrowserStorage()
         setConsent(savedConsent)
         setOpen(false)

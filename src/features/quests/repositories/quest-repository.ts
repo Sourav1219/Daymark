@@ -110,6 +110,8 @@ export type QuestListOptions = Readonly<{
   labelId?: string
   limit?: number
   noGate?: boolean
+  /** Instant used to derive the read-only lifecycle of elapsed open tasks. */
+  now?: Date
   priority?: QuestPriority
   search?: string
   sort?: QuestListSort
@@ -160,7 +162,60 @@ function activeAccessPredicate(
   )
 }
 
-function lifecyclePredicate(kind: QuestListKind, options: QuestListOptions) {
+function effectiveQuestStatus(now: Date) {
+  return sql<QuestStatus>`case
+    when ${tasks.status} = 'open'
+      and ${tasks.dueAt} is not null
+      and ${tasks.dueAt} < ${sql.param(now, tasks.dueAt)}
+    then 'failed'
+    else ${tasks.status}
+  end`
+}
+
+/**
+ * The same lifecycle semantics as `effectiveQuestStatus`, expressed against
+ * bare columns so the planner can use an index.
+ *
+ * Postgres matches indexes on column references, not on the result of a CASE
+ * expression, so `eq(effectiveQuestStatus(now), status)` forced a sequential
+ * scan of every task in the workspace on each list query. Filtering on
+ * `tasks.status` lets `tasks_workspace_status_idx` apply.
+ *
+ * Kept in sync with `effectiveQuestStatus`, which still drives projections:
+ *   open      -> status = 'open' AND (dueAt IS NULL OR dueAt >= now)
+ *   failed    -> status = 'failed' OR (status = 'open' AND dueAt < now)
+ *   completed -> status = 'completed'
+ */
+function effectiveStatusPredicate(
+  status: QuestStatus,
+  now: Date,
+): SQL | undefined {
+  if (status === "completed") {
+    return eq(tasks.status, "completed")
+  }
+
+  if (status === "failed") {
+    return or(
+      eq(tasks.status, "failed"),
+      and(
+        eq(tasks.status, "open"),
+        isNotNull(tasks.dueAt),
+        lt(tasks.dueAt, now),
+      ),
+    )
+  }
+
+  return and(
+    eq(tasks.status, "open"),
+    or(isNull(tasks.dueAt), gte(tasks.dueAt, now)),
+  )
+}
+
+function lifecyclePredicate(
+  kind: QuestListKind,
+  options: QuestListOptions,
+  now: Date,
+) {
   if (kind === "deleted") {
     return and(isNotNull(tasks.deletedAt), isNull(tasks.purgedAt))
   }
@@ -176,7 +231,7 @@ function lifecyclePredicate(kind: QuestListKind, options: QuestListOptions) {
   const statusPredicate =
     options.status === "all"
       ? undefined
-      : eq(tasks.status, options.status ?? "open")
+      : effectiveStatusPredicate(options.status ?? "open", now)
 
   return and(isNull(tasks.deletedAt), statusPredicate)
 }
@@ -189,6 +244,7 @@ function filterPredicates(
   database: DatabaseExecutor,
   access: AccessContext,
   options: QuestListOptions,
+  now: Date,
 ): Array<SQL | undefined> {
   const predicates: Array<SQL | undefined> = []
 
@@ -254,6 +310,7 @@ function filterPredicates(
   }
 
   if (options.dayStart && options.dayEnd) {
+    const effectiveStatus = effectiveQuestStatus(now)
     const scheduledInWindow = or(
       and(
         isNotNull(tasks.startAt),
@@ -271,7 +328,7 @@ function filterPredicates(
     predicates.push(
       or(
         and(
-          eq(tasks.status, "open"),
+          eq(effectiveStatus, "open"),
           isNull(tasks.deletedAt),
           or(
             scheduledInWindow,
@@ -281,14 +338,14 @@ function filterPredicates(
           ),
         ),
         and(
-          eq(tasks.status, "completed"),
+          eq(effectiveStatus, "completed"),
           isNull(tasks.deletedAt),
           isNotNull(tasks.completedAt),
           gte(tasks.completedAt, options.dayStart),
           lt(tasks.completedAt, options.dayEnd),
         ),
         and(
-          eq(tasks.status, "failed"),
+          eq(effectiveStatus, "failed"),
           isNull(tasks.deletedAt),
           isNotNull(tasks.dueAt),
           gte(tasks.dueAt, options.dayStart),
@@ -442,6 +499,11 @@ export async function listQuestRecords(
   kind: QuestListKind,
   options: QuestListOptions = {},
 ): Promise<readonly QuestListItem[]> {
+  const now = options.now ?? new Date()
+  const visibleStatus =
+    kind === "active" || kind === "today"
+      ? effectiveQuestStatus(now)
+      : tasks.status
   const subquestCounts = database
     .select({
       parentId: tasks.parentTaskId,
@@ -462,6 +524,7 @@ export async function listQuestRecords(
     .select({
       ...questSelection,
       gateName: gates.name,
+      status: visibleStatus,
       subquestCount: sql<number>`coalesce(${subquestCounts.subquestCount}, 0)::integer`,
     })
     .from(tasks)
@@ -475,8 +538,8 @@ export async function listQuestRecords(
         eq(tasks.workspaceId, access.workspaceId),
         isNull(tasks.purgedAt),
         activeAccessPredicate(database, access),
-        lifecyclePredicate(kind, options),
-        ...filterPredicates(database, access, options),
+        lifecyclePredicate(kind, options, now),
+        ...filterPredicates(database, access, options, now),
       ),
     )
     .orderBy(...sortClauses(options.sort))

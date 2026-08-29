@@ -98,6 +98,7 @@ export async function getQuestList(
 
   const listOptions: MutableListOptions = {
     limit: options.limit ?? questListLimit,
+    now,
   }
 
   if (filters.priority !== "any") {

@@ -74,14 +74,16 @@ const historyLabels = {
 export async function ProgressRoute({
   access,
   selectedDate,
+  timezone,
 }: {
   access: AccessContext
   selectedDate?: string
+  timezone?: string
 }) {
-  const progress = await getProgressionDashboard(
-    access,
-    selectedDate ? { historyDate: selectedDate } : {},
-  )
+  const progress = await getProgressionDashboard(access, {
+    ...(selectedDate ? { historyDate: selectedDate } : {}),
+    ...(timezone ? { timezone } : {}),
+  })
   const historyByDate = new Map<string, typeof progress.history>()
   for (const entry of progress.history) {
     const entries = historyByDate.get(entry.earnedForLocalDate) ?? []

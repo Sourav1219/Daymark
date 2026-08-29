@@ -10,14 +10,19 @@ import { readServerEnv } from "@/lib/env/server"
 type PostgresClient = ReturnType<typeof postgres>
 
 function createPostgresClient(databaseUrl: string, verifyTls: boolean) {
+  const keepDevelopmentConnectionsWarm = process.env.NODE_ENV === "development"
+
   return postgres(databaseUrl, {
     connect_timeout: 10,
-    idle_timeout: 20,
+    // The development database may be several network regions away. Keep its
+    // connections warm so a normal pause in local testing does not repeatedly
+    // pay the full TLS + pooler handshake before the next interaction.
+    idle_timeout: keepDevelopmentConnectionsWarm ? 10 * 60 : 20,
     // The URL targets Supabase's transaction pooler. A tiny bounded pool keeps
     // background timer polling from serialising every page query behind it,
     // while remaining conservative for serverless function instances.
-    max: 3,
-    max_lifetime: 60,
+    max: keepDevelopmentConnectionsWarm ? 6 : 3,
+    max_lifetime: keepDevelopmentConnectionsWarm ? 30 * 60 : 60,
     prepare: false,
     ...(verifyTls ? { ssl: "require" as const } : {}),
   })

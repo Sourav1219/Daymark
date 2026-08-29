@@ -56,7 +56,7 @@ export async function updateProfileNameAction(
       body: { name: parsed.data.name },
       headers: await headers(),
     })
-    revalidatePath("/", "layout")
+    revalidatePath("/profile")
 
     return { data: { name: parsed.data.name }, ok: true }
   } catch {

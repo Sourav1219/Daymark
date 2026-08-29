@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   getLocalDayWindow,
   getTodayWindow,
+  resolveTodayDate,
 } from "@/features/quests/domain/today-window"
 
 describe("workspace Today window", () => {
@@ -35,5 +36,27 @@ describe("workspace Today window", () => {
     expect(window?.start.toISOString()).toBe("2026-08-12T18:30:00.000Z")
     expect(window?.end.toISOString()).toBe("2026-08-13T18:30:00.000Z")
     expect(getLocalDayWindow("2026-02-31", "UTC")).toBeNull()
+  })
+
+  it("resolves midnight timezone transitions without oscillating", () => {
+    const window = getLocalDayWindow("2026-09-06", "America/Santiago")
+
+    expect(window?.start.toISOString()).toBe("2026-09-06T04:00:00.000Z")
+    expect(window?.end.toISOString()).toBe("2026-09-07T03:00:00.000Z")
+  })
+
+  it("never selects a future date for Today", () => {
+    expect(resolveTodayDate("2026-08-30", "2026-08-29", "Asia/Kolkata")).toBe(
+      "2026-08-29",
+    )
+    expect(resolveTodayDate("2026-08-29", "2026-08-29", "Asia/Kolkata")).toBe(
+      "2026-08-29",
+    )
+    expect(resolveTodayDate("2026-08-28", "2026-08-29", "Asia/Kolkata")).toBe(
+      "2026-08-28",
+    )
+    expect(resolveTodayDate("not-a-date", "2026-08-29", "Asia/Kolkata")).toBe(
+      "2026-08-29",
+    )
   })
 })

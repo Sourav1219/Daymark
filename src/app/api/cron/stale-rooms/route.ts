@@ -12,8 +12,11 @@ import {
 import { completeGroupStudyParticipantTimer } from "@/features/timer/repositories/group-study-repository"
 import { calculateTimerElapsedMs } from "@/features/timer/domain/timer"
 import { authorizeCronRequest } from "@/app/api/cron/cron-auth"
+import { logger } from "@/lib/observability/logger"
+import { observeCronOutcome } from "@/lib/observability/metrics"
 
 export const dynamic = "force-dynamic"
+export const maxDuration = 60
 
 /** Participants whose heartbeat is older than this are considered disconnected. */
 const STALE_THRESHOLD_MS = 5 * 60 * 1_000 // 5 minutes
@@ -38,6 +41,7 @@ export async function POST(request: Request) {
 
 async function runStaleRoomsCleanup(request: Request) {
   if (!authorizeCronRequest(request, "stale-rooms")) {
+    observeCronOutcome("stale-rooms", "denied")
     return NextResponse.json({ message: "Unauthorized." }, { status: 401 })
   }
 
@@ -49,6 +53,7 @@ async function runStaleRoomsCleanup(request: Request) {
   const staleParticipants = await findStaleParticipants(database, cutoff)
 
   let evicted = 0
+  let failed = 0
   let roomsClosed = 0
   let processed = 0
   let partial = false
@@ -123,16 +128,32 @@ async function runStaleRoomsCleanup(request: Request) {
           roomsClosed++
         }
       })
-    } catch {
-      // Swallow per-participant errors so the loop continues for others.
+    } catch (error) {
+      // Continue with the rest of the batch, but never report a fully failed
+      // sweep as a healthy no-op.
+      failed++
+      logger.error(
+        "Stale room participant could not be evicted",
+        error instanceof Error ? error : undefined,
+        { participant_id: participant.id },
+      )
     }
   }
 
-  return NextResponse.json({
-    evicted,
-    partial,
-    processed,
-    roomsClosed,
-    stale: staleParticipants.length,
-  })
+  observeCronOutcome(
+    "stale-rooms",
+    failed > 0 ? "failure" : partial ? "partial" : "success",
+  )
+
+  return NextResponse.json(
+    {
+      evicted,
+      failed,
+      partial,
+      processed,
+      roomsClosed,
+      stale: staleParticipants.length,
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  )
 }

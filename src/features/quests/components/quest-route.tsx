@@ -9,7 +9,6 @@ import {
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import { getGateList } from "@/features/gates/queries/gate-query-service"
 import { getLabelList } from "@/features/labels/queries/label-query-service"
-import { sweepOverdueQuests } from "@/features/quests/application/sweep-overdue-quests"
 import { QuestActiveBoard } from "@/features/quests/components/quest-active-board"
 import { QuestFilterBar } from "@/features/quests/components/quest-filter-bar"
 import { QuestList } from "@/features/quests/components/quest-list"
@@ -78,8 +77,6 @@ export async function QuestRoute({
 }: QuestRouteProps) {
   const copy = routeCopy[kind]
   const now = new Date()
-  // Keep every task list agreeing on which tasks have already been missed.
-  await sweepOverdueQuests(access, now)
 
   if (kind === "quests") {
     const activeFilters = filters ?? defaultQuestFilters
@@ -87,8 +84,8 @@ export async function QuestRoute({
 
     const [active, deleted, gates, labels, parentOptions, settings] =
       await Promise.all([
-        getQuestList(access, "active", { filters: activeFilters }),
-        getQuestList(access, "deleted"),
+        getQuestList(access, "active", { filters: activeFilters, now }),
+        getQuestList(access, "deleted", { now }),
         getGateList(access, "active"),
         getLabelList(access),
         getQuestParentOptions(access),
@@ -141,6 +138,7 @@ export async function QuestRoute({
   const [quests, gates, labels, parentOptions, settings] = await Promise.all([
     getQuestList(access, kind === "today" ? "today" : "cleared", {
       filters: fixedViewFilters,
+      now,
     }),
     getGateList(access, "active"),
     getLabelList(access),

@@ -35,7 +35,7 @@ export function renderMetricsSnapshot(): string {
     .join("\n")
 }
 
-export type CronOutcome = "success" | "partial" | "denied"
+export type CronOutcome = "success" | "partial" | "denied" | "failure"
 
 export function observeCronOutcome(job: string, outcome: CronOutcome): void {
   incrementCounter("cron_outcome", { job, outcome })

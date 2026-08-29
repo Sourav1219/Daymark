@@ -179,9 +179,13 @@ export async function getOfflineStorageStatus() {
   return { enabled, locked: enabled && !unlockedKey } as const
 }
 
+export const offlinePasscodeMinLength = 8
+
 export async function enablePrivateOfflineData(passcode: string) {
-  if (passcode.length < 6 || passcode.length > 128) {
-    throw new Error("Use an offline passcode between 6 and 128 characters.")
+  if (passcode.length < offlinePasscodeMinLength || passcode.length > 128) {
+    throw new Error(
+      `Use an offline passcode between ${offlinePasscodeMinLength} and 128 characters.`,
+    )
   }
   const salt = crypto.getRandomValues(new Uint8Array(16))
   const key = await deriveKey(passcode, salt)

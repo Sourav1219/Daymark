@@ -98,7 +98,7 @@ export function OfflineQuestShell() {
                     value={passcode}
                   />
                   <Button
-                    disabled={passcode.length < 6}
+                    disabled={passcode.length === 0}
                     onClick={unlock}
                     type="button"
                   >

@@ -357,6 +357,7 @@ export async function completeQuest(
         current.recurrenceRule,
         current.recurrenceTimezone,
         current.recurrenceOccurrenceAt,
+        completedAt,
       )
 
       if (next) {
@@ -473,6 +474,7 @@ export async function failOverdueQuests(
           quest.recurrenceRule,
           quest.recurrenceTimezone,
           quest.recurrenceOccurrenceAt,
+          now,
         )
 
         if (next) {

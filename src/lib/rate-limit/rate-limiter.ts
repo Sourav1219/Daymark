@@ -4,6 +4,7 @@ import { Ratelimit } from "@upstash/ratelimit"
 import { Redis } from "@upstash/redis"
 
 import { readServerEnv } from "@/lib/env/server"
+import { logger } from "@/lib/observability/logger"
 
 const policies = {
   account: { requests: 10, window: "60 s" },
@@ -24,6 +25,19 @@ const policies = {
 
 export type RateLimitPolicy = keyof typeof policies
 export type RateLimitResult = Awaited<ReturnType<Ratelimit["limit"]>>
+
+/**
+ * Policies that stay strict when the rate-limit backend is unavailable.
+ *
+ * These guard credential attacks and billable storage writes, where admitting
+ * an unmetered request is worse than refusing it. Everything else degrades to
+ * "allow" with a log: failing closed on every policy meant a brief Redis
+ * outage took down sign-in and every task mutation at the same time.
+ */
+const failClosedPolicies = new Set<RateLimitPolicy>([
+  "account",
+  "attachmentUpload",
+])
 
 let redis: Redis | undefined
 const limiters = new Map<string, Ratelimit>()
@@ -112,13 +126,23 @@ export async function enforceRateLimit(
 
   if (checks.length === 0) return null
 
-  // Charge both distributed counters. Any Redis outage fails closed instead
-  // of silently admitting an expensive request.
+  // Charge both distributed counters.
   const results = await Promise.allSettled(checks)
   const rejected = results.find(
     (result): result is PromiseRejectedResult => result.status === "rejected",
   )
-  if (rejected) throw rejected.reason
+  if (rejected) {
+    if (failClosedPolicies.has(input.policy)) {
+      throw rejected.reason
+    }
+
+    logger.error(
+      "Rate limit backend unavailable; allowing request",
+      rejected.reason instanceof Error ? rejected.reason : undefined,
+      { policy: input.policy },
+    )
+    return null
+  }
 
   return results
     .filter(

@@ -172,7 +172,6 @@ function TasksLoadingState() {
                   </details>
                 </div>
                 <div className="quest-create-card__footer">
-                  <span>Ctrl/⌘ + Enter to create</span>
                   <button className="quest-composer__submit" disabled>
                     Create Task
                   </button>

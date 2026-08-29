@@ -36,7 +36,9 @@ describe("stale timer cleanup Route Handler", () => {
     const database = {
       select: () => ({
         from: () => ({
-          where: async () => [timer],
+          where: () => ({
+            limit: async () => [timer],
+          }),
         }),
       }),
       update: () => ({
@@ -61,12 +63,17 @@ describe("stale timer cleanup Route Handler", () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
       closed: 1,
+      failed: 0,
       partial: false,
       stale: 1,
     })
     expect(updateValues).toMatchObject({
       accumulatedMs: 12 * hourMs,
       endedAt: new Date("2026-08-20T09:00:00.000Z"),
+      // The lifecycle CHECK requires completed rows to carry a NULL
+      // lastStartedAt; leaving it set used to fail the constraint and abort
+      // the run before any timer could be capped.
+      lastStartedAt: null,
       status: "completed",
       updatedAt: new Date("2026-08-20T12:00:00.000Z"),
       version: 5,

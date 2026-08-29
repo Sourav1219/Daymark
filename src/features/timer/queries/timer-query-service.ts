@@ -188,20 +188,22 @@ async function getGroupStudyHistory(
     roomIdsByWorkspace.set(membership.workspaceId, roomIds)
   }
 
-  const activityRecords = await Promise.all(
-    [...roomIdsByWorkspace].map(([roomWorkspaceId, roomIds]) =>
-      listGroupStudyActivitiesForRooms(database, roomWorkspaceId, roomIds),
-    ),
-  ).then((groups) => groups.flat())
-  const participantRecords = await Promise.all(
-    [...roomIdsByWorkspace].map(([roomWorkspaceId, roomIds]) =>
-      listGroupStudyParticipantSummariesForRooms(
-        database,
-        roomWorkspaceId,
-        roomIds,
+  const [activityRecords, participantRecords] = await Promise.all([
+    Promise.all(
+      [...roomIdsByWorkspace].map(([roomWorkspaceId, roomIds]) =>
+        listGroupStudyActivitiesForRooms(database, roomWorkspaceId, roomIds),
       ),
-    ),
-  ).then((groups) => groups.flat())
+    ).then((groups) => groups.flat()),
+    Promise.all(
+      [...roomIdsByWorkspace].map(([roomWorkspaceId, roomIds]) =>
+        listGroupStudyParticipantSummariesForRooms(
+          database,
+          roomWorkspaceId,
+          roomIds,
+        ),
+      ),
+    ).then((groups) => groups.flat()),
+  ])
 
   const activitiesByRoom = new Map<string, typeof activityRecords>()
   for (const activity of activityRecords) {

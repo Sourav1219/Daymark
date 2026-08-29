@@ -18,6 +18,7 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { logger } from "@/lib/observability/logger"
 import type { QuestView } from "@/features/quests/domain/types"
 import type {
   OfflineCreatePayload,
@@ -135,7 +136,28 @@ async function postMutation(mutation: OfflineMutation) {
     throw new Error("AUTHORIZATION_REQUIRED")
   }
 
-  const result = (await response.json()) as OfflineMutationResult
+  if (!response.ok) {
+    // Without this guard an error page is handed to response.json(), which
+    // throws a SyntaxError. That was indistinguishable from a network blip,
+    // so a permanent rejection retried forever with nothing in the logs.
+    logger.warn("offline.replay_rejected_by_server", {
+      status: response.status,
+    })
+    throw new Error(
+      response.status >= 500 ? "SYNC_FAILED" : "SYNC_REJECTED_PERMANENTLY",
+    )
+  }
+
+  let result: OfflineMutationResult
+  try {
+    result = (await response.json()) as OfflineMutationResult
+  } catch {
+    logger.warn("offline.replay_unreadable_response", {
+      status: response.status,
+    })
+    throw new Error("SYNC_FAILED")
+  }
+
   if (
     result.status === "applied" ||
     result.status === "conflict" ||
@@ -145,6 +167,16 @@ async function postMutation(mutation: OfflineMutation) {
   }
 
   throw new Error("SYNC_FAILED")
+}
+
+/**
+ * Fire-and-forget offline work must still report failures. An unhandled
+ * rejection here silently leaves the queue stale with no UI indication.
+ */
+function logOfflineFailure(message: string) {
+  return (error: unknown) => {
+    logger.error(message, error instanceof Error ? error : undefined)
+  }
 }
 
 export function OfflineProvider({
@@ -193,14 +225,23 @@ export function OfflineProvider({
               })
             }
           } catch (error) {
-            if (
-              error instanceof Error &&
-              error.message === "AUTHORIZATION_REQUIRED"
-            ) {
+            const reason =
+              error instanceof Error ? error.message : "SYNC_FAILED"
+
+            if (reason === "AUTHORIZATION_REQUIRED") {
               await clearPrivateOfflineData()
               toast.error(
                 "Your session ended. Private offline data was cleared.",
               )
+            } else if (reason === "SYNC_REJECTED_PERMANENTLY") {
+              // The server refused this change for good. Retrying cannot
+              // succeed, so surface it as a conflict the user can resolve
+              // instead of burning the backoff budget on it.
+              await markOfflineMutationConflict(mutation.id, {
+                message:
+                  "This change was rejected by the server and will not be retried.",
+                serverQuest: null,
+              })
             } else {
               retryTransientFailure = navigator.onLine
             }
@@ -222,7 +263,9 @@ export function OfflineProvider({
           replayAttempts.current += 1
           replayTimer.current = setTimeout(() => {
             replayTimer.current = null
-            void replayPendingMutations()
+            void replayPendingMutations().catch(
+              logOfflineFailure("Offline replay failed"),
+            )
           }, delay)
         }
       }
@@ -231,12 +274,14 @@ export function OfflineProvider({
   )
 
   useEffect(() => {
-    void setActiveOfflineScope(scope).then(refreshQueue)
+    void setActiveOfflineScope(scope)
+      .then(refreshQueue)
+      .catch(logOfflineFailure("Offline scope could not be activated"))
   }, [refreshQueue, scope])
 
   useEffect(() => {
     if (online) {
-      void replay()
+      void replay().catch(logOfflineFailure("Offline replay failed"))
     } else {
       replayAttempts.current = 0
       if (replayTimer.current) clearTimeout(replayTimer.current)
@@ -258,7 +303,9 @@ export function OfflineProvider({
         event.data !== "DAYMARK_OFFLINE_SYNCED"
       )
         return
-      void refreshQueue()
+      void refreshQueue().catch(
+        logOfflineFailure("Offline queue could not be refreshed"),
+      )
       router.refresh()
     }
     navigator.serviceWorker?.addEventListener("message", synchronized)

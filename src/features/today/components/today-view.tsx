@@ -4,8 +4,7 @@ import type { AccessContext } from "@/features/authentication/authorization/acce
 import { getLabelList } from "@/features/labels/queries/label-query-service"
 import { localDateForInstant } from "@/features/progression/domain/progression"
 import { getCurrentCompletionStreak } from "@/features/progression/queries/progression-query-service"
-import { sweepOverdueQuests } from "@/features/quests/application/sweep-overdue-quests"
-import { getLocalDayWindow } from "@/features/quests/domain/today-window"
+import { resolveTodayDate } from "@/features/quests/domain/today-window"
 import type {
   QuestListFilters,
   QuestView,
@@ -37,14 +36,15 @@ export async function TodayView({
   requestedDate,
 }: TodayViewProps) {
   const now = new Date()
+  const labelsPromise = getLabelList(access)
+  const reminderInboxPromise = getReminderInbox(access, { now })
   const settings = await getUserSettings(access)
   const todayDate = localDateForInstant(now, settings.timezone)
-  const selectedDate =
-    requestedDate && getLocalDayWindow(requestedDate, settings.timezone)
-      ? requestedDate
-      : todayDate
-
-  if (selectedDate === todayDate) await sweepOverdueQuests(access, now)
+  const selectedDate = resolveTodayDate(
+    requestedDate,
+    todayDate,
+    settings.timezone,
+  )
 
   const [streak, quests, labels, reminderInbox] = await Promise.all([
     getCurrentCompletionStreak(access, {
@@ -56,8 +56,8 @@ export async function TodayView({
       localDate: selectedDate,
       now,
     }),
-    getLabelList(access),
-    getReminderInbox(access, { now }),
+    labelsPromise,
+    reminderInboxPromise,
   ])
   const timeZone = settings.timezone
   const toCard = (quest: QuestView): TodayCard => {

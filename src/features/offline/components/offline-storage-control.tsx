@@ -9,6 +9,7 @@ import {
   clearPrivateOfflineData,
   enablePrivateOfflineData,
   getOfflineStorageStatus,
+  offlinePasscodeMinLength,
   unlockPrivateOfflineData,
 } from "@/features/offline/storage/offline-database"
 
@@ -21,6 +22,11 @@ export function OfflineStorageControl() {
   useEffect(() => {
     void getOfflineStorageStatus().then(setStatus)
   }, [])
+
+  // The stricter minimum applies only when creating a passcode. Unlocking
+  // accepts any non-empty value so passcodes chosen before the minimum was
+  // raised stay usable instead of locking their owner out.
+  const minimumLength = status.enabled ? 1 : offlinePasscodeMinLength
 
   async function submit() {
     setPending(true)
@@ -73,19 +79,19 @@ export function OfflineStorageControl() {
         autoComplete="off"
         disabled={pending}
         maxLength={128}
-        minLength={6}
+        minLength={minimumLength}
         onChange={(event) => setPasscode(event.target.value)}
         placeholder={
           status.enabled
             ? "Enter passcode to unlock"
-            : "Create passcode (6+ characters)"
+            : `Create passcode (${offlinePasscodeMinLength}+ characters)`
         }
         type="password"
         value={passcode}
       />
       <div className="flex flex-wrap gap-2">
         <Button
-          disabled={pending || passcode.length < 6}
+          disabled={pending || passcode.length < minimumLength}
           onClick={submit}
           type="button"
         >

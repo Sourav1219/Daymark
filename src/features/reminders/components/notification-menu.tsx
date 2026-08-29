@@ -1,6 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { flushSync } from "react-dom"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -33,6 +39,13 @@ import { cn } from "@/lib/utils"
 
 const readDeadlineStorageEvent = "questly:read-deadline-alerts-changed"
 const deadlineWindowMs = 30 * 60_000
+
+/**
+ * How often the inbox may re-fetch from the server while the tab is visible.
+ * Each refresh re-runs the whole page's server tree, so this stays far slower
+ * than the local countdown tick.
+ */
+const INBOX_REFRESH_INTERVAL_MS = 5 * 60_000
 
 type InboxController = Readonly<{
   dueSoonQuests: readonly DueSoonQuestView[]
@@ -96,6 +109,7 @@ function useReminderInbox({
 }: Pick<ReminderInboxProps, "inbox" | "referenceNow">): InboxController {
   const router = useRouter()
   const [now, setNow] = useState(() => new Date(referenceNow).getTime())
+  const lastInboxRefreshAt = useRef(0)
   const storedDeadlineSnapshot = useSyncExternalStore(
     subscribeToReadDeadlines,
     readStoredDeadlineSnapshot,
@@ -113,11 +127,39 @@ function useReminderInbox({
   }, [storedDeadlineSnapshot])
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNow(Date.now())
+    // Local tick only. This keeps countdown copy live and costs nothing — it
+    // must not trigger a server round trip.
+    const tickTimer = window.setInterval(() => setNow(Date.now()), 30_000)
+
+    // A router.refresh() re-runs every query in the page's server tree,
+    // including the 90-day study history scan. Doing that every 30 seconds
+    // per open tab was ~120 full renders an hour, so it is now throttled and
+    // skipped entirely while the tab is hidden.
+    const refreshTimer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return
+      lastInboxRefreshAt.current = Date.now()
       router.refresh()
-    }, 30_000)
-    return () => window.clearInterval(timer)
+    }, INBOX_REFRESH_INTERVAL_MS)
+
+    // Returning to the tab should show fresh notifications immediately, as
+    // long as a background refresh has not just run.
+    function refreshWhenVisible() {
+      if (document.visibilityState !== "visible") return
+      if (Date.now() - lastInboxRefreshAt.current < INBOX_REFRESH_INTERVAL_MS) {
+        setNow(Date.now())
+        return
+      }
+      lastInboxRefreshAt.current = Date.now()
+      router.refresh()
+    }
+
+    document.addEventListener("visibilitychange", refreshWhenVisible)
+
+    return () => {
+      window.clearInterval(tickTimer)
+      window.clearInterval(refreshTimer)
+      document.removeEventListener("visibilitychange", refreshWhenVisible)
+    }
   }, [router])
 
   const dueSoonQuests = inbox.dueSoonQuests.filter((quest) => {

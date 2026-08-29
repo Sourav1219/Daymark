@@ -124,5 +124,8 @@ async function runRetentionSweep(request: Request) {
 
   observeCronOutcome("retention", partial ? "partial" : "success")
 
-  return NextResponse.json({ deleted, purgedTasks, partial })
+  return NextResponse.json(
+    { deleted, purgedTasks, partial },
+    { headers: { "Cache-Control": "no-store" } },
+  )
 }

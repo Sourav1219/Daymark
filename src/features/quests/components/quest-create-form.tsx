@@ -38,23 +38,18 @@ const initialState: QuestActionState = null
 
 export function QuestCreateForm({
   gates,
-  onOptimisticCreate,
   onOfflineQueued,
-  onSettled,
   parentOptions,
   timezone = defaultTimezone,
 }: Readonly<{
   gates?: readonly QuestGateOption[] | undefined
-  onOptimisticCreate?: ((formData: FormData) => void) | undefined
   onOfflineQueued?: ((quest: QuestView) => void) | undefined
-  onSettled?: ((succeeded: boolean) => void) | undefined
   parentOptions?: readonly QuestParentOption[] | undefined
   timezone?: string | undefined
 }>) {
   const [state, formAction] = useActionState(createQuestAction, initialState)
   const [createdTask, setCreatedTask] = useState<CreatedTaskNotice | null>(null)
   const submittingRef = useRef(false)
-  const submittedHomeDateRef = useRef<string | null>(null)
   const submittedTitleRef = useRef("New task")
   const { queueCreate } = useOffline()
   const router = useRouter()
@@ -63,11 +58,8 @@ export function QuestCreateForm({
     if (state?.ok) {
       // Start the fresh Home request before painting the success notice, so
       // the created task is ready when the user chooses Continue.
-      router.prefetch(
-        questHomeHref(state.data.id, submittedHomeDateRef.current),
-      )
+      router.prefetch(questHomeHref(state.data.id))
       setCreatedTask({
-        homeDate: submittedHomeDateRef.current,
         id: state.data.id,
         title: submittedTitleRef.current,
         version: state.data.version,
@@ -75,9 +67,8 @@ export function QuestCreateForm({
     }
     if (state) {
       submittingRef.current = false
-      onSettled?.(state.ok)
     }
-  }, [onSettled, router, state])
+  }, [router, state])
 
   const dismissCreatedTask = useCallback(() => setCreatedTask(null), [])
 
@@ -99,9 +90,6 @@ export function QuestCreateForm({
     submittingRef.current = true
     submittedTitleRef.current =
       String(formData.get("title") ?? "").trim() || "New task"
-    const startAt = String(formData.get("startAt") ?? "")
-    const dueAt = String(formData.get("dueAt") ?? "")
-    submittedHomeDateRef.current = (startAt || dueAt).slice(0, 10) || null
 
     if (navigator.onLine) {
       formAction(formData)
@@ -111,10 +99,8 @@ export function QuestCreateForm({
     try {
       const quest = await queueCreate(formData)
       onOfflineQueued?.(quest)
-      onSettled?.(true)
       toast.success("Task creation queued for reconnection")
     } catch {
-      onSettled?.(false)
       toast.error("The offline task could not be saved locally.")
     } finally {
       submittingRef.current = false
@@ -160,9 +146,6 @@ export function QuestCreateForm({
                 event.currentTarget.requestSubmit()
               }
             }}
-            onSubmit={(event) => {
-              onOptimisticCreate?.(new FormData(event.currentTarget))
-            }}
           >
             <QuestFormFields
               fieldErrors={
@@ -184,7 +167,6 @@ export function QuestCreateForm({
               </p>
             ) : null}
             <div className="quest-create-card__footer">
-              <span>Ctrl/⌘ + Enter to create</span>
               <MutationSubmitButton
                 className="quest-composer__submit"
                 idleLabel="Create Task"

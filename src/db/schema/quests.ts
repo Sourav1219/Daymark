@@ -118,6 +118,23 @@ export const tasks = pgTable(
     index("tasks_parent_task_id_idx")
       .on(table.parentTaskId)
       .where(sql`${table.parentTaskId} is not null`),
+    // Composite, deletion-aware indexes for the list and aggregate reads.
+    // The single-column indexes above still serve foreign-key lookups, but
+    // every workspace-scoped read also filters deletedAt, so without these the
+    // planner either scans or filters after an index scan.
+    index("tasks_workspace_updated_at_idx")
+      .on(table.workspaceId, table.updatedAt)
+      .where(sql`${table.deletedAt} is null`),
+    index("tasks_workspace_project_idx")
+      .on(table.workspaceId, table.projectId)
+      .where(
+        sql`${table.projectId} is not null and ${table.deletedAt} is null`,
+      ),
+    index("tasks_workspace_parent_task_idx")
+      .on(table.workspaceId, table.parentTaskId)
+      .where(
+        sql`${table.parentTaskId} is not null and ${table.deletedAt} is null`,
+      ),
     uniqueIndex("tasks_recurrence_occurrence_unique")
       .on(table.recurrenceSeriesId, table.recurrenceOccurrenceAt)
       .where(sql`${table.recurrenceSeriesId} is not null`),

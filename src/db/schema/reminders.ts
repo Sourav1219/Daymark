@@ -195,6 +195,13 @@ export const inAppNotifications = pgTable(
     index("in_app_notifications_user_unread_idx")
       .on(table.userId, table.readAt)
       .where(sql`${table.readAt} is null`),
+    // The inbox read filters on workspace + user and orders by recency, which
+    // the unread-only index above cannot serve.
+    index("in_app_notifications_workspace_user_created_idx").on(
+      table.workspaceId,
+      table.userId,
+      table.createdAt,
+    ),
   ],
 )
 

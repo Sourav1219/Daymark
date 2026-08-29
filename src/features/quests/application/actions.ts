@@ -45,7 +45,20 @@ export type RestoreQuestScheduleInput = Readonly<{
   startAt: string
 }>
 
-const questPaths = [
+/**
+ * Revalidation is scoped per mutation rather than invalidating every task
+ * surface on every write. `revalidatePath` runs serially in `runActionMutation`,
+ * so each unnecessary path is real added latency after the commit.
+ *
+ * - ordering only touches the boards that render manual order
+ * - creating a task cannot affect Completed or progression
+ * - only completing or reopening awards or reverses XP, so only those two
+ *   touch /progress
+ */
+const boardPaths = ["/quests", "/today"] as const
+const createPaths = ["/quests", "/today", "/gates"] as const
+const lifecyclePaths = ["/quests", "/today", "/cleared", "/gates"] as const
+const progressionPaths = [
   "/quests",
   "/today",
   "/cleared",
@@ -53,12 +66,16 @@ const questPaths = [
   "/progress",
 ] as const
 
-function runQuestMutation<T>(userId: string, mutate: () => Promise<T>) {
+function runQuestMutation<T>(
+  userId: string,
+  paths: readonly string[],
+  mutate: () => Promise<T>,
+) {
   return runActionMutation({
     isExpectedError: (error): error is QuestServiceError =>
       error instanceof QuestServiceError,
     mutate,
-    paths: questPaths,
+    paths,
     rateLimit: { policy: "default", userId },
     system: "Task",
   })
@@ -91,7 +108,7 @@ export async function createQuestAction(
     )
   }
 
-  return runQuestMutation(access.userId, () =>
+  return runQuestMutation(access.userId, createPaths, () =>
     createQuest(getDatabase(), access, parsed.data),
   )
 }
@@ -125,7 +142,7 @@ export async function editQuestAction(
     )
   }
 
-  return runQuestMutation(access.userId, () =>
+  return runQuestMutation(access.userId, lifecyclePaths, () =>
     editQuest(getDatabase(), access, parsed.data),
   )
 }
@@ -143,7 +160,7 @@ export async function completeQuestAction(
     )
   }
 
-  return runQuestMutation(access.userId, () =>
+  return runQuestMutation(access.userId, progressionPaths, () =>
     completeQuest(getDatabase(), access, parsed.data),
   )
 }
@@ -161,7 +178,7 @@ export async function reopenQuestAction(
     )
   }
 
-  return runQuestMutation(access.userId, () =>
+  return runQuestMutation(access.userId, progressionPaths, () =>
     reopenQuest(getDatabase(), access, parsed.data),
   )
 }
@@ -179,7 +196,7 @@ export async function reorderQuestsAction(
     )
   }
 
-  return runQuestMutation(access.userId, () =>
+  return runQuestMutation(access.userId, boardPaths, () =>
     reorderQuests(getDatabase(), access, parsed.data),
   )
 }
@@ -197,7 +214,7 @@ export async function softDeleteQuestAction(
     )
   }
 
-  return runQuestMutation(access.userId, () =>
+  return runQuestMutation(access.userId, lifecyclePaths, () =>
     softDeleteQuest(getDatabase(), access, parsed.data),
   )
 }
@@ -215,7 +232,7 @@ export async function restoreQuestAction(
     )
   }
 
-  return runQuestMutation(access.userId, () =>
+  return runQuestMutation(access.userId, lifecyclePaths, () =>
     restoreQuest(getDatabase(), access, parsed.data),
   )
 }
@@ -233,7 +250,7 @@ export async function permanentlyDeleteQuestAction(
     )
   }
 
-  return runQuestMutation(access.userId, () =>
+  return runQuestMutation(access.userId, lifecyclePaths, () =>
     permanentlyDeleteQuest(getDatabase(), access, parsed.data),
   )
 }
@@ -252,7 +269,7 @@ export async function restoreQuestWithScheduleAction(
     )
   }
 
-  return runQuestMutation(access.userId, () =>
+  return runQuestMutation(access.userId, lifecyclePaths, () =>
     restoreQuestWithSchedule(getDatabase(), access, parsed.data),
   )
 }

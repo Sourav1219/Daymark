@@ -118,6 +118,12 @@ const labelBadgeStyles: Record<string, string> = {
 const fallbackLabelBadgeStyle =
   "border-border-strong bg-surface-inset text-ink-muted"
 
+function questStatusLabel(status: QuestView["status"]) {
+  if (status === "completed") return "Cleared"
+  if (status === "failed") return "Missed"
+  return "Open"
+}
+
 function emptyIcon(mode: QuestListMode) {
   if (mode === "cleared") {
     return <CircleCheckBig aria-hidden="true" className="size-6" />
@@ -568,7 +574,7 @@ function QuestCard({
               >
                 {quest.priority} priority
               </Badge>
-              <Badge variant="outline">Open</Badge>
+              <Badge variant="outline">{questStatusLabel(quest.status)}</Badge>
               {quest.parentTaskId ? (
                 <Badge variant="outline">Subtask</Badge>
               ) : null}
@@ -606,14 +612,16 @@ function QuestCard({
           ) : null}
 
           <div className="quest-search-card__actions">
-            <Button
-              aria-label={`Complete ${quest.title}`}
-              disabled={completionPending || quest.optimistic}
-              onClick={() => onComplete(quest)}
-            >
-              <Check aria-hidden="true" />
-              Complete
-            </Button>
+            {quest.status === "open" ? (
+              <Button
+                aria-label={`Complete ${quest.title}`}
+                disabled={completionPending || quest.optimistic}
+                onClick={() => onComplete(quest)}
+              >
+                <Check aria-hidden="true" />
+                Complete
+              </Button>
+            ) : null}
 
             {!quest.optimistic ? (
               <>
@@ -686,9 +694,7 @@ function QuestCard({
               >
                 {quest.priority} priority
               </Badge>
-              <Badge variant="outline">
-                {quest.status === "completed" ? "Cleared" : "Open"}
-              </Badge>
+              <Badge variant="outline">{questStatusLabel(quest.status)}</Badge>
               {quest.parentTaskId ? (
                 <Badge variant="outline">
                   <CornerDownRight aria-hidden="true" className="size-3" />
@@ -800,7 +806,8 @@ function QuestCard({
         ) : null}
 
         <div className="flex flex-wrap gap-2 border-t border-border-soft pt-4">
-          {mode === "active" || mode === "today" ? (
+          {(mode === "active" || mode === "today") &&
+          quest.status === "open" ? (
             <Button
               aria-label={`Complete ${quest.title}`}
               disabled={completionPending || quest.optimistic}

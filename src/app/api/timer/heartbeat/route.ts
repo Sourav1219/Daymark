@@ -2,14 +2,20 @@ import { NextResponse } from "next/server"
 
 import { getDatabase } from "@/db/client"
 import { requireWorkspaceAccess } from "@/features/authentication/server/authorization"
+import { isTrustedOriginRequest } from "@/lib/http/same-origin"
 import { updateActiveParticipantHeartbeat } from "@/features/timer/repositories/group-study-repository"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
+import { readServerEnv } from "@/lib/env/server"
 
 export const dynamic = "force-dynamic"
 
 const responseHeaders = {
   "Cache-Control": "private, no-store, max-age=0",
   Vary: "Cookie",
+}
+
+function allowedOrigins(): readonly string[] {
+  return [new URL(readServerEnv().BETTER_AUTH_URL).origin]
 }
 
 /**
@@ -20,6 +26,13 @@ const responseHeaders = {
  * can detect disconnected participants and clean them up.
  */
 export async function POST(request: Request) {
+  if (!isTrustedOriginRequest(request, allowedOrigins())) {
+    return NextResponse.json(
+      { message: "Cross-site heartbeat requests are not allowed." },
+      { headers: responseHeaders, status: 403 },
+    )
+  }
+
   const access = await requireWorkspaceAccess()
   const limit = await enforceRateLimit({
     headers: request.headers,

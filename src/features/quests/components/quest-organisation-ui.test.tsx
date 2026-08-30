@@ -953,6 +953,86 @@ describe("Quest organisation controls", () => {
     expect(screen.getByRole("button", { name: "Use time" })).toBeEnabled()
   })
 
+  it("waits for an explicit exact-time tap on iPhone", async () => {
+    const userAgent = vi
+      .spyOn(window.navigator, "userAgent", "get")
+      .mockReturnValue(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 Version/18.6 Mobile/15E148 Safari/604.1",
+      )
+    const platform = vi
+      .spyOn(window.navigator, "platform", "get")
+      .mockReturnValue("iPhone")
+
+    try {
+      const user = userEvent.setup()
+
+      render(
+        <QuestTimePicker
+          ariaLabel="Start time · IST"
+          disabled={false}
+          id="iphone-time"
+          minTime="16:00"
+          onChange={vi.fn()}
+          value="16:22"
+        />,
+      )
+
+      await user.click(screen.getByLabelText("Start time · IST"))
+
+      const dialog = screen.getByRole("dialog")
+      const exactTime = screen.getByLabelText("Start time · IST exact value")
+      await waitFor(() => expect(dialog).toHaveFocus())
+      expect(exactTime).not.toHaveFocus()
+      expect(exactTime).toHaveAttribute("type", "time")
+      expect(
+        dialog.querySelector(".quest-time-popover__native-chevron"),
+      ).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "4:15 PM" })).toBeEnabled()
+    } finally {
+      userAgent.mockRestore()
+      platform.mockRestore()
+    }
+  })
+
+  it("keeps the existing Android time-picker focus behavior", async () => {
+    const userAgent = vi
+      .spyOn(window.navigator, "userAgent", "get")
+      .mockReturnValue(
+        "Mozilla/5.0 (Linux; Android 16; Pixel 10) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36",
+      )
+    const platform = vi
+      .spyOn(window.navigator, "platform", "get")
+      .mockReturnValue("Linux armv8l")
+
+    try {
+      const user = userEvent.setup()
+
+      render(
+        <QuestTimePicker
+          ariaLabel="Start time · IST"
+          disabled={false}
+          id="android-time"
+          minTime="16:00"
+          onChange={vi.fn()}
+          value="16:22"
+        />,
+      )
+
+      await user.click(screen.getByLabelText("Start time · IST"))
+
+      const dialog = screen.getByRole("dialog")
+      const exactTime = screen.getByLabelText("Start time · IST exact value")
+      await waitFor(() => expect(exactTime).toHaveFocus())
+      expect(
+        dialog.querySelector(".quest-time-popover__native-chevron"),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "4:15 PM" })).toBeEnabled()
+    } finally {
+      userAgent.mockRestore()
+      platform.mockRestore()
+    }
+  })
+
   it("opens the one-month calendar inside the visible app viewport", async () => {
     const user = userEvent.setup()
 

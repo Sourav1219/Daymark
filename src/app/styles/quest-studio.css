@@ -860,6 +860,29 @@ Quest studio — creation-first workspace. The page borrows the
   font-weight: 800;
 }
 
+.quest-time-popover__input {
+  position: relative;
+}
+
+.quest-time-popover__input--iphone input {
+  padding-inline-end: 2.5rem;
+}
+
+.quest-time-popover__input--iphone input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+}
+
+.quest-time-popover__native-chevron {
+  position: absolute;
+  top: 50%;
+  right: 0.85rem;
+  width: 1rem;
+  height: 1rem;
+  color: #65758d;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .quest-time-popover__exact-footer {
   display: flex;
   align-items: center;

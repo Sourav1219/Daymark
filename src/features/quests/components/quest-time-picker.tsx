@@ -28,6 +28,24 @@ const timeOptions = Array.from({ length: 96 }, (_, index) => {
 
 const exactTimePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/u
 
+function isIPhoneDevice(): boolean {
+  if (typeof navigator === "undefined") return false
+
+  if (/iPhone/iu.test(navigator.userAgent) || navigator.platform === "iPhone") {
+    return true
+  }
+
+  // Safari can identify an iPhone requesting a desktop site as a Mac. The
+  // touch and physical screen checks keep this fallback from matching Macs
+  // and iPads while covering every current iPhone viewport and orientation.
+  return Boolean(
+    typeof window !== "undefined" &&
+    navigator.platform === "MacIntel" &&
+    navigator.maxTouchPoints > 1 &&
+    Math.min(window.screen.width, window.screen.height) < 600,
+  )
+}
+
 function pickerPortal(): HTMLElement | undefined {
   if (typeof document === "undefined") return undefined
 
@@ -58,6 +76,8 @@ export function QuestTimePicker({
 }>) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(value)
+  const [showIPhoneControl, setShowIPhoneControl] = useState(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const exactInputRef = useRef<HTMLInputElement>(null)
   const draftIsComplete = exactTimePattern.test(draft)
   const draftIsElapsed = Boolean(draftIsComplete && minTime && draft < minTime)
@@ -88,7 +108,10 @@ export function QuestTimePicker({
   return (
     <Dialog
       onOpenChange={(nextOpen) => {
-        if (nextOpen) setDraft(value)
+        if (nextOpen) {
+          setDraft(value)
+          setShowIPhoneControl(isIPhoneDevice())
+        }
         setOpen(nextOpen)
       }}
       open={open}
@@ -117,7 +140,14 @@ export function QuestTimePicker({
       </DialogTrigger>
       <DialogContent
         className="quest-time-popover quest-picker-dialog"
+        onOpenAutoFocus={(event) => {
+          if (!isIPhoneDevice()) return
+
+          event.preventDefault()
+          dialogRef.current?.focus({ preventScroll: true })
+        }}
         overlayClassName="quest-picker-dialog__overlay"
+        ref={dialogRef}
         {...(portal ? { portalContainer: portal } : {})}
       >
         <div className="quest-time-popover__header">
@@ -132,22 +162,35 @@ export function QuestTimePicker({
 
         <div className="quest-time-popover__exact">
           <label htmlFor={`${id}-exact`}>Exact time</label>
-          <Input
-            aria-label={`${ariaLabel} exact value`}
-            id={`${id}-exact`}
-            min={minTime}
-            onChange={(event) => updateExactTime(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault()
-                acceptExactTime()
-              }
-            }}
-            ref={exactInputRef}
-            step={60}
-            type="time"
-            value={draft}
-          />
+          <div
+            className={cn(
+              "quest-time-popover__input",
+              showIPhoneControl && "quest-time-popover__input--iphone",
+            )}
+          >
+            <Input
+              aria-label={`${ariaLabel} exact value`}
+              id={`${id}-exact`}
+              min={minTime}
+              onChange={(event) => updateExactTime(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault()
+                  acceptExactTime()
+                }
+              }}
+              ref={exactInputRef}
+              step={60}
+              type="time"
+              value={draft}
+            />
+            {showIPhoneControl ? (
+              <ChevronDown
+                aria-hidden="true"
+                className="quest-time-popover__native-chevron"
+              />
+            ) : null}
+          </div>
           <div className="quest-time-popover__exact-footer">
             <p aria-live="polite">
               {draftIsElapsed

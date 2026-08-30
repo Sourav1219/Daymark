@@ -10,6 +10,7 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
 import { QuestFormFields } from "@/features/quests/components/quest-form-fields"
+import { QuestDatePicker } from "@/features/quests/components/quest-date-picker"
 import { QuestTimePicker } from "@/features/quests/components/quest-time-picker"
 import { QuestFilterBar } from "@/features/quests/components/quest-filter-bar"
 import { QuestActiveBoard } from "@/features/quests/components/quest-active-board"
@@ -921,7 +922,7 @@ describe("Quest organisation controls", () => {
     expect(dueTime).toBeDisabled()
   })
 
-  it("fades elapsed time choices while allowing any future minute", async () => {
+  it("hides elapsed time choices while allowing any future minute", async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
@@ -939,8 +940,8 @@ describe("Quest organisation controls", () => {
     await user.click(screen.getByLabelText("Start time · UTC"))
 
     expect(
-      screen.getByRole("button", { name: "11:45 AM · unavailable" }),
-    ).toBeDisabled()
+      screen.queryByRole("button", { name: "11:45 AM" }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "12:00 PM" })).toBeEnabled()
 
     const exactTime = screen.getByLabelText("Start time · UTC exact value")
@@ -950,6 +951,40 @@ describe("Quest organisation controls", () => {
     fireEvent.change(exactTime, { target: { value: "12:08" } })
     expect(onChange).toHaveBeenCalledWith("12:08")
     expect(screen.getByRole("button", { name: "Use time" })).toBeEnabled()
+  })
+
+  it("opens the one-month calendar inside the visible app viewport", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <div id="app-device-viewport">
+        <div className="device-main-viewport">
+          <QuestDatePicker
+            ariaLabel="Start date · UTC"
+            id="future-date"
+            minDate="2026-08-30"
+            onChange={vi.fn()}
+            value=""
+          />
+        </div>
+      </div>,
+    )
+
+    await user.click(screen.getByLabelText("Start date · UTC"))
+
+    expect(screen.getByText("Select a date")).toBeVisible()
+    expect(screen.getByText("August 2026")).toBeVisible()
+    expect(screen.getByRole("button", { name: "Clear date" })).toBeDisabled()
+    expect(
+      document.querySelector(
+        "#app-device-viewport .device-main-viewport > .quest-picker-dialog",
+      ),
+    ).toBeInTheDocument()
+    expect(
+      document.querySelector(
+        "#app-device-viewport .device-main-viewport > .quest-picker-dialog__overlay",
+      ),
+    ).toBeInTheDocument()
   })
 
   it("does not offer another nesting level to a filtered grandchild", () => {

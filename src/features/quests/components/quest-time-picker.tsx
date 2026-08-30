@@ -4,12 +4,14 @@ import { useRef, useState } from "react"
 import { ChevronDown, Clock3 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 const timeOptions = Array.from({ length: 96 }, (_, index) => {
@@ -25,6 +27,14 @@ const timeOptions = Array.from({ length: 96 }, (_, index) => {
 })
 
 const exactTimePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/u
+
+function pickerPortal(): HTMLElement | undefined {
+  if (typeof document === "undefined") return undefined
+
+  return (
+    document.querySelector<HTMLElement>(".device-main-viewport") ?? undefined
+  )
+}
 
 export function QuestTimePicker({
   ariaDescribedby,
@@ -52,6 +62,10 @@ export function QuestTimePicker({
   const draftIsComplete = exactTimePattern.test(draft)
   const draftIsElapsed = Boolean(draftIsComplete && minTime && draft < minTime)
   const draftIsUsable = draftIsComplete && !draftIsElapsed
+  const visibleTimeOptions = minTime
+    ? timeOptions.filter((option) => option.value >= minTime)
+    : timeOptions
+  const portal = pickerPortal()
 
   function updateExactTime(next: string) {
     // Native time inputs temporarily emit an empty value while a person edits
@@ -72,14 +86,14 @@ export function QuestTimePicker({
   }
 
   return (
-    <Popover
+    <Dialog
       onOpenChange={(nextOpen) => {
         if (nextOpen) setDraft(value)
         setOpen(nextOpen)
       }}
       open={open}
     >
-      <PopoverTrigger asChild>
+      <DialogTrigger asChild>
         <Button
           aria-describedby={ariaDescribedby}
           aria-invalid={ariaInvalid}
@@ -100,17 +114,19 @@ export function QuestTimePicker({
             className="quest-time-trigger__chevron"
           />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        className="quest-time-popover w-[min(22rem,calc(100vw-2rem))] gap-0 overflow-hidden rounded-[22px] border-0 p-0"
-        sideOffset={8}
+      </DialogTrigger>
+      <DialogContent
+        className="quest-time-popover quest-picker-dialog"
+        overlayClassName="quest-picker-dialog__overlay"
+        {...(portal ? { portalContainer: portal } : {})}
       >
         <div className="quest-time-popover__header">
           <Clock3 aria-hidden="true" />
           <div>
-            <strong>Choose an exact time</strong>
-            <span>Enter any minute, or use a 15-minute shortcut.</span>
+            <DialogTitle>Choose an exact time</DialogTitle>
+            <DialogDescription>
+              Enter any minute, or use a 15-minute shortcut.
+            </DialogDescription>
           </div>
         </div>
 
@@ -153,14 +169,11 @@ export function QuestTimePicker({
         </div>
 
         <div aria-label="Time shortcuts" className="quest-time-popover__grid">
-          {timeOptions.map((option) => {
-            const elapsed = Boolean(minTime && option.value < minTime)
-
-            return (
+          {visibleTimeOptions.length > 0 ? (
+            visibleTimeOptions.map((option) => (
               <button
-                aria-label={`${option.label}${elapsed ? " · unavailable" : ""}`}
+                aria-label={option.label}
                 aria-pressed={option.value === value}
-                disabled={elapsed}
                 key={option.value}
                 onClick={() => {
                   onChange(option.value)
@@ -170,10 +183,15 @@ export function QuestTimePicker({
               >
                 {option.label}
               </button>
-            )
-          })}
+            ))
+          ) : (
+            <p className="quest-time-popover__empty">
+              No 15-minute shortcuts remain today. Enter an exact future time
+              above.
+            </p>
+          )}
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   )
 }

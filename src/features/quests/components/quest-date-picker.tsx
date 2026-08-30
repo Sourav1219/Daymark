@@ -6,10 +6,12 @@ import { CalendarDays, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
 const compactDateFormatter = new Intl.DateTimeFormat("en-GB", {
@@ -33,6 +35,14 @@ function calendarValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+function pickerPortal(): HTMLElement | undefined {
+  if (typeof document === "undefined") return undefined
+
+  return (
+    document.querySelector<HTMLElement>(".device-main-viewport") ?? undefined
+  )
+}
+
 export function QuestDatePicker({
   ariaDescribedby,
   ariaInvalid,
@@ -54,10 +64,11 @@ export function QuestDatePicker({
   const [open, setOpen] = useState(false)
   const selected = calendarDate(value)
   const earliest = minDate ? calendarDate(minDate) : undefined
+  const portal = pickerPortal()
 
   return (
-    <Popover onOpenChange={setOpen} open={open}>
-      <PopoverTrigger asChild>
+    <Dialog onOpenChange={setOpen} open={open}>
+      <DialogTrigger asChild>
         <Button
           aria-describedby={ariaDescribedby}
           aria-invalid={ariaInvalid}
@@ -79,21 +90,21 @@ export function QuestDatePicker({
             className="quest-date-trigger__chevron"
           />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="quest-date-popover w-auto gap-0 overflow-hidden rounded-[22px] border-0 p-0"
-        sideOffset={8}
+      </DialogTrigger>
+      <DialogContent
+        className="quest-date-popover quest-picker-dialog"
+        overlayClassName="quest-picker-dialog__overlay"
+        {...(portal ? { portalContainer: portal } : {})}
       >
         <div className="quest-date-popover__header">
           <CalendarDays aria-hidden="true" />
           <div>
-            <strong>Select a date</strong>
-            <span>
+            <DialogTitle>Select a date</DialogTitle>
+            <DialogDescription>
               {selected
                 ? expandedDateFormatter.format(selected)
                 : "No date selected"}
-            </span>
+            </DialogDescription>
           </div>
         </div>
         <Calendar
@@ -129,7 +140,7 @@ export function QuestDatePicker({
             Clear date
           </button>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   )
 }

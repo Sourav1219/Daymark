@@ -11,6 +11,8 @@ import {
   Users,
 } from "lucide-react"
 
+import "@/app/styles/progress-page.css"
+
 import { LoadingPlaceholder } from "@/components/system/loading-placeholder"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

@@ -1,3 +1,5 @@
+import "@/app/styles/today-page.css"
+
 function LoadingLine({ className = "" }: Readonly<{ className?: string }>) {
   return <span className={`today-loading__surface ${className}`} />
 }

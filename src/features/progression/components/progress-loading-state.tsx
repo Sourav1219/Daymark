@@ -9,6 +9,8 @@ import {
   Trophy,
 } from "lucide-react"
 
+import "@/app/styles/progress-page.css"
+
 import { LoadingPlaceholder } from "@/components/system/loading-placeholder"
 
 export function ProgressLoadingState() {

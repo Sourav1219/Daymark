@@ -11,6 +11,8 @@ import {
   WandSparkles,
 } from "lucide-react"
 
+import "@/app/styles/quest-studio.css"
+
 import { LoadingPlaceholder } from "@/components/system/loading-placeholder"
 import { PageHeading } from "@/components/system/page-heading"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"

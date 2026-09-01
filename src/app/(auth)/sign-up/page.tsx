@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 
 import { safeRedirectPath } from "@/features/authentication/application/validation"
+import { getCurrentUser } from "@/features/authentication/server/authorization"
 import { isGoogleAuthConfigured } from "@/features/authentication/server/google-auth"
 import { AuthExperience } from "@/features/authentication/ui/auth-experience"
 
@@ -18,6 +20,11 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const nextPath = safeRedirectPath(
     Array.isArray(next) ? (next[0] ?? null) : (next ?? null),
   )
+
+  const user = await getCurrentUser()
+  if (user) {
+    redirect(nextPath)
+  }
   const oauthError =
     (Array.isArray(authError) ? authError[0] : authError) === "google"
       ? "generic"

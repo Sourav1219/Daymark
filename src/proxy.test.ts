@@ -74,6 +74,19 @@ describe("protected route proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1")
   })
 
+  it("redirects an authenticated root request directly to /today", () => {
+    const response = proxy(
+      new NextRequest("https://questly.test/", {
+        headers: {
+          cookie: "__Secure-questly.session_token=opaque-token",
+        },
+      }),
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe("https://questly.test/today")
+  })
+
   it("adds a strict nonce-based CSP to rendered pages", () => {
     const response = proxy(new NextRequest("https://questly.test/sign-in"))
     const csp = response.headers.get("content-security-policy")

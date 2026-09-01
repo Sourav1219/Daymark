@@ -64,9 +64,6 @@ export function SessionWatcher() {
       })
     }
     events.addEventListener("sessions-changed", onSessionsChanged)
-    events.onerror = () => {
-      void checkSession()
-    }
 
     void checkSession()
 

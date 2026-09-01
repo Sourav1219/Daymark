@@ -102,6 +102,9 @@ export function proxy(request: NextRequest) {
     const signOutUrl = request.nextUrl.clone()
     signOutUrl.pathname = "/sign-out"
     response = NextResponse.redirect(signOutUrl)
+  } else if (request.nextUrl.pathname === "/" && sessionCookie) {
+    const todayUrl = new URL("/today", request.url)
+    response = NextResponse.redirect(todayUrl)
   } else if (isProtectedPath(request.nextUrl.pathname) && !sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url)
     signInUrl.searchParams.set(

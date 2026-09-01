@@ -19,7 +19,7 @@ const getServerSession = cache(async () =>
   getAuth().api.getSession({ headers: await headers() }),
 )
 
-async function getCurrentUser() {
+export async function getCurrentUser() {
   const session = await getServerSession()
 
   return session?.user ?? null

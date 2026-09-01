@@ -11,8 +11,8 @@ import * as schema from "@/db/schema"
 import { AUTH_COOKIE_PREFIX } from "@/features/authentication/config"
 import {
   createAuthenticationEmailDelivery,
+  deliverAuthenticationEmail,
   type AuthenticationEmailDelivery,
-  scheduleAuthenticationEmail,
 } from "@/features/authentication/server/authentication-email-delivery"
 import { provisionPersonalWorkspace } from "@/features/workspaces/application/provision-personal-workspace"
 import { readServerEnv } from "@/lib/env/server"
@@ -86,7 +86,7 @@ export function createAuth(
       revokeSessionsOnPasswordReset: true,
       resetPasswordTokenExpiresIn: 60 * 60,
       sendResetPassword: async ({ token, user }) => {
-        await scheduleAuthenticationEmail(() =>
+        await deliverAuthenticationEmail(() =>
           emailDelivery.sendPasswordReset({
             recipientEmail: user.email,
             recipientName: user.name,
@@ -151,7 +151,7 @@ export function createAuth(
         overrideDefaultEmailVerification: true,
         sendVerificationOTP: async ({ email, otp, type }) => {
           if (type !== "email-verification") return
-          await scheduleAuthenticationEmail(() =>
+          await deliverAuthenticationEmail(() =>
             emailDelivery.sendVerificationCode({
               code: otp,
               recipientEmail: email,

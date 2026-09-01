@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useActionState } from "react"
 
 import { resetPasswordAction } from "@/features/authentication/application/actions"
+import { AuthSuccessPopup } from "@/features/authentication/ui/auth-success-popup"
 
 export function PasswordResetForm({ token }: Readonly<{ token: string }>) {
   const [state, action, pending] = useActionState(resetPasswordAction, null)
@@ -101,6 +102,9 @@ export function PasswordResetForm({ token }: Readonly<{ token: string }>) {
           Request a new link
         </Link>
       </div>
+      {state?.ok ? (
+        <AuthSuccessPopup destination="/sign-in" kind="password-reset" />
+      ) : null}
     </main>
   )
 }

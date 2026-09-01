@@ -29,6 +29,7 @@ type AuthFormProps = Readonly<{
   notice: AuthNotice
   oauthError: GoogleOAuthError
   onSwitchMode?: (mode: "login" | "register") => void
+  skipEntranceAnimation?: boolean
 }>
 
 function FieldError({
@@ -58,6 +59,7 @@ export function AuthForm({
   notice,
   oauthError,
   onSwitchMode,
+  skipEntranceAnimation = false,
 }: AuthFormProps) {
   const registering = mode === "register"
   const [state, formAction, pending] = useActionState(
@@ -70,11 +72,9 @@ export function AuthForm({
   const [messageIndex, setMessageIndex] = useState(0)
   const fieldErrors = state && !state.ok ? state.error.fieldErrors : undefined
   const noticeMessage =
-    notice === "password-reset"
-      ? "Your password was reset. Sign in with your new password."
-      : notice === "verification-error"
-        ? "That verification request is invalid or expired. Request a new code below."
-        : null
+    notice === "verification-error"
+      ? "That verification request is invalid or expired. Request a new code below."
+      : null
   const verificationEmail =
     registering && state?.ok && state.data.verificationRequired
       ? (state.data.email ?? email)
@@ -110,7 +110,13 @@ export function AuthForm({
 
   return (
     <main className="auth" data-mode={mode}>
-      <div className="auth__inner">
+      <div
+        className={
+          skipEntranceAnimation
+            ? "auth__inner auth__inner--instant"
+            : "auth__inner"
+        }
+      >
         <div className="auth__head">
           <h1 className="auth__title">
             {registering ? (
@@ -167,12 +173,7 @@ export function AuthForm({
         </div>
 
         {noticeMessage ? (
-          <div
-            className={
-              notice === "verification-error" ? "auth__error" : "auth__success"
-            }
-            role={notice === "verification-error" ? "alert" : "status"}
-          >
+          <div className="auth__error" role="alert">
             {noticeMessage}
             {notice === "verification-error" ? (
               <Link className="auth__message-link" href="/verify-email">

@@ -20,6 +20,23 @@ vi.mock("@/features/reminders/components/automatic-push-enrollment", () => ({
 }))
 
 describe("AuthForm password visibility", () => {
+  it("can render a direct sign-in without an entrance animation", () => {
+    const { container } = render(
+      <AuthForm
+        googleAuthConfigured={false}
+        mode="login"
+        nextPath="/today"
+        notice={null}
+        oauthError={null}
+        skipEntranceAnimation
+      />,
+    )
+
+    expect(container.querySelector(".auth__inner")).toHaveClass(
+      "auth__inner--instant",
+    )
+  })
+
   it.each(["login", "register"] as const)(
     "toggles the password without clearing it in %s mode",
     async (mode) => {

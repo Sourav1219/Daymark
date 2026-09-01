@@ -30,7 +30,10 @@ import { localDateForInstant } from "@/features/progression/domain/progression"
 
 type QuestQueryOptions = Readonly<{
   database?: Database
+  /** Skips the output badge query; label-based filtering still applies. */
+  includeLabelBadges?: boolean
   localDate?: string
+  localDateRange?: Readonly<{ end: string; start: string }>
   filters?: Partial<QuestListFilters>
   limit?: number
   now?: Date
@@ -140,8 +143,17 @@ export async function getQuestList(
       )
     }
 
-    const window =
-      needsDayWindow && options.localDate
+    const rangeStart = options.localDateRange
+      ? getLocalDayWindow(options.localDateRange.start, workspace.timezone)
+      : null
+    const rangeEnd = options.localDateRange
+      ? getLocalDayWindow(options.localDateRange.end, workspace.timezone)
+      : null
+    const window = options.localDateRange
+      ? rangeStart && rangeEnd
+        ? { end: rangeEnd.end, start: rangeStart.start }
+        : null
+      : needsDayWindow && options.localDate
         ? getLocalDayWindow(options.localDate, workspace.timezone)
         : getTodayWindow(now, workspace.timezone)
 
@@ -155,10 +167,11 @@ export async function getQuestList(
     if (kind === "today") {
       listOptions.dayEnd = window.end
       listOptions.dayStart = window.start
-      const currentWorkspaceDay =
-        !options.localDate ||
-        options.localDate === localDateForInstant(now, workspace.timezone)
-      listOptions.includeUnscheduledForDay = currentWorkspaceDay
+      const currentWorkspaceDate = localDateForInstant(now, workspace.timezone)
+      listOptions.includeUnscheduledForDay = options.localDateRange
+        ? options.localDateRange.start <= currentWorkspaceDate &&
+          currentWorkspaceDate <= options.localDateRange.end
+        : !options.localDate || options.localDate === currentWorkspaceDate
     }
 
     if (filters.due === "today") {
@@ -186,11 +199,14 @@ export async function getQuestList(
   }
 
   const records = await listQuestRecords(database, access, kind, listOptions)
-  const labelsByQuest = await getQuestLabelBadges(
-    database,
-    access,
-    records.map((record) => record.id),
-  )
+  const labelsByQuest =
+    options.includeLabelBadges === false
+      ? new Map<string, readonly QuestLabelBadge[]>()
+      : await getQuestLabelBadges(
+          database,
+          access,
+          records.map((record) => record.id),
+        )
 
   return records.map((record) => toQuestView(record, labelsByQuest))
 }

@@ -7,6 +7,7 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { withHealthyAuth } from "@/features/authentication/server/auth"
+import { monitorAuthenticationEmailDelivery } from "@/features/authentication/server/authentication-email-delivery"
 import { users } from "@/db/schema"
 import {
   emailVerificationCodeSchema,
@@ -228,14 +229,16 @@ export async function resendVerificationAction(
   const startedAt = Date.now()
   let infrastructureFailure = false
   try {
-    await withHealthyAuth(async (auth) =>
-      auth.api.sendVerificationOTP({
-        body: {
-          email: parsed.data.email,
-          type: "email-verification",
-        },
-        headers: await headers(),
-      }),
+    await monitorAuthenticationEmailDelivery(() =>
+      withHealthyAuth(async (auth) =>
+        auth.api.sendVerificationOTP({
+          body: {
+            email: parsed.data.email,
+            type: "email-verification",
+          },
+          headers: await headers(),
+        }),
+      ),
     )
   } catch (error) {
     // Expected API rejections stay generic to prevent account enumeration.
@@ -326,11 +329,13 @@ export async function requestPasswordResetAction(
   const startedAt = Date.now()
   let infrastructureFailure = false
   try {
-    await withHealthyAuth(async (auth) =>
-      auth.api.requestPasswordReset({
-        body: { email: parsed.data.email, redirectTo: "/reset-password" },
-        headers: await headers(),
-      }),
+    await monitorAuthenticationEmailDelivery(() =>
+      withHealthyAuth(async (auth) =>
+        auth.api.requestPasswordReset({
+          body: { email: parsed.data.email, redirectTo: "/reset-password" },
+          headers: await headers(),
+        }),
+      ),
     )
   } catch (error) {
     if (!isAPIError(error) || error.statusCode >= 500) {
@@ -405,7 +410,7 @@ export async function resetPasswordAction(
     }
   }
 
-  redirect("/sign-in?passwordReset=1")
+  return emailRequestResponse("Your password has been reset.")
 }
 
 export async function logoutAction(): Promise<never> {
@@ -413,5 +418,5 @@ export async function logoutAction(): Promise<never> {
   await withHealthyAuth(async (auth) =>
     auth.api.signOut({ headers: await headers() }),
   )
-  redirect("/sign-in")
+  redirect("/sign-out?next=%2Ftoday")
 }

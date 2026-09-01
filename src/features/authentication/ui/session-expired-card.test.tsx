@@ -34,7 +34,13 @@ describe("SessionExpiredCard", () => {
 
     const primaryCta = screen.getByRole("link", { name: /Sign in again/iu })
     expect(primaryCta).toBeInTheDocument()
-    expect(primaryCta).toHaveAttribute("href", "/sign-in?next=%2Ftoday")
+    expect(primaryCta).toHaveAttribute(
+      "href",
+      "/sign-in?mode=login&next=%2Ftoday",
+    )
+    expect(
+      screen.getByRole("link", { name: /Switch account/iu }),
+    ).toHaveAttribute("href", "/sign-in?mode=login&next=%2Ftoday")
 
     expect(
       screen.queryByRole("link", { name: /Go to Sign In/iu }),
@@ -59,7 +65,7 @@ describe("SessionExpiredCard", () => {
     await user.click(primaryCta)
 
     expect(mockPush).toHaveBeenCalledWith(
-      "/sign-in?next=%2Fprofile%3Fview%3Dsecurity",
+      "/sign-in?mode=login&next=%2Fprofile%3Fview%3Dsecurity",
     )
   })
 

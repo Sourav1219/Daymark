@@ -30,6 +30,379 @@ Sign-in / Register forms — same clean app-width column as the
   min-height: 100dvh;
 }
 
+.auth__inner--instant {
+  animation: none;
+}
+
+/* Timed authentication success moments. These replace the old green inline
+   banners with focused feedback that matches Traketo's blue-violet surfaces. */
+.auth-success__stage {
+  position: fixed;
+  z-index: 110;
+  inset: 0;
+  display: grid;
+  padding: 1.25rem;
+  background: rgba(224, 233, 252, 0.68);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  place-items: center;
+  animation: auth-success-stage-in 220ms ease-out both;
+}
+
+.auth-success {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  width: min(100%, 22rem);
+  justify-items: center;
+  overflow: hidden;
+  padding: 2rem 1.4rem 1.35rem;
+  border: 1px solid rgba(72, 101, 186, 0.16);
+  border-radius: 28px;
+  background:
+    radial-gradient(
+      circle at 92% 4%,
+      rgba(103, 87, 224, 0.16),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 4% 90%,
+      rgba(54, 140, 240, 0.12),
+      transparent 38%
+    ),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.99), #eef3ff);
+  color: var(--app-text);
+  text-align: center;
+  box-shadow:
+    0 34px 78px -28px rgba(31, 58, 134, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  animation: auth-success-card-in 480ms var(--ease-emphasized) both;
+}
+
+.auth-success__stage[data-kind="password-reset"] {
+  background:
+    radial-gradient(
+      circle at 50% 42%,
+      rgba(96, 84, 224, 0.16),
+      transparent 34%
+    ),
+    rgba(219, 228, 250, 0.76);
+}
+
+.auth-success__stage[data-kind="password-reset"] .auth-success {
+  background:
+    radial-gradient(
+      circle at 50% -8%,
+      rgba(114, 90, 226, 0.22),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 100% 100%,
+      rgba(49, 153, 226, 0.13),
+      transparent 36%
+    ),
+    linear-gradient(155deg, #fff, #f0efff 58%, #edf5ff);
+}
+
+.auth-success__particles {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+}
+
+.auth-success__particles span {
+  position: absolute;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 0.16rem;
+  background: #4c7df0;
+  opacity: 0;
+  animation: auth-success-particle 1.05s 180ms var(--ease-emphasized) both;
+}
+
+.auth-success__particles span:nth-child(1) {
+  top: 16%;
+  left: 16%;
+}
+
+.auth-success__particles span:nth-child(2) {
+  top: 22%;
+  right: 14%;
+  border-radius: 999px;
+  background: #ffd25f;
+  animation-delay: 240ms;
+}
+
+.auth-success__particles span:nth-child(3) {
+  bottom: 28%;
+  left: 10%;
+  background: #7765dc;
+  animation-delay: 300ms;
+}
+
+.auth-success__particles span:nth-child(4) {
+  right: 11%;
+  bottom: 22%;
+  border-radius: 999px;
+  background: #55bde8;
+  animation-delay: 360ms;
+}
+
+.auth-success__particles span:nth-child(5) {
+  top: 44%;
+  right: 6%;
+  width: 0.35rem;
+  height: 0.35rem;
+  background: #a774e8;
+  animation-delay: 420ms;
+}
+
+.auth-success__visual {
+  position: relative;
+  display: grid;
+  width: 6.2rem;
+  height: 6.2rem;
+  margin-bottom: 1rem;
+  place-items: center;
+}
+
+.auth-success__halo {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(64, 105, 222, 0.2);
+  border-radius: 999px;
+  box-shadow: 0 0 0 0 rgba(62, 108, 228, 0.14);
+  animation: auth-success-halo 2.2s ease-out infinite;
+}
+
+.auth-success__orbit {
+  position: absolute;
+  inset: 0.45rem;
+  border: 1px dashed rgba(91, 99, 205, 0.24);
+  border-radius: 999px;
+  animation: auth-success-orbit 7s linear infinite;
+}
+
+.auth-success__orbit svg {
+  position: absolute;
+  top: -0.45rem;
+  left: 50%;
+  width: 0.9rem;
+  height: 0.9rem;
+  padding: 0.13rem;
+  border-radius: 999px;
+  background: #fff4c8;
+  color: #d19112;
+  box-shadow: 0 5px 12px -6px rgba(150, 102, 8, 0.65);
+}
+
+.auth-success__icon {
+  position: relative;
+  display: grid;
+  width: 4rem;
+  height: 4rem;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 20px;
+  background: linear-gradient(145deg, #4e85f6, #555ed6);
+  color: #fff;
+  box-shadow:
+    0 20px 34px -17px rgba(49, 73, 179, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  place-items: center;
+  animation: auth-success-icon-in 680ms 90ms var(--ease-emphasized) both;
+}
+
+.auth-success__stage[data-kind="password-reset"] .auth-success__icon {
+  border-radius: 999px;
+  background: linear-gradient(145deg, #745de2, #466fdb);
+}
+
+.auth-success__icon > svg:first-child {
+  width: 1.65rem;
+  height: 1.65rem;
+  stroke-width: 2.3;
+}
+
+.auth-success__icon > svg:last-child {
+  position: absolute;
+  right: -0.38rem;
+  bottom: -0.32rem;
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0.28rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #45b982;
+  color: #fff;
+  stroke-width: 3;
+  animation: auth-success-check-in 440ms 520ms var(--ease-emphasized) both;
+}
+
+.auth-success__eyebrow {
+  color: #536bc9;
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.auth-success h2 {
+  margin: 0.42rem 0 0;
+  color: var(--app-text);
+  font-family: var(--font-baloo), var(--font-nunito), sans-serif;
+  font-size: clamp(1.65rem, 8vw, 2rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.auth-success p {
+  max-width: 18rem;
+  margin: 0.65rem 0 0;
+  color: var(--app-text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.auth-success button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.48rem;
+  margin-top: 1.35rem;
+  border: 0;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #3e7cf2, #565ad4);
+  color: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 16px 28px -17px rgba(47, 68, 171, 0.78);
+  transition:
+    filter 150ms,
+    transform 140ms var(--ease-system);
+}
+
+.auth-success__stage[data-kind="password-reset"] .auth-success button {
+  background: linear-gradient(135deg, #6658de, #3e78e7);
+}
+
+.auth-success button:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.auth-success button:active {
+  transform: translateY(1px);
+}
+
+.auth-success button:focus-visible {
+  outline: 3px solid rgba(61, 111, 232, 0.28);
+  outline-offset: 3px;
+}
+
+.auth-success button svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.auth-success__timer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3e81f3, #6959dc, #52bbe8);
+  transform-origin: left;
+  animation: auth-success-timer var(--auth-success-duration) linear both;
+}
+
+@keyframes auth-success-stage-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes auth-success-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(1rem) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-success-icon-in {
+  from {
+    opacity: 0;
+    transform: rotate(-8deg) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+@keyframes auth-success-check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.25) rotate(-20deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes auth-success-particle {
+  0% {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.4) rotate(0);
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.72;
+    transform: translateY(-0.55rem) scale(1) rotate(135deg);
+  }
+}
+
+@keyframes auth-success-halo {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.82);
+  }
+  75%,
+  100% {
+    border-color: transparent;
+    box-shadow: 0 0 0 1rem rgba(62, 108, 228, 0);
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes auth-success-orbit {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes auth-success-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
 .auth__head {
   margin-bottom: 1.6rem;
 }
@@ -714,5 +1087,18 @@ Sign-in / Register forms — same clean app-width column as the
 
   .auth[data-mode="register"] .auth__form {
     gap: 0.65rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-success__stage,
+  .auth-success,
+  .auth-success__particles span,
+  .auth-success__halo,
+  .auth-success__orbit,
+  .auth-success__icon,
+  .auth-success__icon > svg:last-child,
+  .auth-success__timer {
+    animation: none;
   }
 }

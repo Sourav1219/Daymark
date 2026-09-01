@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
@@ -11,6 +13,7 @@ type TodayHeaderProps = Readonly<{
   activeLabelId?: string
   inbox: ReminderInboxData
   referenceNow: string
+  onDateNavigate?: (date: string) => void
   selectedDate: string
   streak: number
   todayDate: string
@@ -35,6 +38,7 @@ export function TodayHeader({
   activeLabelId,
   inbox,
   referenceNow,
+  onDateNavigate,
   selectedDate,
   streak,
   todayDate,
@@ -70,6 +74,7 @@ export function TodayHeader({
     weekday: "short",
     year: "numeric",
   }).format(anchor)
+  const previousDate = addDays(selectedDate, -1)
   const nextDate = addDays(selectedDate, 1)
 
   return (
@@ -93,7 +98,9 @@ export function TodayHeader({
         <Link
           aria-label="Previous day"
           className="today-date-nav__arrow"
-          href={dateHref(addDays(selectedDate, -1))}
+          href={dateHref(previousDate)}
+          onNavigate={() => onDateNavigate?.(previousDate)}
+          prefetch
         >
           <ChevronLeft aria-hidden="true" />
         </Link>
@@ -116,6 +123,8 @@ export function TodayHeader({
                 data-selected={day.isSelected}
                 href={dateHref(day.value)}
                 key={day.value}
+                onNavigate={() => onDateNavigate?.(day.value)}
+                prefetch
               >
                 <span className="today-day__name">{day.name}</span>
                 <span className="today-day__num">{day.num}</span>
@@ -128,6 +137,8 @@ export function TodayHeader({
             aria-label="Next day"
             className="today-date-nav__arrow"
             href={dateHref(nextDate)}
+            onNavigate={() => onDateNavigate?.(nextDate)}
+            prefetch
           >
             <ChevronRight aria-hidden="true" />
           </Link>

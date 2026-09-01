@@ -13,6 +13,10 @@ type SessionExpiredCardProps = Readonly<{
   nextPath?: string
 }>
 
+function reauthenticationPath(destination: string): Route {
+  return `/sign-in?mode=login&next=${encodeURIComponent(destination)}` as Route
+}
+
 export function SessionExpiredCard({
   eyebrow = "401 · Authentication Required",
   heading = "Your session is missing or expired.",
@@ -26,7 +30,7 @@ export function SessionExpiredCard({
     const destination =
       nextPath ??
       `${window.location.pathname}${window.location.search}${window.location.hash}`
-    router.push(`/sign-in?next=${encodeURIComponent(destination)}` as Route)
+    router.push(reauthenticationPath(destination))
   }
 
   return (
@@ -99,11 +103,10 @@ export function SessionExpiredCard({
           <div className="session-expired__actions">
             <Link
               className="session-expired__btn-primary"
-              href={
-                `/sign-in?next=${encodeURIComponent(nextPath ?? "/today")}` as Route
-              }
+              href={reauthenticationPath(nextPath ?? "/today")}
               id="session-reauth-btn"
               onClick={handleSignIn}
+              prefetch
             >
               <span>Sign in again</span>
               <ArrowRight aria-hidden="true" />
@@ -114,7 +117,11 @@ export function SessionExpiredCard({
           <footer className="session-expired__footer">
             <p className="session-expired__switch">
               Using a different account?{" "}
-              <Link className="session-expired__link" href="/sign-in">
+              <Link
+                className="session-expired__link"
+                href={reauthenticationPath(nextPath ?? "/today")}
+                prefetch
+              >
                 Switch account
               </Link>
             </p>

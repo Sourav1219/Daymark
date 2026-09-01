@@ -2,13 +2,14 @@
 
 import Link from "next/link"
 import { Mail } from "lucide-react"
-import { useActionState, useState } from "react"
+import { useActionState, useCallback, useState } from "react"
 
 import {
   requestPasswordResetAction,
   resendVerificationAction,
 } from "@/features/authentication/application/actions"
 import { EmailVerificationPanel } from "@/features/authentication/ui/email-verification-panel"
+import { AuthSuccessPopup } from "@/features/authentication/ui/auth-success-popup"
 
 type AccountEmailFormProps = Readonly<{
   mode: "password-reset" | "verification"
@@ -137,6 +138,9 @@ function PasswordResetRequest() {
   )
   const emailErrors =
     state && !state.ok ? state.error.fieldErrors?.email : undefined
+  const [dismissedSuccess, setDismissedSuccess] = useState<typeof state>(null)
+  const dismissSuccess = useCallback(() => setDismissedSuccess(state), [state])
+  const successVisible = state?.ok && state !== dismissedSuccess
 
   return (
     <main className="auth" data-mode="recovery">
@@ -185,12 +189,9 @@ function PasswordResetRequest() {
             ) : null}
           </div>
 
-          {state ? (
-            <div
-              className={state.ok ? "auth__success" : "auth__error"}
-              role={state.ok ? "status" : "alert"}
-            >
-              {state.ok ? state.data.message : state.error.message}
+          {state && !state.ok ? (
+            <div className="auth__error" role="alert">
+              {state.error.message}
             </div>
           ) : null}
 
@@ -203,6 +204,9 @@ function PasswordResetRequest() {
           Back to sign in
         </Link>
       </div>
+      {state?.ok && successVisible ? (
+        <AuthSuccessPopup kind="reset-link" onDismiss={dismissSuccess} />
+      ) : null}
     </main>
   )
 }

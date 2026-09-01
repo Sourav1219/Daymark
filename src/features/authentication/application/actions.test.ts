@@ -12,6 +12,7 @@ const {
   resetPassword,
   sendVerificationOTP,
   signInEmail,
+  signOut,
   signUpEmail,
   verifyEmailOTP,
 } = vi.hoisted(() => ({
@@ -24,6 +25,7 @@ const {
   resetPassword: vi.fn(),
   sendVerificationOTP: vi.fn(),
   signInEmail: vi.fn(),
+  signOut: vi.fn(),
   signUpEmail: vi.fn(),
   verifyEmailOTP: vi.fn(),
 }))
@@ -42,6 +44,7 @@ vi.mock("@/lib/rate-limit/rate-limiter", () => ({ enforceRateLimit }))
 
 import {
   loginAction,
+  logoutAction,
   registerAction,
   requestPasswordResetAction,
   resendVerificationAction,
@@ -165,6 +168,24 @@ describe("loginAction", () => {
       ok: false,
     })
     expect(redirect).not.toHaveBeenCalled()
+  })
+})
+
+describe("logoutAction", () => {
+  beforeEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+    enforceRateLimit.mockResolvedValue(null)
+    withHealthyAuth.mockImplementation((scope) => scope({ api: { signOut } }))
+  })
+
+  it("shows the dedicated signed-out screen after ending the session", async () => {
+    signOut.mockResolvedValue(undefined)
+
+    await logoutAction()
+
+    expect(signOut).toHaveBeenCalledOnce()
+    expect(redirect).toHaveBeenLastCalledWith("/sign-out?next=%2Ftoday")
   })
 })
 
@@ -315,7 +336,7 @@ describe("resetPasswordAction", () => {
     form.set("newPassword", "correct-horse-battery-staple")
     form.set("confirmPassword", "correct-horse-battery-staple")
 
-    await resetPasswordAction(null, form)
+    const result = await resetPasswordAction(null, form)
 
     expect(resetPassword).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -325,7 +346,11 @@ describe("resetPasswordAction", () => {
         },
       }),
     )
-    expect(redirect).toHaveBeenCalledWith("/sign-in?passwordReset=1")
+    expect(result).toEqual({
+      data: { message: "Your password has been reset." },
+      ok: true,
+    })
+    expect(redirect).not.toHaveBeenCalled()
   })
 
   it("does not expose why a reset token was rejected", async () => {

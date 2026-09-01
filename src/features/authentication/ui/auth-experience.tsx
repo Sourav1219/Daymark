@@ -8,7 +8,7 @@ import type { GoogleOAuthError } from "@/features/authentication/ui/google-auth-
 import { WelcomeAvatar } from "@/features/authentication/ui/welcome-avatar"
 
 type AuthMode = "welcome" | "login" | "register"
-export type AuthNotice = "password-reset" | "verification-error" | null
+export type AuthNotice = "verification-error" | null
 
 type AuthExperienceProps = Readonly<{
   googleAuthConfigured: boolean
@@ -16,6 +16,7 @@ type AuthExperienceProps = Readonly<{
   nextPath: string
   notice: AuthNotice
   oauthError: GoogleOAuthError
+  skipEntranceAnimation?: boolean
 }>
 
 /**
@@ -32,6 +33,7 @@ export function AuthExperience({
   nextPath,
   notice,
   oauthError,
+  skipEntranceAnimation = false,
 }: AuthExperienceProps) {
   const [mode, setMode] = useState<AuthMode>(initial)
 
@@ -45,6 +47,7 @@ export function AuthExperience({
         notice={notice}
         oauthError={oauthError}
         onSwitchMode={setMode}
+        skipEntranceAnimation={skipEntranceAnimation}
       />
     )
   }
@@ -59,6 +62,7 @@ export function AuthExperience({
         notice={notice}
         oauthError={oauthError}
         onSwitchMode={setMode}
+        skipEntranceAnimation={skipEntranceAnimation}
       />
     )
   }

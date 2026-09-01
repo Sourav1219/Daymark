@@ -10,13 +10,13 @@ type SignInPageProps = Readonly<{
   searchParams: Promise<{
     authError?: string | string[]
     error?: string | string[]
+    mode?: string | string[]
     next?: string | string[]
-    passwordReset?: string | string[]
   }>
 }>
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
-  const { authError, error, next, passwordReset } = await searchParams
+  const { authError, error, mode, next } = await searchParams
   const nextPath = safeRedirectPath(
     Array.isArray(next) ? (next[0] ?? null) : (next ?? null),
   )
@@ -28,20 +28,21 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       : "generic"
     : null
   const verificationError = Array.isArray(error) ? error[0] : error
+  const requestedMode = Array.isArray(mode) ? mode[0] : mode
   const notice =
     !hasGoogleError &&
     (verificationError === "INVALID_TOKEN" ||
       verificationError === "TOKEN_EXPIRED")
       ? "verification-error"
-      : (Array.isArray(passwordReset) ? passwordReset[0] : passwordReset) ===
-          "1"
-        ? "password-reset"
-        : null
+      : null
 
   return (
     <AuthExperience
       googleAuthConfigured={isGoogleAuthConfigured()}
-      initial={oauthError || notice ? "login" : "welcome"}
+      initial={
+        requestedMode === "login" || oauthError || notice ? "login" : "welcome"
+      }
+      skipEntranceAnimation={requestedMode === "login"}
       nextPath={nextPath}
       notice={notice}
       oauthError={oauthError}

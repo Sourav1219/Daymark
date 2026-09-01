@@ -577,6 +577,17 @@ integrationDescribe("Quest repository and application services", () => {
       now: new Date("2026-08-08T12:00:00.000Z"),
     })
     expect(nextDay.map((quest) => quest.title)).toEqual(["Future Quest"])
+
+    const navigationWindow = await getQuestList(fixture.first, "today", {
+      database,
+      localDateRange: { end: "2026-08-09", start: "2026-08-08" },
+      now: new Date("2026-08-08T12:00:00.000Z"),
+    })
+    expect(navigationWindow.map((quest) => quest.title).sort()).toEqual([
+      "Due Today Quest",
+      "Future Quest",
+      "Unscheduled Quest",
+    ])
   })
 
   it("persists completed, missed, and daily points history", async () => {

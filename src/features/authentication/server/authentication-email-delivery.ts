@@ -1,8 +1,8 @@
 import "server-only"
 
+import { AsyncLocalStorage } from "node:async_hooks"
 import { createHash } from "node:crypto"
 
-import { after } from "next/server"
 import { Resend } from "resend"
 
 import type { ServerEnv } from "@/lib/env/schema"
@@ -11,6 +11,7 @@ import { logger } from "@/lib/observability/logger"
 import { withDeadline } from "@/lib/timeouts"
 
 const emailDeadlineMilliseconds = 10_000
+const deliveryMonitor = new AsyncLocalStorage<{ failure?: Error }>()
 
 type AuthenticationEmail = Readonly<{
   recipientEmail: string
@@ -203,28 +204,36 @@ export function createAuthenticationEmailDelivery(
   )
 }
 
-/**
- * Keep external email latency out of authentication responses. Next.js keeps
- * the scheduled work alive after sending the response. Direct auth API calls
- * outside a request (for example integration tests) fall back to awaiting it.
- */
-export async function scheduleAuthenticationEmail(
+export async function deliverAuthenticationEmail(
   send: () => Promise<void>,
 ): Promise<void> {
-  const deliver = async () => {
-    try {
-      await send()
-    } catch (error) {
-      logger.error(
-        "authentication.email_delivery_failed",
-        error instanceof Error ? error : undefined,
-      )
-    }
-  }
-
   try {
-    after(deliver)
-  } catch {
-    await deliver()
+    await send()
+  } catch (error) {
+    logger.error(
+      "authentication.email_delivery_failed",
+      error instanceof Error ? error : undefined,
+    )
+    const failure =
+      error instanceof Error
+        ? error
+        : new Error("Authentication email delivery failed.")
+    const monitor = deliveryMonitor.getStore()
+    if (monitor) monitor.failure = failure
+    throw error
   }
+}
+
+/**
+ * Better Auth intentionally catches email callback failures. Track the failure
+ * in the current request so account actions can avoid reporting a false
+ * delivery success without leaking state across concurrent requests.
+ */
+export async function monitorAuthenticationEmailDelivery<T>(
+  operation: () => Promise<T>,
+): Promise<T> {
+  const monitor: { failure?: Error } = {}
+  const result = await deliveryMonitor.run(monitor, operation)
+  if (monitor.failure) throw monitor.failure
+  return result
 }

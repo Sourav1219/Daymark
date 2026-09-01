@@ -17,3 +17,11 @@ export type TodaySection = Readonly<{
   title: string
   cards: readonly TodayCard[]
 }>
+
+export type TodayDayView = Readonly<{
+  date: string
+  hasNextPage: boolean
+  historical: boolean
+  page: number
+  sections: readonly TodaySection[]
+}>

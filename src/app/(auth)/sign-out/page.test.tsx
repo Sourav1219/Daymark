@@ -22,7 +22,7 @@ describe("SignOutPage", () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole("link", { name: /Sign in again/iu }),
-    ).toHaveAttribute("href", "/sign-in?next=%2Fprofile")
+    ).toHaveAttribute("href", "/sign-in?mode=login&next=%2Fprofile")
   })
 
   it("does not accept an external return URL", async () => {
@@ -34,6 +34,6 @@ describe("SignOutPage", () => {
 
     expect(
       screen.getByRole("link", { name: /Sign in again/iu }),
-    ).toHaveAttribute("href", "/sign-in?next=%2Ftoday")
+    ).toHaveAttribute("href", "/sign-in?mode=login&next=%2Ftoday")
   })
 })

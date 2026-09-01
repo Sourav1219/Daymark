@@ -1780,3 +1780,12 @@ a {
     animation: none;
   }
 }
+
+/* Prevent mobile browsers (iOS Safari / Android) from auto-zooming on input focus */
+@media screen and (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

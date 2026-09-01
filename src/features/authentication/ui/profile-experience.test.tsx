@@ -12,7 +12,7 @@ vi.mock("@/features/authentication/ui/account-settings-forms", () => ({
   AccountSettingsForms: ({
     onUpdated,
   }: {
-    onUpdated: (kind: "name" | "password") => void
+    onUpdated: (kind: "name") => void
   }) => (
     <div>
       Edit account forms

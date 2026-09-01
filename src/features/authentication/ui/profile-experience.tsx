@@ -158,7 +158,7 @@ export function ProfileExperience({
             <div>
               <span>Profile settings</span>
               <h2 id="profile-editor-heading">Edit your profile</h2>
-              <p>Update your display name or securely change your password.</p>
+              <p>Update your display name.</p>
             </div>
             <Pencil aria-hidden="true" />
           </div>

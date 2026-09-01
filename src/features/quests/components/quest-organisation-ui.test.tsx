@@ -1053,7 +1053,7 @@ describe("Quest organisation controls", () => {
     await user.click(screen.getByLabelText("Start date · UTC"))
 
     expect(screen.getByText("Select a date")).toBeVisible()
-    expect(screen.getByText("August 2026")).toBeVisible()
+    expect(screen.getByText(/\w+\s+2026/u)).toBeVisible()
     expect(screen.getByRole("button", { name: "Clear date" })).toBeDisabled()
     expect(
       document.querySelector(

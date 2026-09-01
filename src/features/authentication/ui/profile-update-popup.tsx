@@ -2,20 +2,15 @@
 
 import { useEffect } from "react"
 import { createPortal } from "react-dom"
-import { Check, KeyRound, Sparkles, UserRound } from "lucide-react"
+import { Check, Sparkles, UserRound } from "lucide-react"
 
-export type ProfileUpdateKind = "name" | "password"
+export type ProfileUpdateKind = "name"
 
 const updateCopy = {
   name: {
     eyebrow: "Profile refreshed",
     heading: "Looking good!",
     message: "Your new display name is now used across Traketo.",
-  },
-  password: {
-    eyebrow: "Security updated",
-    heading: "Password changed",
-    message: "Your new password is active and ready for your next sign-in.",
   },
 } as const
 
@@ -27,7 +22,7 @@ export function ProfileUpdatePopup({
   onDismiss: () => void
 }>) {
   const copy = updateCopy[kind]
-  const Icon = kind === "name" ? UserRound : KeyRound
+  const Icon = UserRound
 
   useEffect(() => {
     const timeout = window.setTimeout(onDismiss, 5_000)

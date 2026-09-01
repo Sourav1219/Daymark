@@ -1,24 +1,12 @@
 "use client"
 
-import { useActionState, useEffect, useRef, useState } from "react"
-import {
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  KeyRound,
-  LockKeyhole,
-  Mail,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react"
+import { useActionState, useEffect, useState } from "react"
+import { CheckCircle2, LockKeyhole, Mail, UserRound } from "lucide-react"
 
 import { MutationSubmitButton } from "@/components/system/mutation-submit-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  changePasswordAction,
-  updateProfileNameAction,
-} from "@/features/authentication/application/account-actions"
+import { updateProfileNameAction } from "@/features/authentication/application/account-actions"
 import type { ProfileUpdateKind } from "@/features/authentication/ui/profile-update-popup"
 
 const whitespacePattern = /\s+/u
@@ -58,7 +46,6 @@ export function AccountSettingsForms({
   return (
     <div className="profile-edit-panels">
       <ProfileNamePanel email={email} name={name} onUpdated={onUpdated} />
-      <PasswordPanel onUpdated={onUpdated} />
     </div>
   )
 }
@@ -171,151 +158,5 @@ function ProfileNamePanel({
         </footer>
       </form>
     </article>
-  )
-}
-
-function PasswordPanel({
-  onUpdated,
-}: Readonly<{ onUpdated: (kind: ProfileUpdateKind) => void }>) {
-  const [state, action] = useActionState(changePasswordAction, null)
-  const formRef = useRef<HTMLFormElement>(null)
-  const fieldErrors = state && !state.ok ? state.error.fieldErrors : undefined
-
-  useEffect(() => {
-    if (state?.ok) {
-      formRef.current?.reset()
-      onUpdated("password")
-    }
-  }, [onUpdated, state])
-
-  return (
-    <article className="profile-edit-card profile-edit-card--security">
-      <header className="profile-edit-card__header">
-        <span className="profile-edit-card__icon">
-          <KeyRound aria-hidden="true" />
-        </span>
-        <div>
-          <small>Account security</small>
-          <h3>Change password</h3>
-          <p>Choose a new password for your Traketo account.</p>
-        </div>
-      </header>
-
-      <div className="profile-security-note">
-        <ShieldCheck aria-hidden="true" />
-        <div>
-          <strong>Private and secure</strong>
-          <span>
-            All other active sessions will be signed out for security.
-          </span>
-        </div>
-      </div>
-
-      <form
-        action={action}
-        className="profile-edit-form"
-        noValidate
-        ref={formRef}
-      >
-        <PasswordField
-          autoComplete="current-password"
-          error={fieldErrors?.currentPassword}
-          id="current-password"
-          label="Current password"
-          name="currentPassword"
-        />
-        <div className="profile-password-pair">
-          <PasswordField
-            autoComplete="new-password"
-            error={fieldErrors?.newPassword}
-            id="new-password"
-            label="New password"
-            name="newPassword"
-          />
-          <PasswordField
-            autoComplete="new-password"
-            error={fieldErrors?.confirmPassword}
-            id="confirm-password"
-            label="Confirm new password"
-            name="confirmPassword"
-          />
-        </div>
-
-        <ul
-          className="profile-password-rules"
-          aria-label="Password requirements"
-        >
-          <li>
-            <CheckCircle2 aria-hidden="true" /> At least 8 characters
-          </li>
-          <li>
-            <CheckCircle2 aria-hidden="true" /> Different from your current
-            password
-          </li>
-          <li>
-            <ShieldCheck aria-hidden="true" /> Other sessions are signed out
-          </li>
-        </ul>
-
-        {state && !state.ok && !state.error.fieldErrors ? (
-          <p className="profile-edit-alert" role="alert">
-            {state.error.message}
-          </p>
-        ) : null}
-
-        <footer className="profile-edit-actions">
-          <span>Use a password unique to Traketo.</span>
-          <MutationSubmitButton
-            className="profile-edit-submit profile-edit-submit--security"
-            idleLabel="Change password"
-            pendingLabel="Changing password"
-          />
-        </footer>
-      </form>
-    </article>
-  )
-}
-
-function PasswordField({
-  autoComplete,
-  error,
-  id,
-  label,
-  name,
-}: Readonly<{
-  autoComplete: string
-  error: readonly string[] | undefined
-  id: string
-  label: string
-  name: string
-}>) {
-  const [visible, setVisible] = useState(false)
-  const errorId = `${id}-error`
-
-  return (
-    <div className="profile-edit-field">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="profile-password-input">
-        <Input
-          aria-describedby={error ? errorId : undefined}
-          aria-invalid={Boolean(error)}
-          autoComplete={autoComplete}
-          className="profile-edit-input"
-          id={id}
-          maxLength={128}
-          name={name}
-          required
-          type={visible ? "text" : "password"}
-        />
-        <button
-          aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`}
-          onClick={() => setVisible((shown) => !shown)}
-          type="button"
-        >
-          {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-        </button>
-      </div>
-      <FieldError id={errorId} messages={error} />
-    </div>
   )
 }

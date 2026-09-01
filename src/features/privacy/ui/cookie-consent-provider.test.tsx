@@ -98,7 +98,9 @@ describe("CookieConsentProvider", () => {
     // Test close button
     await user.click(screen.getByRole("button", { name: /Cookie settings/i }))
     expect(screen.getByRole("dialog")).toBeVisible()
-    await user.click(screen.getByRole("button", { name: "Close cookie settings" }))
+    await user.click(
+      screen.getByRole("button", { name: "Close cookie settings" }),
+    )
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
 
     // Test saving preferences

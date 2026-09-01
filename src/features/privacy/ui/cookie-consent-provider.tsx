@@ -47,7 +47,7 @@ export function CookieConsentProvider({
   initialConsent: CookieConsent | null
 }>) {
   const [consent, setConsent] = useState(initialConsent)
-  const [open, setOpen] = useState(initialConsent === null)
+  const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const openPreferences = useCallback(() => setOpen(true), [])
@@ -105,17 +105,15 @@ export function CookieConsentProvider({
                 <Link href="/privacy">Learn more</Link>
               </p>
             </div>
-            {consent ? (
-              <button
-                aria-label="Close cookie settings"
-                className="cookie-consent__close"
-                disabled={pending}
-                onClick={() => setOpen(false)}
-                type="button"
-              >
-                <X aria-hidden="true" />
-              </button>
-            ) : null}
+            <button
+              aria-label="Close cookie settings"
+              className="cookie-consent__close"
+              disabled={pending}
+              onClick={() => setOpen(false)}
+              type="button"
+            >
+              <X aria-hidden="true" />
+            </button>
           </div>
 
           {error ? (

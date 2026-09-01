@@ -90,10 +90,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   const initialCookieConsent = parseCookieConsent(
     cookieStore.get(cookieConsentName)?.value,
   )
-  // Keep the consent card easy to review locally without changing the
-  // once-per-browser behavior of production builds.
-  const displayedCookieConsent =
-    process.env.NODE_ENV === "development" ? null : initialCookieConsent
 
   return (
     <html
@@ -107,7 +103,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       )}
     >
       <body>
-        <CookieConsentProvider initialConsent={displayedCookieConsent}>
+        <CookieConsentProvider initialConsent={initialCookieConsent}>
           {process.env.NODE_ENV !== "production" ? (
             <Script
               nonce={requestNonce}

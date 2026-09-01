@@ -327,8 +327,8 @@ export function AuthForm({
           {registering ? (
             <p className="auth__legal">
               By creating an account, you agree to Traketo&apos;s{" "}
-              <Link href="/terms">Terms of Service</Link> and{" "}
-              <Link href="/privacy">Privacy Policy</Link>.
+              <Link href="/terms">Terms of Service</Link>,{" "}
+              <Link href="/privacy">Privacy Policy</Link>, and cookie usage.
             </p>
           ) : null}
         </form>

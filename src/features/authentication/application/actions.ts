@@ -3,9 +3,14 @@
 import { isAPIError } from "better-auth/api"
 import { eq } from "drizzle-orm"
 import { createHash } from "node:crypto"
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import {
+  cookieConsentMaxAgeSeconds,
+  cookieConsentName,
+  cookieConsentValues,
+} from "@/features/privacy/domain/cookie-consent"
 import { withHealthyAuth } from "@/features/authentication/server/auth"
 import { monitorAuthenticationEmailDelivery } from "@/features/authentication/server/authentication-email-delivery"
 import { users } from "@/db/schema"
@@ -39,6 +44,17 @@ function registrationResponse(email: string): NonNullable<AuthActionState> {
     },
     ok: true,
   }
+}
+
+async function grantRegistrationCookieConsent() {
+  const cookieStore = await cookies()
+  cookieStore.set(cookieConsentName, cookieConsentValues.preferences, {
+    httpOnly: false,
+    maxAge: cookieConsentMaxAgeSeconds,
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  })
 }
 
 const minimumAccountResponseMilliseconds = 750
@@ -149,6 +165,7 @@ export async function registerAction(
     await normalizeAccountTiming(startedAt)
   }
 
+  await grantRegistrationCookieConsent()
   return registrationResponse(parsed.data.email)
 }
 
@@ -309,6 +326,7 @@ export async function verifyEmailCodeAction(
     }
   }
 
+  await grantRegistrationCookieConsent()
   redirect(safeRedirectPath(formData.get("next")))
 }
 

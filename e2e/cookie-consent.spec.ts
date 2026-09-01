@@ -7,7 +7,7 @@ test.beforeEach(async ({ context, page }) => {
   await context.clearCookies()
 })
 
-test("shows consent immediately when a first-time visitor opens the main URL", async ({
+test("does not show an intrusive popup dialog when a first-time visitor opens the site", async ({
   page,
 }) => {
   await page.goto("http://localhost:3000/")
@@ -16,6 +16,21 @@ test("shows consent immediately when a first-time visitor opens the main URL", a
   const consentDialog = page.getByRole("dialog", {
     name: "Cookies & privacy",
   })
+  await expect(consentDialog).toHaveCount(0)
+})
+
+test("allows opening cookie preferences on demand from the privacy page", async ({
+  context,
+  page,
+}) => {
+  await page.goto("http://localhost:3000/privacy")
+
+  const consentDialog = page.getByRole("dialog", {
+    name: "Cookies & privacy",
+  })
+  await expect(consentDialog).toHaveCount(0)
+
+  await page.getByRole("button", { name: /Cookie settings/i }).click()
   await expect(consentDialog).toBeVisible()
   await expect(
     consentDialog.getByRole("button", { name: "Allow Cookies" }),
@@ -23,26 +38,6 @@ test("shows consent immediately when a first-time visitor opens the main URL", a
   await expect(
     consentDialog.getByRole("button", { name: "Decline optional cookies" }),
   ).toBeVisible()
-})
-
-test("shows on direct sign-in and reopens on the next development load", async ({
-  context,
-  page,
-}, testInfo) => {
-  await page.goto("http://localhost:3000/sign-in")
-
-  const consentDialog = page.getByRole("dialog", {
-    name: "Cookies & privacy",
-  })
-  await expect(consentDialog).toBeVisible()
-  await expect(
-    page.getByRole("button", { name: "I already have an account" }),
-  ).toBeVisible()
-
-  await page.screenshot({
-    fullPage: true,
-    path: testInfo.outputPath("cookie-consent-mobile.png"),
-  })
 
   await consentDialog
     .getByRole("button", { name: "Decline optional cookies" })
@@ -57,16 +52,4 @@ test("shows on direct sign-in and reopens on the next development load", async (
       return consentCookie?.value
     })
     .toBe("v1.essential")
-
-  await page.reload()
-  await expect(consentDialog).toBeVisible()
-
-  await consentDialog.getByRole("button", { name: "Allow Cookies" }).click()
-  await page.goto("http://localhost:3000/")
-  await expect(page).toHaveURL(/\/sign-in$/)
-  await expect(consentDialog).toBeVisible()
-
-  await expect(
-    page.locator("[data-nextjs-dialog], .vite-error-overlay"),
-  ).toHaveCount(0)
 })

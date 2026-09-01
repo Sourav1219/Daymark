@@ -36,7 +36,18 @@ describe("CookieConsentProvider", () => {
     })
   })
 
-  it("offers an explicit decline choice before optional storage is used", async () => {
+  it("does not open a consent dialog automatically on load", () => {
+    render(
+      <CookieConsentProvider initialConsent={null}>
+        <p>Page content</p>
+      </CookieConsentProvider>,
+    )
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(screen.getByText("Page content")).toBeVisible()
+  })
+
+  it("offers decline and allow choices when opened via settings button", async () => {
     const user = userEvent.setup()
     saveCookieConsentAction.mockResolvedValue("essential")
     window.localStorage.setItem(readDeadlineStorageKey, "stored")
@@ -44,9 +55,13 @@ describe("CookieConsentProvider", () => {
 
     render(
       <CookieConsentProvider initialConsent={null}>
-        <p>Page content</p>
+        <CookieSettingsButton />
       </CookieConsentProvider>,
     )
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /Cookie settings/i }))
 
     expect(
       screen.getByRole("dialog", { name: "Cookies & privacy" }),
@@ -66,12 +81,9 @@ describe("CookieConsentProvider", () => {
     })
     expect(window.localStorage.getItem(readDeadlineStorageKey)).toBeNull()
     expect(window.localStorage.getItem(todayPromoStorageKey)).toBeNull()
-    expect(
-      screen.queryByRole("button", { name: "Cookie settings" }),
-    ).not.toBeInTheDocument()
   })
 
-  it("lets a returning user reopen and change preferences", async () => {
+  it("lets a user reopen and save allowed preferences or close with close button", async () => {
     const user = userEvent.setup()
     saveCookieConsentAction.mockResolvedValue("preferences")
 
@@ -82,6 +94,14 @@ describe("CookieConsentProvider", () => {
     )
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+
+    // Test close button
+    await user.click(screen.getByRole("button", { name: /Cookie settings/i }))
+    expect(screen.getByRole("dialog")).toBeVisible()
+    await user.click(screen.getByRole("button", { name: "Close cookie settings" }))
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+
+    // Test saving preferences
     await user.click(screen.getByRole("button", { name: /Cookie settings/i }))
     await user.click(screen.getByRole("button", { name: "Allow Cookies" }))
 

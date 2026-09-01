@@ -22,6 +22,7 @@ import {
 import { getUserSettings } from "@/features/reminders/queries/user-settings-query-service"
 import { PwaInstallCard } from "@/features/offline/components/pwa-install-card"
 import { OfflineStorageControl } from "@/features/offline/components/offline-storage-control"
+import { CookieSettingsButton } from "@/features/privacy/ui/cookie-consent-provider"
 
 export const metadata: Metadata = { title: "Settings" }
 
@@ -138,7 +139,7 @@ export default async function SettingsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <Link
                   className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border-soft bg-background px-4 py-2 font-semibold text-system-blue transition-colors hover:bg-system-blue/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-system-blue"
                   href="/terms"
@@ -153,6 +154,7 @@ export default async function SettingsPage() {
                   <ShieldCheck aria-hidden="true" className="size-4" />
                   Privacy Policy
                 </Link>
+                <CookieSettingsButton />
               </div>
             </CardContent>
           </Card>

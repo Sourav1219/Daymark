@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
+  cookieStore,
   enforceRateLimit,
   findExistingAccount,
   withHealthyAuth,
@@ -16,6 +17,7 @@ const {
   signUpEmail,
   verifyEmailOTP,
 } = vi.hoisted(() => ({
+  cookieStore: { set: vi.fn(), get: vi.fn() },
   enforceRateLimit: vi.fn(),
   findExistingAccount: vi.fn(),
   withHealthyAuth: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock("better-auth/api", () => ({
     Boolean(error && typeof error === "object" && "body" in error),
 }))
 vi.mock("next/headers", () => ({
+  cookies: vi.fn().mockResolvedValue(cookieStore),
   headers: vi.fn().mockResolvedValue(new Headers()),
 }))
 vi.mock("next/navigation", () => ({ redirect }))
@@ -120,6 +123,11 @@ describe("registerAction", () => {
           type: "email-verification",
         },
       }),
+    )
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      "traketo_cookie_consent",
+      "v1.preferences",
+      expect.objectContaining({ path: "/" }),
     )
   })
 
@@ -299,6 +307,11 @@ describe("verifyEmailCodeAction", () => {
       expect.objectContaining({
         body: { email: "person@example.test", otp: "123456" },
       }),
+    )
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      "traketo_cookie_consent",
+      "v1.preferences",
+      expect.objectContaining({ path: "/" }),
     )
     expect(redirect).toHaveBeenCalledWith("/quests")
   })

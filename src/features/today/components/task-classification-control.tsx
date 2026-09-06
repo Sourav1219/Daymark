@@ -3,7 +3,6 @@
 import { useEffect, useId, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
-  CalendarDays,
   Check,
   Pencil,
 } from "lucide-react"
@@ -26,6 +25,7 @@ import { editQuestScheduleAction } from "@/features/quests/application/actions"
 import { useOptionalOffline } from "@/features/offline/components/offline-provider"
 import { QuestDatePicker } from "@/features/quests/components/quest-date-picker"
 import { QuestTimePicker } from "@/features/quests/components/quest-time-picker"
+import { TaskUpdatedPopup } from "@/features/quests/components/task-created-popup"
 import {
   formatZonedLocalInput,
   parseZonedLocalDateTime,
@@ -68,7 +68,7 @@ export function TaskClassificationControl({
   const [version, setVersion] = useState(card.version)
   const [source, setSource] = useState(card)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [pickerPortal, setPickerPortal] = useState<HTMLDivElement | null>(null)
+  const [showUpdatedPopup, setShowUpdatedPopup] = useState(false)
 
   if (source !== card) {
     setSource(card)
@@ -201,6 +201,13 @@ export function TaskClassificationControl({
     if (!open) return
 
     function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Element | null
+      if (
+        target?.closest(".quest-picker-dialog") ||
+        target?.closest(".quest-picker-dialog__overlay")
+      ) {
+        return
+      }
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
@@ -211,6 +218,9 @@ export function TaskClassificationControl({
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        if (document.querySelector(".quest-picker-dialog")) {
+          return
+        }
         setOpen(false)
       }
     }
@@ -275,39 +285,49 @@ export function TaskClassificationControl({
     })
   }
 
-  function saveSchedule() {
-    if (
-      !scheduleChanged ||
-      scheduleValidation ||
-      schedulePending ||
-      scheduleUnavailable
-    )
+  function handleDone() {
+    if (anyPending) return
+
+    if (scheduleValidation) {
+      setScheduleError(scheduleValidation)
       return
-    setScheduleError("")
-    startScheduleTransition(async () => {
-      try {
-        const result = await editQuestScheduleAction({
-          questId: card.id,
-          expectedVersion: version,
-          ...(scheduleDraft.startAt !== scheduleInitial.startAt
-            ? { startAt: scheduleDraft.startAt || null }
-            : {}),
-          ...(scheduleDraft.dueAt !== scheduleInitial.dueAt
-            ? { dueAt: scheduleDraft.dueAt || null }
-            : {}),
-        })
-        if (!result.ok) {
-          setScheduleError(result.error.message)
-          return
-        }
-        setVersion(result.data.version)
-        setOpen(false)
-        toast.success("Schedule updated")
-        router.refresh()
-      } catch {
-        setScheduleError("Could not save the schedule. Please try again.")
+    }
+
+    if (scheduleChanged) {
+      if (scheduleUnavailable) {
+        setScheduleError("Connect to save schedule changes.")
+        return
       }
-    })
+      setScheduleError("")
+      startScheduleTransition(async () => {
+        try {
+          const result = await editQuestScheduleAction({
+            questId: card.id,
+            expectedVersion: version,
+            ...(scheduleDraft.startAt !== scheduleInitial.startAt
+              ? { startAt: scheduleDraft.startAt || null }
+              : {}),
+            ...(scheduleDraft.dueAt !== scheduleInitial.dueAt
+              ? { dueAt: scheduleDraft.dueAt || null }
+              : {}),
+          })
+          if (!result.ok) {
+            setScheduleError(result.error.message)
+            return
+          }
+          setVersion(result.data.version)
+          setOpen(false)
+          setShowUpdatedPopup(true)
+          router.refresh()
+        } catch {
+          setScheduleError("Could not save the schedule. Please try again.")
+        }
+      })
+      return
+    }
+
+    setOpen(false)
+    setShowUpdatedPopup(true)
   }
 
   const anyPending = pending || schedulePending
@@ -341,7 +361,6 @@ export function TaskClassificationControl({
         <div
           aria-label={`Edit ${card.title}`}
           className="home-choice-panel task-classification__panel"
-          ref={setPickerPortal}
         >
           <div className="home-choice-panel__heading">
             <span>Task type</span>
@@ -443,7 +462,6 @@ export function TaskClassificationControl({
                   id={`${pickerId}-startAt-date`}
                   minDate={earliestDate}
                   onChange={(v) => updateSchedule("startAt", "date", v)}
-                  portalContainer={pickerPortal}
                   value={startDate}
                 />
                 <QuestTimePicker
@@ -454,7 +472,6 @@ export function TaskClassificationControl({
                     startDate === earliestDate ? earliestTime : undefined
                   }
                   onChange={(v) => updateSchedule("startAt", "time", v)}
-                  portalContainer={pickerPortal}
                   value={startTime}
                 />
               </div>
@@ -499,7 +516,6 @@ export function TaskClassificationControl({
                       id={`${pickerId}-dueAt-date`}
                       minDate={startDate || earliestDate}
                       onChange={(v) => updateSchedule("dueAt", "date", v)}
-                      portalContainer={pickerPortal}
                       value={dueDate}
                     />
                     <QuestTimePicker
@@ -508,7 +524,6 @@ export function TaskClassificationControl({
                       id={`${pickerId}-dueAt-time`}
                       minTime={dueMinTime}
                       onChange={(v) => updateSchedule("dueAt", "time", v)}
-                      portalContainer={pickerPortal}
                       value={dueTime}
                     />
                   </div>
@@ -540,22 +555,6 @@ export function TaskClassificationControl({
                   : scheduleValidation || scheduleError}
               </p>
             ) : null}
-            {scheduleChanged ? (
-              <button
-                className="task-edit-schedule__save"
-                disabled={
-                  !scheduleChanged ||
-                  Boolean(scheduleValidation) ||
-                  anyPending ||
-                  scheduleUnavailable
-                }
-                onClick={saveSchedule}
-                type="button"
-              >
-                <CalendarDays aria-hidden="true" />
-                {schedulePending ? "Saving..." : "Save schedule"}
-              </button>
-            ) : null}
           </div>
 
           <div className="task-classification__footer">
@@ -570,7 +569,7 @@ export function TaskClassificationControl({
               aria-label="Done editing"
               className="task-classification__done"
               disabled={anyPending}
-              onClick={() => setOpen(false)}
+              onClick={handleDone}
               type="button"
             >
               <Check aria-hidden="true" />
@@ -578,6 +577,17 @@ export function TaskClassificationControl({
             </button>
           </div>
         </div>
+      ) : null}
+
+      {showUpdatedPopup ? (
+        <TaskUpdatedPopup
+          onDismiss={() => setShowUpdatedPopup(false)}
+          task={{
+            id: card.id,
+            title: card.title,
+            version,
+          }}
+        />
       ) : null}
     </div>
   )

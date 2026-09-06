@@ -292,6 +292,7 @@ describe("TodayTasks completed section", () => {
     expect(
       screen.queryByLabelText("Edit Active task"),
     ).not.toBeInTheDocument()
+    expect(screen.getByText("Task updated!")).toBeVisible()
   })
 
   it("keeps classification open after changing priority", async () => {
@@ -620,5 +621,86 @@ describe("TodayTasks completed section", () => {
     expect(screen.getByLabelText("Retry me")).toBeVisible()
     expect(screen.getByRole("heading", { name: "Missed" })).toBeVisible()
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
+  it("saves schedule when clicking Done, shows Task updated popup, and omits Save schedule button", async () => {
+    const { editQuestScheduleAction } =
+      await import("@/features/quests/application/actions")
+    vi.mocked(editQuestScheduleAction).mockResolvedValueOnce({
+      data: { id: "open-edit", version: 2 },
+      ok: true,
+    })
+
+    render(
+      <div id="app-device-viewport">
+        <div className="device-main-viewport">
+          <TodayTasks
+            empty={false}
+            referenceNow="2026-09-07T12:00:00Z"
+            timezone="UTC"
+            sections={[
+              {
+                cards: [
+                  {
+                    id: "open-edit",
+                    priority: "high",
+                    status: "open",
+                    steps: 0,
+                    timeLabel: "Any time",
+                    title: "Edit me",
+                    version: 1,
+                  },
+                ],
+                title: "My tasks",
+              },
+            ]}
+          />
+        </div>
+      </div>,
+    )
+
+    // Open classification/edit panel
+    fireEvent.click(screen.getByRole("button", { name: /Edit Edit me:/i }))
+    expect(screen.getByLabelText("Edit Edit me")).toBeVisible()
+
+    // Ensure there is no separate "Save schedule" button
+    expect(
+      screen.queryByRole("button", { name: /Save schedule/i }),
+    ).not.toBeInTheDocument()
+
+    // Open Start date picker
+    const startDateBtn = screen.getByRole("button", { name: "Start date" })
+    fireEvent.click(startDateBtn)
+
+    // Should portal to .device-main-viewport
+    expect(
+      document.querySelector(".device-main-viewport > .quest-picker-dialog"),
+    ).toBeInTheDocument()
+
+    // Pick date
+    const todayBtn = screen.getByRole("button", { name: "Today" })
+    fireEvent.click(todayBtn)
+
+    // Still no separate "Save schedule" button
+    expect(
+      screen.queryByRole("button", { name: /Save schedule/i }),
+    ).not.toBeInTheDocument()
+
+    // Click Done
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Done editing" }))
+    })
+
+    expect(editQuestScheduleAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedVersion: 1,
+        questId: "open-edit",
+      }),
+    )
+    // Task updated popup is shown
+    expect(screen.getByText("Task updated!")).toBeVisible()
+    expect(
+      screen.getByText("Your changes are saved and updated on Home."),
+    ).toBeVisible()
   })
 })

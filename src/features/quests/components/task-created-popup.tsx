@@ -20,9 +20,11 @@ type NoticePhase = "created" | "error" | "undone"
 export function TaskCreatedPopup({
   onDismiss,
   task,
+  variant = "created",
 }: Readonly<{
   onDismiss: () => void
   task: CreatedTaskNotice
+  variant?: "created" | "updated"
 }>) {
   const router = useRouter()
   const homeHref = questHomeHref(task.id)
@@ -30,16 +32,18 @@ export function TaskCreatedPopup({
   const [pending, startTransition] = useTransition()
 
   useEffect(() => {
-    router.prefetch(homeHref)
-  }, [homeHref, router])
+    if (variant === "created") {
+      router.prefetch(homeHref)
+    }
+  }, [homeHref, router, variant])
 
   useEffect(() => {
     const timeout = window.setTimeout(
       onDismiss,
-      phase === "undone" ? 1_800 : 8_000,
+      phase === "undone" ? 1_800 : variant === "updated" ? 4_000 : 8_000,
     )
     return () => window.clearTimeout(timeout)
-  }, [onDismiss, phase, task.id])
+  }, [onDismiss, phase, task.id, variant])
 
   useEffect(() => {
     function dismissOnEscape(event: KeyboardEvent) {
@@ -51,7 +55,7 @@ export function TaskCreatedPopup({
   }, [onDismiss, pending])
 
   const undoCreation = useCallback(() => {
-    if (pending || phase === "undone") return
+    if (pending || phase === "undone" || variant === "updated") return
 
     startTransition(async () => {
       const result = await softDeleteQuestAction({
@@ -66,7 +70,9 @@ export function TaskCreatedPopup({
         setPhase("error")
       }
     })
-  }, [pending, phase, router, task.id, task.version])
+  }, [pending, phase, router, task.id, task.version, variant])
+
+  const isUpdated = variant === "updated"
 
   return createPortal(
     <div className="task-created-popup__stage">
@@ -96,16 +102,28 @@ export function TaskCreatedPopup({
         </div>
 
         <div className="task-created-popup__copy">
-          <span>{phase === "undone" ? "All fixed" : "Nice move"}</span>
+          <span>
+            {phase === "undone"
+              ? "All fixed"
+              : isUpdated
+                ? "All set"
+                : "Nice move"}
+          </span>
           <h2 id="task-created-popup-title">
-            {phase === "undone" ? "Creation undone" : "Task created!"}
+            {phase === "undone"
+              ? "Creation undone"
+              : isUpdated
+                ? "Task updated!"
+                : "Task created!"}
           </h2>
           <p>
             {phase === "undone"
               ? `“${task.title}” was removed.`
               : phase === "error"
                 ? "Undo did not work. Please try once more."
-                : "Your new task is ready and waiting on Home."}
+                : isUpdated
+                  ? "Your changes are saved and updated on Home."
+                  : "Your new task is ready and waiting on Home."}
           </p>
           {phase !== "undone" ? (
             <strong className="task-created-popup__task">{task.title}</strong>
@@ -113,7 +131,7 @@ export function TaskCreatedPopup({
         </div>
 
         <div className="task-created-popup__actions">
-          {phase !== "undone" ? (
+          {phase !== "undone" && !isUpdated ? (
             <button
               autoFocus
               className="task-created-popup__undo"
@@ -125,7 +143,17 @@ export function TaskCreatedPopup({
               {pending ? "Undoing…" : "Undo creation"}
             </button>
           ) : null}
-          {pending ? (
+          {isUpdated ? (
+            <button
+              autoFocus
+              className="task-created-popup__continue"
+              onClick={onDismiss}
+              type="button"
+            >
+              Continue
+              <ArrowRight aria-hidden="true" />
+            </button>
+          ) : pending ? (
             <button
               className="task-created-popup__continue"
               disabled
@@ -152,5 +180,21 @@ export function TaskCreatedPopup({
       </section>
     </div>,
     document.getElementById("app-device-viewport") ?? document.body,
+  )
+}
+
+export function TaskUpdatedPopup({
+  onDismiss,
+  task,
+}: Readonly<{
+  onDismiss: () => void
+  task: CreatedTaskNotice
+}>) {
+  return (
+    <TaskCreatedPopup
+      onDismiss={onDismiss}
+      task={task}
+      variant="updated"
+    />
   )
 }

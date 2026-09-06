@@ -72,6 +72,7 @@ export function QuestTimePicker({
   id,
   maxTime,
   minTime,
+  minTimeMessage,
   onChange,
   portalContainer,
   showShortcuts = true,
@@ -86,6 +87,8 @@ export function QuestTimePicker({
   maxTime?: string | undefined
   /** Earlier choices are visibly unavailable when the selected date is today. */
   minTime?: string | undefined
+  /** Custom hint or validation text when earlier choices are unavailable. */
+  minTimeMessage?: string | undefined
   onChange: (value: string) => void
   portalContainer?: HTMLElement | null | undefined
   showShortcuts?: boolean | undefined
@@ -138,7 +141,13 @@ export function QuestTimePicker({
     <Dialog
       onOpenChange={(nextOpen) => {
         if (nextOpen) {
-          setDraft(value)
+          const initialDraft =
+            value && minTime && value < minTime
+              ? minTime
+              : value && maxTime && value > maxTime
+                ? maxTime
+                : value
+          setDraft(initialDraft)
           setShowIPhoneControl(isIPhoneDevice())
         }
         setOpen(nextOpen)
@@ -226,16 +235,20 @@ export function QuestTimePicker({
           <div className="quest-time-popover__exact-footer">
             <p aria-live="polite">
               {draftIsElapsed
-                ? `Choose ${minTime} or later for today.`
+                ? minTimeMessage
+                  ? `Choose ${minTime} or later.`
+                  : `Choose ${minTime} or later for today.`
                 : draftIsTooLate
                   ? `Choose ${maxTime} or earlier for today.`
                   : !draftIsComplete && draft
                     ? "Enter a complete time."
-                    : minTime
-                      ? maxTime
-                        ? `Use a future time no later than ${maxTime}.`
-                        : "Earlier times today are unavailable."
-                      : "Use any hour and minute."}
+                    : minTimeMessage
+                      ? minTimeMessage
+                      : minTime
+                        ? maxTime
+                          ? `Use a future time no later than ${maxTime}.`
+                          : "Earlier times today are unavailable."
+                        : "Use any hour and minute."}
             </p>
             <button
               disabled={!draftIsUsable}

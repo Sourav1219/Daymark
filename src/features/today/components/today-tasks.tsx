@@ -10,8 +10,6 @@ import {
   useRef,
   useState,
   useTransition,
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
 } from "react"
 import type { Route } from "next"
 import Link from "next/link"
@@ -46,6 +44,10 @@ import {
   TaskDeletedPopup,
   type DeletedTaskNotice,
 } from "@/features/quests/components/task-deleted-popup"
+import {
+  TaskRescheduledPopup,
+  type RestoredTaskNotice,
+} from "@/features/quests/components/task-restored-popup"
 import { type CompletedTaskNotice } from "@/features/quests/components/task-completed-popup"
 import { useTaskCompletionCelebration } from "@/features/quests/components/task-completion-celebration-provider"
 import type { QuestPriority } from "@/features/quests/domain/types"
@@ -78,10 +80,8 @@ type ClassificationHandler = (
 const TodayTaskContext = createContext<{
   timezone: string
   onClassified?: ClassificationHandler | undefined
+  onRescheduled?: ((task: RestoredTaskNotice) => void) | undefined
 }>({ timezone: "UTC" })
-
-const swipeRevealWidth = 70
-const detailSwipeThreshold = 52
 
 type TodayTasksProps = Readonly<{
   timezone?: string
@@ -109,6 +109,8 @@ export function TodayTasks({
   const lastFocusedQuestId = useRef<string | null>(null)
   const glowTimer = useRef<number | null>(null)
   const [deletedTask, setDeletedTask] = useState<DeletedTaskNotice | null>(null)
+  const [rescheduledTask, setRescheduledTask] =
+    useState<RestoredTaskNotice | null>(null)
   const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<
     ReadonlySet<string>
   >(() => new Set())
@@ -303,7 +305,15 @@ export function TodayTasks({
   }, [])
 
   return (
-    <TodayTaskContext.Provider value={{ timezone, onClassified }}>
+    <TodayTaskContext.Provider
+      value={{ onClassified, onRescheduled: setRescheduledTask, timezone }}
+    >
+      {rescheduledTask ? (
+        <TaskRescheduledPopup
+          onDismiss={() => setRescheduledTask(null)}
+          task={rescheduledTask}
+        />
+      ) : null}
       {deletedTask ? (
         <TaskDeletedPopup
           onDismiss={() => setDeletedTask(null)}
@@ -531,24 +541,11 @@ function TodayTaskCard({
   onDeleteStarted: (task: DeletedTaskNotice) => void
   reopening?: boolean | undefined
 }>) {
-  const { timezone, onClassified } = useContext(TodayTaskContext)
+  const { timezone, onClassified, onRescheduled } = useContext(TodayTaskContext)
   const [pending, startTransition] = useTransition()
-  const [actionsOpen, setActionsOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
-  const [detailSwipeOffset, setDetailSwipeOffset] = useState(0)
   const [done, setDone] = useState(false)
-  const [dragging, setDragging] = useState(false)
   const [isDiscarding, setIsDiscarding] = useState(false)
-  const [swipeOffset, setSwipeOffset] = useState(0)
-  const swipeOffsetRef = useRef(0)
-  const swipeStart = useRef<{
-    detailsOpen: boolean
-    gesture: "delete" | "details" | null
-    offset: number
-    pointerId: number
-    x: number
-    y: number
-  } | null>(null)
   const router = useRouter()
   const Icon = priorityIcon[card.priority]
   const dueTime = card.dueAt ? new Date(card.dueAt).getTime() : null
@@ -556,95 +553,7 @@ function TodayTaskCard({
   const missed =
     card.status === "failed" ||
     (card.status === "open" && dueTime !== null && dueTime < now)
-  const cancellable = !historical && !completed && !reopening
   const hasDescription = Boolean(card.description?.trim())
-
-  function settleSwipe(open: boolean) {
-    const offset = open ? -swipeRevealWidth : 0
-    if (open && !actionsOpen) {
-      triggerHaptic("selection")
-    }
-    swipeOffsetRef.current = offset
-    setSwipeOffset(offset)
-    setActionsOpen(open)
-    setDragging(false)
-  }
-
-  function beginSwipe(event: ReactPointerEvent<HTMLElement>) {
-    if ((!cancellable && !hasDescription) || isDiscarding || pending) return
-    if ((event.target as Element).closest("button")) return
-
-    swipeStart.current = {
-      detailsOpen,
-      gesture: actionsOpen ? "delete" : null,
-      offset: swipeOffsetRef.current,
-      pointerId: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-    }
-    setDragging(true)
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-  }
-
-  function moveSwipe(event: ReactPointerEvent<HTMLElement>) {
-    const start = swipeStart.current
-    if (!start || start.pointerId !== event.pointerId) return
-
-    const deltaX = event.clientX - start.x
-    const deltaY = event.clientY - start.y
-
-    if (start.gesture === null) {
-      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
-        swipeStart.current = null
-        setDragging(false)
-        return
-      }
-
-      if (deltaX < -10 && cancellable) {
-        start.gesture = "delete"
-      } else if (Math.abs(deltaX) > 10 && hasDescription) {
-        start.gesture = "details"
-      } else {
-        return
-      }
-    }
-
-    if (start.gesture === "details") {
-      const clampedOffset = Math.max(Math.min(deltaX * 0.4, 40), -40)
-      setDetailSwipeOffset(clampedOffset)
-      return
-    }
-
-    if (start.gesture === "delete") {
-      const rawOffset = start.offset + deltaX
-      const clampedOffset = Math.max(
-        Math.min(rawOffset, 0),
-        -swipeRevealWidth - 16,
-      )
-      swipeOffsetRef.current = clampedOffset
-      setSwipeOffset(clampedOffset)
-    }
-  }
-
-  function finishSwipe(event: ReactPointerEvent<HTMLElement>) {
-    const start = swipeStart.current
-    if (!start || start.pointerId !== event.pointerId) return
-
-    event.currentTarget.releasePointerCapture?.(event.pointerId)
-    swipeStart.current = null
-
-    if (start.gesture === "details") {
-      const deltaX = event.clientX - start.x
-      const direction = start.detailsOpen ? -1 : 1
-      const shouldFlip = direction * deltaX >= detailSwipeThreshold
-      setDetailSwipeOffset(0)
-      setDragging(false)
-      if (shouldFlip) setDetailsOpen(!start.detailsOpen)
-      return
-    }
-
-    settleSwipe(swipeOffsetRef.current <= -swipeRevealWidth / 2)
-  }
 
   function complete() {
     if (pending || done) {
@@ -721,18 +630,9 @@ function TodayTaskCard({
   return (
     <div
       className="today-card-shell"
-      data-actions-open={actionsOpen && !isDiscarding}
       data-details-open={detailsOpen}
       data-discarding={isDiscarding}
-      data-dragging={dragging}
       data-flippable={hasDescription}
-      data-swipeable={cancellable}
-      style={
-        {
-          "--detail-swipe-offset": `${detailSwipeOffset}px`,
-          "--swipe-offset": `${swipeOffset}px`,
-        } as CSSProperties
-      }
     >
       <article
         aria-label={detailsOpen ? `${card.title} description` : card.title}
@@ -746,10 +646,6 @@ function TodayTaskCard({
         data-reopening={reopening}
         data-status={missed ? "failed" : card.status}
         id={todayTaskElementId(card.id)}
-        onPointerCancel={finishSwipe}
-        onPointerDown={beginSwipe}
-        onPointerMove={moveSwipe}
-        onPointerUp={finishSwipe}
         tabIndex={-1}
       >
         <div className="today-card__flipper">
@@ -771,10 +667,9 @@ function TodayTaskCard({
                         aria-label={`View description for ${card.title}`}
                         className="today-card__details-trigger"
                         onClick={() => {
-                          settleSwipe(false)
                           setDetailsOpen(true)
                         }}
-                        title="View note · or swipe right"
+                        title="View note"
                         type="button"
                       >
                         <MessageSquareText aria-hidden="true" />
@@ -823,10 +718,10 @@ function TodayTaskCard({
                 <RestoreQuestScheduleDialog
                   input={{ questId: card.id, expectedVersion: card.version }}
                   mode="reschedule"
-                  onRestored={() => toast.success("Task rescheduled")}
-                  referenceNow={new Date(now).toISOString()}
+                  onRestored={(task) => onRescheduled?.(task)}
                   timezone={timezone}
                   title={card.title}
+                  triggerClassName="today-card__reschedule-btn"
                 />
               ) : null}
             </div>
@@ -896,28 +791,10 @@ function TodayTaskCard({
                 </button>
               </div>
               <p className="today-card__note-copy">{card.description}</p>
-              <span className="today-card__note-hint">
-                Swipe left to return
-              </span>
             </div>
           ) : null}
         </div>
       </article>
-      {cancellable && !isDiscarding ? (
-        <button
-          aria-label={`Move ${card.title} to Trash`}
-          className="today-card__swipe-delete"
-          disabled={isDiscarding}
-          onClick={() => moveTaskToTrash("cancelled")}
-          onFocus={() => settleSwipe(true)}
-          type="button"
-        >
-          <span aria-hidden="true" className="today-card__swipe-delete-icon">
-            <Trash2 />
-          </span>
-          <span>Remove</span>
-        </button>
-      ) : null}
     </div>
   )
 }

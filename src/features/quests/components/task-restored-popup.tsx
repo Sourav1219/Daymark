@@ -2,7 +2,12 @@
 
 import { useEffect } from "react"
 import { createPortal } from "react-dom"
-import { ArchiveRestore, ArrowRight, Sparkles } from "lucide-react"
+import {
+  ArchiveRestore,
+  ArrowRight,
+  CalendarClock,
+  Sparkles,
+} from "lucide-react"
 
 export type RestoredTaskNotice = Readonly<{
   id: string
@@ -12,9 +17,11 @@ export type RestoredTaskNotice = Readonly<{
 export function TaskRestoredPopup({
   onDismiss,
   task,
+  variant = "restored",
 }: Readonly<{
   onDismiss: () => void
   task: RestoredTaskNotice
+  variant?: "restored" | "rescheduled"
 }>) {
   useEffect(() => {
     const timeout = window.setTimeout(onDismiss, 8_000)
@@ -30,8 +37,19 @@ export function TaskRestoredPopup({
     return () => window.removeEventListener("keydown", dismissOnEscape)
   }, [onDismiss])
 
+  const isRescheduled = variant === "rescheduled"
+  const titleId = isRescheduled
+    ? "task-rescheduled-popup-title"
+    : "task-restored-popup-title"
+
   return createPortal(
-    <div className="task-created-popup__stage task-created-popup__stage--restored">
+    <div
+      className={`task-created-popup__stage ${
+        isRescheduled
+          ? "task-created-popup__stage--rescheduled"
+          : "task-created-popup__stage--restored"
+      }`}
+    >
       <div aria-hidden="true" className="task-created-popup__ambient">
         <span />
         <span />
@@ -41,28 +59,31 @@ export function TaskRestoredPopup({
         <span />
       </div>
       <section
-        aria-labelledby="task-restored-popup-title"
+        aria-labelledby={titleId}
         aria-live="polite"
         aria-modal="true"
         className="task-created-popup"
-        data-kind="restored"
+        data-kind={isRescheduled ? "rescheduled" : "restored"}
         role="dialog"
       >
         <div aria-hidden="true" className="task-created-popup__visual">
           <span className="task-created-popup__ring task-created-popup__ring--outer" />
           <span className="task-created-popup__ring task-created-popup__ring--inner" />
           <span className="task-created-popup__icon">
-            <ArchiveRestore />
+            {isRescheduled ? <CalendarClock /> : <ArchiveRestore />}
             <Sparkles className="task-created-popup__sparkle" />
           </span>
         </div>
 
         <div className="task-created-popup__copy">
-          <span>Back in motion</span>
-          <h2 id="task-restored-popup-title">Task restored!</h2>
+          <span>{isRescheduled ? "Timeline updated" : "Back in motion"}</span>
+          <h2 id={titleId}>
+            {isRescheduled ? "Task rescheduled!" : "Task restored!"}
+          </h2>
           <p>
-            Your task is active again with its new timeline. Its earlier
-            activity remains in history.
+            {isRescheduled
+              ? "Your task has a fresh future window and is ready on Home. The earlier record remains safely in Progress."
+              : "Your task is active again with its new timeline. Its earlier activity remains in history."}
           </p>
           <strong className="task-created-popup__task">{task.title}</strong>
         </div>
@@ -86,5 +107,21 @@ export function TaskRestoredPopup({
       </section>
     </div>,
     document.getElementById("app-device-viewport") ?? document.body,
+  )
+}
+
+export function TaskRescheduledPopup({
+  onDismiss,
+  task,
+}: Readonly<{
+  onDismiss: () => void
+  task: RestoredTaskNotice
+}>) {
+  return (
+    <TaskRestoredPopup
+      onDismiss={onDismiss}
+      task={task}
+      variant="rescheduled"
+    />
   )
 }

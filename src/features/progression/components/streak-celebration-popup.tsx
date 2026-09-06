@@ -3,10 +3,23 @@
 import { useCallback, useEffect, useState, useTransition } from "react"
 import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Flame, RotateCcw, Sparkles, Zap } from "lucide-react"
+import {
+  ArrowRight,
+  Check,
+  Flame,
+  RotateCcw,
+  Sparkles,
+  Zap,
+} from "lucide-react"
+import { toast } from "sonner"
 
 import { reopenQuestAction } from "@/features/quests/application/actions"
+import {
+  taskCompletionUndoEvent,
+  type TaskCompletionUndoEventDetail,
+} from "@/features/quests/domain/quest-links"
 import type { CompletedTaskNotice } from "@/features/quests/components/task-completed-popup"
+import { triggerHaptic } from "@/lib/platform/platform-bridge"
 
 export type StreakCelebrationNotice = Readonly<{
   count: number
@@ -14,6 +27,8 @@ export type StreakCelebrationNotice = Readonly<{
 }>
 
 type StreakPhase = "celebrating" | "error" | "undone"
+
+export const streakCelebrationDurationMs = 8_000
 
 function streakCopy(count: number, earned: boolean) {
   if (count <= 0) {
@@ -56,38 +71,71 @@ export function StreakCelebrationPopup({
   const earned = Boolean(notice.task)
   const copy = streakCopy(notice.count, earned)
 
+  const closePopup = useCallback(() => {
+    onDismiss()
+    if (phase === "undone") router.replace("/today")
+  }, [onDismiss, phase, router])
+
   useEffect(() => {
-    const timeout = window.setTimeout(
-      onDismiss,
-      phase === "undone" ? 1_800 : 8_000,
-    )
+    router.prefetch("/today")
+  }, [router])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(closePopup, streakCelebrationDurationMs)
     return () => window.clearTimeout(timeout)
-  }, [onDismiss, phase])
+  }, [closePopup, phase])
 
   useEffect(() => {
     function dismissOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !pending) onDismiss()
+      if (event.key === "Escape" && (!pending || phase === "undone"))
+        closePopup()
     }
 
     window.addEventListener("keydown", dismissOnEscape)
     return () => window.removeEventListener("keydown", dismissOnEscape)
-  }, [onDismiss, pending])
+  }, [closePopup, pending, phase])
 
   const undoCompletion = useCallback(() => {
     const task = notice.task
     if (!task || pending || phase === "undone") return
 
-    startTransition(async () => {
-      const result = await reopenQuestAction({
-        expectedVersion: task.version,
-        questId: task.id,
-      })
+    function announceUndo(detail: TaskCompletionUndoEventDetail) {
+      window.dispatchEvent(
+        new CustomEvent<TaskCompletionUndoEventDetail>(
+          taskCompletionUndoEvent,
+          { detail },
+        ),
+      )
+    }
 
-      if (result.ok) {
-        setPhase("undone")
-        router.refresh()
-      } else {
+    triggerHaptic("selection")
+    setPhase("undone")
+    announceUndo({ phase: "started", questId: task.id })
+
+    startTransition(async () => {
+      try {
+        const result = await reopenQuestAction({
+          expectedVersion: task.version,
+          questId: task.id,
+        })
+
+        if (result.ok) {
+          announceUndo({
+            phase: "confirmed",
+            questId: task.id,
+            version: result.data.version,
+          })
+          router.refresh()
+          return
+        }
+
+        announceUndo({ phase: "failed", questId: task.id })
         setPhase("error")
+        toast.error(result.error.message)
+      } catch {
+        announceUndo({ phase: "failed", questId: task.id })
+        setPhase("error")
+        toast.error("The completion could not be undone. Please try again.")
       }
     })
   }, [notice.task, pending, phase, router])
@@ -121,17 +169,27 @@ export function StreakCelebrationPopup({
         data-phase={phase}
         role="dialog"
       >
-        <div aria-hidden="true" className="task-created-popup__visual">
+        <div
+          aria-hidden="true"
+          className="task-created-popup__visual"
+          key={`visual-${phase}`}
+        >
           <span className="task-created-popup__ring task-created-popup__ring--outer" />
           <span className="task-created-popup__ring task-created-popup__ring--inner" />
           <span className="task-created-popup__icon streak-celebration__icon">
-            <Flame />
-            <strong>{notice.count}</strong>
+            {phase === "undone" ? (
+              <RotateCcw />
+            ) : (
+              <>
+                <Flame />
+                <strong>{notice.count}</strong>
+              </>
+            )}
             <Sparkles className="task-created-popup__sparkle" />
           </span>
         </div>
 
-        <div className="task-created-popup__copy">
+        <div className="task-created-popup__copy" key={`copy-${phase}`}>
           <span>
             {phase === "undone" ? "Flame recalculated" : copy.eyebrow}
           </span>
@@ -163,14 +221,18 @@ export function StreakCelebrationPopup({
             </button>
           ) : null}
           <button
-            autoFocus={!notice.task}
+            autoFocus={phase === "undone" || !notice.task}
             className="task-created-popup__continue"
-            disabled={pending}
-            onClick={onDismiss}
+            disabled={pending && phase !== "undone"}
+            onClick={closePopup}
             type="button"
           >
-            Keep going
-            <ArrowRight aria-hidden="true" />
+            {phase === "undone" ? "Continue" : "Keep going"}
+            {phase === "undone" ? (
+              <Check aria-hidden="true" />
+            ) : (
+              <ArrowRight aria-hidden="true" />
+            )}
           </button>
         </div>
 
@@ -179,7 +241,11 @@ export function StreakCelebrationPopup({
             ? "Returning to your tasks…"
             : "This screen closes automatically"}
         </p>
-        <span aria-hidden="true" className="task-created-popup__timer" />
+        <span
+          aria-hidden="true"
+          className="task-created-popup__timer"
+          key={`timer-${phase}`}
+        />
       </section>
     </div>,
     document.getElementById("app-device-viewport") ?? document.body,

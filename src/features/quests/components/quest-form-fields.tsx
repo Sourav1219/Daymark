@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { CalendarDays, Clock3, RotateCcw } from "lucide-react"
 
 import { Label } from "@/components/ui/label"
@@ -15,8 +15,11 @@ import { QuestRecurrenceFields } from "@/features/quests/components/quest-recurr
 import { QuestDatePicker } from "@/features/quests/components/quest-date-picker"
 import { QuestTimePicker } from "@/features/quests/components/quest-time-picker"
 import {
+  addDaysToLocalDate,
+  addMinutesToLocalTime,
   defaultTimezone,
   formatZonedLocalInput,
+  parseZonedLocalDateTime,
   timezoneAbbreviation,
 } from "@/features/reminders/domain/timezone"
 
@@ -93,7 +96,13 @@ export function QuestFormFields({
   // earlier days are unselectable and earlier times on today are rejected.
   // Editing keeps full freedom: an existing task may already be overdue.
   const enforceFuture = variant === "create"
-  const [referenceNow] = useState(() => Date.now())
+  const [referenceNow, setReferenceNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!enforceFuture) return
+    const timer = setInterval(() => setReferenceNow(Date.now()), 5_000)
+    return () => clearInterval(timer)
+  }, [enforceFuture])
   // Time inputs only preserve minute precision. Start at the next whole minute
   // so a value that passes native validation cannot become a past instant when
   // the server restores the omitted seconds as :00.
@@ -177,7 +186,42 @@ export function QuestFormFields({
           ? earliestTime
           : requested
 
-      return { ...current, [key]: date ? `${date}T${time}` : "" }
+      const nextValue = date ? `${date}T${time}` : ""
+      const next = { ...current, [key]: nextValue }
+
+      // If startAt moves to or past dueAt, push dueAt forward
+      if (
+        key === "startAt" &&
+        nextValue &&
+        current.dueAt &&
+        current.dueAt <= nextValue
+      ) {
+        const shiftedDue = parseZonedLocalDateTime(nextValue, timezone)
+        if (shiftedDue) {
+          next.dueAt = formatZonedLocalInput(
+            new Date(shiftedDue.getTime() + 60 * 60_000),
+            timezone,
+          )
+        }
+      }
+
+      // If dueAt moves to or before startAt, push dueAt forward
+      if (
+        key === "dueAt" &&
+        nextValue &&
+        current.startAt &&
+        nextValue <= current.startAt
+      ) {
+        const shiftedDue = parseZonedLocalDateTime(current.startAt, timezone)
+        if (shiftedDue) {
+          next.dueAt = formatZonedLocalInput(
+            new Date(shiftedDue.getTime() + 60 * 60_000),
+            timezone,
+          )
+        }
+      }
+
+      return next
     })
   }
 
@@ -369,88 +413,128 @@ export function QuestFormFields({
           </div>
 
           <div className="quest-schedule__range">
-            {(
-              [
-                {
-                  error: fieldErrors?.startAt,
-                  errorId: startErrorId,
-                  key: "startAt",
-                  label: "Starts",
-                },
-                {
-                  error: fieldErrors?.dueAt,
-                  errorId: dueErrorId,
-                  key: "dueAt",
-                  label: "Due",
-                },
-              ] as const
-            ).map((moment) => {
-              const parts = scheduleParts(schedule[moment.key])
-              const labelPrefix = moment.key === "startAt" ? "Start" : "Due"
+            {(() => {
+              const startParts = scheduleParts(schedule.startAt)
+              const nextMinuteAfterStart =
+                startParts.date && startParts.time
+                  ? addMinutesToLocalTime(startParts.time, 1)
+                  : undefined
+              const dueMinDate =
+                startParts.date && startParts.time === "23:59"
+                  ? addDaysToLocalDate(startParts.date, 1)
+                  : startParts.date && earliestDate
+                    ? startParts.date < earliestDate
+                      ? earliestDate
+                      : startParts.date
+                    : startParts.date || earliestDate
 
               return (
-                <div className="quest-schedule__moment" key={moment.key}>
-                  <div className="quest-schedule__moment-title">
-                    <span aria-hidden="true" />
-                    <strong>{moment.label}</strong>
-                    <small>{parts.date ? "Scheduled" : "Not set"}</small>
-                  </div>
+                [
+                  {
+                    error: fieldErrors?.startAt,
+                    errorId: startErrorId,
+                    key: "startAt",
+                    label: "Starts",
+                  },
+                  {
+                    error: fieldErrors?.dueAt,
+                    errorId: dueErrorId,
+                    key: "dueAt",
+                    label: "Due",
+                  },
+                ] as const
+              ).map((moment) => {
+                const parts = scheduleParts(schedule[moment.key])
+                const labelPrefix = moment.key === "startAt" ? "Start" : "Due"
+                const momentMinDate =
+                  moment.key === "dueAt" ? dueMinDate : earliestDate
+                const momentMinTime =
+                  moment.key === "dueAt"
+                    ? parts.date &&
+                      startParts.date &&
+                      parts.date === startParts.date &&
+                      nextMinuteAfterStart
+                      ? enforceFuture &&
+                        parts.date === earliestDate &&
+                        earliestTime > nextMinuteAfterStart
+                        ? earliestTime
+                        : nextMinuteAfterStart
+                      : enforceFuture && parts.date === earliestDate
+                        ? earliestTime
+                        : undefined
+                    : enforceFuture && parts.date === earliestDate
+                      ? earliestTime
+                      : undefined
+                const momentMinTimeMessage =
+                  moment.key === "dueAt" &&
+                  parts.date &&
+                  startParts.date &&
+                  parts.date === startParts.date &&
+                  nextMinuteAfterStart
+                    ? "Due time must be after start time."
+                    : undefined
 
-                  <input
-                    name={moment.key}
-                    type="hidden"
-                    value={schedule[moment.key]}
-                  />
-
-                  <div className="quest-schedule__controls">
-                    <div className="quest-schedule__control">
-                      <Label htmlFor={`${idPrefix}-${moment.key}-date`}>
-                        Date
-                      </Label>
-                      <QuestDatePicker
-                        ariaDescribedby={
-                          moment.error ? moment.errorId : undefined
-                        }
-                        ariaInvalid={Boolean(moment.error)}
-                        ariaLabel={`${labelPrefix} date · ${zoneLabel}`}
-                        id={`${idPrefix}-${moment.key}-date`}
-                        minDate={earliestDate}
-                        onChange={(value) =>
-                          updateSchedule(moment.key, "date", value)
-                        }
-                        value={parts.date}
-                      />
+                return (
+                  <div className="quest-schedule__moment" key={moment.key}>
+                    <div className="quest-schedule__moment-title">
+                      <span aria-hidden="true" />
+                      <strong>{moment.label}</strong>
+                      <small>{parts.date ? "Scheduled" : "Not set"}</small>
                     </div>
 
-                    <div className="quest-schedule__control">
-                      <Label htmlFor={`${idPrefix}-${moment.key}-time`}>
-                        Time
-                      </Label>
-                      <QuestTimePicker
-                        ariaDescribedby={
-                          moment.error ? moment.errorId : undefined
-                        }
-                        ariaInvalid={Boolean(moment.error)}
-                        ariaLabel={`${labelPrefix} time · ${zoneLabel}`}
-                        disabled={!parts.date}
-                        id={`${idPrefix}-${moment.key}-time`}
-                        minTime={
-                          enforceFuture && parts.date === earliestDate
-                            ? earliestTime
-                            : undefined
-                        }
-                        onChange={(value) =>
-                          updateSchedule(moment.key, "time", value)
-                        }
-                        value={parts.time}
-                      />
-                    </div>
-                  </div>
+                    <input
+                      name={moment.key}
+                      type="hidden"
+                      value={schedule[moment.key]}
+                    />
 
-                  <FieldError errors={moment.error} id={moment.errorId} />
-                </div>
-              )
-            })}
+                    <div className="quest-schedule__controls">
+                      <div className="quest-schedule__control">
+                        <Label htmlFor={`${idPrefix}-${moment.key}-date`}>
+                          Date
+                        </Label>
+                        <QuestDatePicker
+                          ariaDescribedby={
+                            moment.error ? moment.errorId : undefined
+                          }
+                          ariaInvalid={Boolean(moment.error)}
+                          ariaLabel={`${labelPrefix} date · ${zoneLabel}`}
+                          id={`${idPrefix}-${moment.key}-date`}
+                          minDate={momentMinDate}
+                          onChange={(value) =>
+                            updateSchedule(moment.key, "date", value)
+                          }
+                          value={parts.date}
+                        />
+                      </div>
+
+                      <div className="quest-schedule__control">
+                        <Label htmlFor={`${idPrefix}-${moment.key}-time`}>
+                          Time
+                        </Label>
+                        <QuestTimePicker
+                          ariaDescribedby={
+                            moment.error ? moment.errorId : undefined
+                          }
+                          ariaInvalid={Boolean(moment.error)}
+                          ariaLabel={`${labelPrefix} time · ${zoneLabel}`}
+                          disabled={!parts.date}
+                          id={`${idPrefix}-${moment.key}-time`}
+                          minTime={momentMinTime}
+                          minTimeMessage={momentMinTimeMessage}
+                          onChange={(value) =>
+                            updateSchedule(moment.key, "time", value)
+                          }
+                          value={parts.time}
+                        />
+                      </div>
+                    </div>
+
+                    <FieldError errors={moment.error} id={moment.errorId} />
+                  </div>
+                )
+              })
+            })()}
           </div>
         </fieldset>
       </div>

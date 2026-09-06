@@ -161,3 +161,33 @@ export function isSameZonedDate(
     leftParts.day === rightParts.day
   )
 }
+
+export function addMinutesToLocalTime(
+  time: string,
+  minutes = 1,
+): string | null {
+  if (!time) return null
+  const [h, m] = time.split(":").map(Number)
+  if (
+    h === undefined ||
+    m === undefined ||
+    Number.isNaN(h) ||
+    Number.isNaN(m)
+  ) {
+    return null
+  }
+  const total = h * 60 + m + minutes
+  if (total >= 24 * 60) return null
+  const nextH = Math.floor(total / 60)
+  const nextM = total % 60
+  return `${String(nextH).padStart(2, "0")}:${String(nextM).padStart(2, "0")}`
+}
+
+export function addDaysToLocalDate(dateStr: string, days = 1): string {
+  if (!dateStr) return ""
+  const [y, m, d] = dateStr.split("-").map(Number)
+  if (!y || !m || !d) return dateStr
+  const dt = new Date(y, m - 1, d + days, 12)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}

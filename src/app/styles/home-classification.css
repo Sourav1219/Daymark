@@ -932,16 +932,7 @@
   min-block-size: 6.7rem;
   overflow: visible;
 }
-/* Override the overflow:hidden on swipeable shells when a classification
-   panel is open — the panel must remain fully visible. */
-.today-page .today-card-shell[data-swipeable="true"] {
-  overflow: visible;
-}
-/* Restore clip only while actively swiping (dragging/actions revealed) */
-.today-page .today-card-shell[data-swipeable="true"][data-actions-open="true"],
-.today-page .today-card-shell[data-swipeable="true"][data-dragging="true"] {
-  overflow: hidden;
-}
+
 .today-page .today-card__front {
   position: relative;
   inset: auto;

@@ -21,6 +21,7 @@ vi.mock("@/features/quests/application/actions", () => ({
   classifyQuestAction: vi.fn(),
   completeQuestAction: vi.fn(),
   editQuestScheduleAction: vi.fn(),
+  rescheduleMissedQuestAction: vi.fn(),
   softDeleteQuestAction: vi.fn(),
 }))
 
@@ -266,9 +267,7 @@ describe("TodayTasks completed section", () => {
 
     // Open classification panel
     fireEvent.click(trigger)
-    expect(
-      screen.getByLabelText("Edit Active task"),
-    ).toBeVisible()
+    expect(screen.getByLabelText("Edit Active task")).toBeVisible()
 
     // Select Work type - save without closing the panel
     const workBtn = screen.getByRole("button", { name: /Work/i })
@@ -281,17 +280,11 @@ describe("TodayTasks completed section", () => {
       taskType: "work",
     })
 
-    expect(
-      screen.getByLabelText("Edit Active task"),
-    ).toBeVisible()
+    expect(screen.getByLabelText("Edit Active task")).toBeVisible()
 
     await screen.findByText("Your choice is saved.")
-    fireEvent.click(
-      screen.getByRole("button", { name: "Done editing" }),
-    )
-    expect(
-      screen.queryByLabelText("Edit Active task"),
-    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Done editing" }))
+    expect(screen.queryByLabelText("Edit Active task")).not.toBeInTheDocument()
     expect(screen.getByText("Task updated!")).toBeVisible()
   })
 
@@ -329,9 +322,7 @@ describe("TodayTasks completed section", () => {
       name: /Edit Active task:/i,
     })
     fireEvent.click(trigger)
-    expect(
-      screen.getByLabelText("Edit Active task"),
-    ).toBeVisible()
+    expect(screen.getByLabelText("Edit Active task")).toBeVisible()
 
     // Priority buttons should be present
     const criticalBtn = screen.getByRole("button", { name: /^Critical$/i })
@@ -346,9 +337,7 @@ describe("TodayTasks completed section", () => {
       questId: "open-1",
     })
 
-    expect(
-      screen.getByLabelText("Edit Active task"),
-    ).toBeVisible()
+    expect(screen.getByLabelText("Edit Active task")).toBeVisible()
   })
 
   it("renders a single edit trigger that opens the unified panel with Task type, Priority, and Schedule sections", () => {
@@ -702,5 +691,122 @@ describe("TodayTasks completed section", () => {
     expect(
       screen.getByText("Your changes are saved and updated on Home."),
     ).toBeVisible()
+  })
+
+  it("shows Task rescheduled popup when rescheduling a missed task", async () => {
+    const { rescheduleMissedQuestAction } =
+      await import("@/features/quests/application/actions")
+    vi.mocked(rescheduleMissedQuestAction).mockResolvedValueOnce({
+      data: { id: "missed-reschedule", version: 2 },
+      ok: true,
+    })
+
+    render(
+      <div id="app-device-viewport">
+        <div className="device-main-viewport">
+          <TodayTasks
+            empty={false}
+            referenceNow="2026-09-07T10:00:00Z"
+            timezone="UTC"
+            sections={[
+              {
+                cards: [
+                  {
+                    dueAt: "2026-09-07T09:00:00Z",
+                    id: "missed-reschedule",
+                    priority: "medium",
+                    status: "failed",
+                    steps: 0,
+                    timeLabel: "09:00",
+                    title: "Missed Coding",
+                    version: 1,
+                  },
+                ],
+                title: "Missed",
+              },
+            ]}
+          />
+        </div>
+      </div>,
+    )
+
+    // Open reschedule dialog
+    fireEvent.click(screen.getByRole("button", { name: "Reschedule" }))
+    expect(screen.getByText("Set a new timeline")).toBeVisible()
+
+    // Click Reschedule task submit button
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Reschedule task" }))
+    })
+
+    expect(rescheduleMissedQuestAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        questId: "missed-reschedule",
+      }),
+    )
+
+    // Task rescheduled celebration popup is shown
+    expect(
+      screen.getByRole("heading", { name: "Task rescheduled!" }),
+    ).toBeVisible()
+    expect(screen.getByText("Timeline updated")).toBeVisible()
+    expect(
+      screen.getByText(
+        "Your task has a fresh future window and is ready on Home. The earlier record remains safely in Progress.",
+      ),
+    ).toBeVisible()
+    expect(
+      document.querySelector(".task-created-popup__task"),
+    ).toHaveTextContent("Missed Coding")
+
+    // Dismissing popup
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }))
+    expect(
+      screen.queryByRole("heading", { name: "Task rescheduled!" }),
+    ).not.toBeInTheDocument()
+  })
+
+  it("opens note only on clicking Note button and returns on clicking Back button", () => {
+    render(
+      <TodayTasks
+        empty={false}
+        sections={[
+          {
+            cards: [
+              {
+                description: "In Morning",
+                id: "task-with-note",
+                priority: "high",
+                status: "open",
+                steps: 0,
+                timeLabel: "Any time",
+                title: "Bathing",
+                version: 1,
+              },
+            ],
+            title: "My tasks",
+          },
+        ]}
+      />,
+    )
+
+    const noteButton = screen.getByRole("button", {
+      name: "View description for Bathing",
+    })
+    expect(noteButton).toBeVisible()
+
+    const shell = noteButton.closest(".today-card-shell")
+    expect(shell).toHaveAttribute("data-details-open", "false")
+    expect(shell).not.toHaveAttribute("data-swipeable")
+
+    // Clicking Note button opens note
+    fireEvent.click(noteButton)
+    expect(shell).toHaveAttribute("data-details-open", "true")
+    expect(screen.getByText("In Morning")).toBeVisible()
+
+    // Clicking Back button returns to front
+    const backButton = screen.getByRole("button", { name: "Return to Bathing" })
+    fireEvent.click(backButton)
+    expect(shell).toHaveAttribute("data-details-open", "false")
   })
 })

@@ -2,10 +2,7 @@
 
 import { useEffect, useId, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import {
-  Check,
-  Pencil,
-} from "lucide-react"
+import { Check, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import {
   taskTypes,
@@ -27,6 +24,8 @@ import { QuestDatePicker } from "@/features/quests/components/quest-date-picker"
 import { QuestTimePicker } from "@/features/quests/components/quest-time-picker"
 import { TaskUpdatedPopup } from "@/features/quests/components/task-created-popup"
 import {
+  addDaysToLocalDate,
+  addMinutesToLocalTime,
   formatZonedLocalInput,
   parseZonedLocalDateTime,
 } from "@/features/reminders/domain/timezone"
@@ -101,7 +100,9 @@ export function TaskClassificationControl({
     (v) => v && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v),
   )
 
-  const [startDate = "", startTime = ""] = (scheduleDraft.startAt || "").split("T")
+  const [startDate = "", startTime = ""] = (scheduleDraft.startAt || "").split(
+    "T",
+  )
   const [dueDate = "", dueTime = ""] = (scheduleDraft.dueAt || "").split("T")
 
   const [referenceNow, setReferenceNow] = useState(() => Date.now())
@@ -121,13 +122,13 @@ export function TaskClassificationControl({
 
   const startElapsed = Boolean(
     parsedStart &&
-      parsedStart.getTime() < earliestSchedule.getTime() &&
-      scheduleDraft.startAt !== scheduleInitial.startAt,
+    parsedStart.getTime() < earliestSchedule.getTime() &&
+    scheduleDraft.startAt !== scheduleInitial.startAt,
   )
   const dueElapsed = Boolean(
     parsedDue &&
-      parsedDue.getTime() < earliestSchedule.getTime() &&
-      scheduleDraft.dueAt !== scheduleInitial.dueAt,
+    parsedDue.getTime() < earliestSchedule.getTime() &&
+    scheduleDraft.dueAt !== scheduleInitial.dueAt,
   )
 
   const scheduleValidation = scheduleIncomplete
@@ -139,8 +140,8 @@ export function TaskClassificationControl({
         ? "That start time has already passed. Pick a later time."
         : dueElapsed
           ? "That due time has already passed. Pick a later time."
-          : parsedStart && parsedDue && parsedDue < parsedStart
-            ? "Due time cannot be earlier than start time."
+          : parsedStart && parsedDue && parsedDue <= parsedStart
+            ? "Due time must be after start time."
             : card.recurrenceRule && !parsedStart && !parsedDue
               ? "Recurring tasks need a start or due time."
               : ""
@@ -190,11 +191,26 @@ export function TaskClassificationControl({
         }
       }
 
+      // If dueAt moves to or before startAt, push dueAt forward
+      if (
+        key === "dueAt" &&
+        nextValue &&
+        current.startAt &&
+        nextValue <= current.startAt
+      ) {
+        const shiftedDue = parseZonedLocalDateTime(current.startAt, timezone)
+        if (shiftedDue) {
+          next.dueAt = formatZonedLocalInput(
+            new Date(shiftedDue.getTime() + 60 * 60_000),
+            timezone,
+          )
+        }
+      }
+
       return next
     })
     setScheduleError("")
   }
-
 
   // Auto-close when clicking outside or pressing Escape
   useEffect(() => {
@@ -231,6 +247,12 @@ export function TaskClassificationControl({
       document.removeEventListener("mousedown", handleClickOutside)
       document.removeEventListener("keydown", handleKeyDown)
     }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const timer = setInterval(() => setReferenceNow(Date.now()), 5_000)
+    return () => clearInterval(timer)
   }, [open])
 
   function save(change: {
@@ -478,9 +500,7 @@ export function TaskClassificationControl({
               <button
                 className="task-edit-schedule__clear"
                 disabled={
-                  !scheduleDraft.startAt ||
-                  anyPending ||
-                  scheduleUnavailable
+                  !scheduleDraft.startAt || anyPending || scheduleUnavailable
                 }
                 onClick={() => {
                   setScheduleDraft((cur) => ({ ...cur, startAt: "" }))
@@ -494,11 +514,21 @@ export function TaskClassificationControl({
 
             {/* Due moment */}
             {(() => {
+              const nextMinuteAfterStart = startTime
+                ? addMinutesToLocalTime(startTime, 1)
+                : undefined
+
+              const dueMinDate =
+                startTime === "23:59" && startDate
+                  ? addDaysToLocalDate(startDate, 1)
+                  : startDate || earliestDate
+
               const dueMinTime =
-                dueDate === startDate && startTime
-                  ? dueDate === earliestDate && earliestTime > startTime
+                dueDate === startDate && nextMinuteAfterStart
+                  ? dueDate === earliestDate &&
+                    earliestTime > nextMinuteAfterStart
                     ? earliestTime
-                    : startTime
+                    : nextMinuteAfterStart
                   : dueDate === earliestDate
                     ? earliestTime
                     : undefined
@@ -514,7 +544,7 @@ export function TaskClassificationControl({
                       ariaLabel="Due date"
                       disabled={anyPending || scheduleUnavailable}
                       id={`${pickerId}-dueAt-date`}
-                      minDate={startDate || earliestDate}
+                      minDate={dueMinDate}
                       onChange={(v) => updateSchedule("dueAt", "date", v)}
                       value={dueDate}
                     />
@@ -523,6 +553,11 @@ export function TaskClassificationControl({
                       disabled={!dueDate || anyPending || scheduleUnavailable}
                       id={`${pickerId}-dueAt-time`}
                       minTime={dueMinTime}
+                      minTimeMessage={
+                        dueDate === startDate && nextMinuteAfterStart
+                          ? "Due time must be after start time."
+                          : undefined
+                      }
                       onChange={(v) => updateSchedule("dueAt", "time", v)}
                       value={dueTime}
                     />
@@ -530,9 +565,7 @@ export function TaskClassificationControl({
                   <button
                     className="task-edit-schedule__clear"
                     disabled={
-                      !scheduleDraft.dueAt ||
-                      anyPending ||
-                      scheduleUnavailable
+                      !scheduleDraft.dueAt || anyPending || scheduleUnavailable
                     }
                     onClick={() => {
                       setScheduleDraft((cur) => ({ ...cur, dueAt: "" }))

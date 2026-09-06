@@ -3995,7 +3995,8 @@ Quest studio — creation-first workspace. The page borrows the
   background: linear-gradient(90deg, #24b77f, #58d6a8, #4ea2ff);
 }
 
-.task-created-popup__stage--restored {
+.task-created-popup__stage--restored,
+.task-created-popup__stage--rescheduled {
   background:
     radial-gradient(
       circle at 16% 18%,
@@ -4014,40 +4015,47 @@ Quest studio — creation-first workspace. The page borrows the
     );
 }
 
-.task-created-popup__stage--restored::before {
+.task-created-popup__stage--restored::before,
+.task-created-popup__stage--rescheduled::before {
   border-color: rgba(97, 82, 220, 0.11);
   box-shadow:
     0 0 0 2.6rem rgba(90, 104, 229, 0.04),
     0 0 0 7rem rgba(90, 104, 229, 0.025);
 }
 
-.task-created-popup[data-kind="restored"] .task-created-popup__icon {
+.task-created-popup[data-kind="restored"] .task-created-popup__icon,
+.task-created-popup[data-kind="rescheduled"] .task-created-popup__icon {
   background: linear-gradient(145deg, #765ff0, #3f65df);
   box-shadow:
     0 26px 45px -20px rgba(69, 79, 205, 0.72),
     inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
 
-.task-created-popup[data-kind="restored"] .task-created-popup__ring {
+.task-created-popup[data-kind="restored"] .task-created-popup__ring,
+.task-created-popup[data-kind="rescheduled"] .task-created-popup__ring {
   border-color: rgba(105, 87, 225, 0.21);
 }
 
-.task-created-popup[data-kind="restored"] .task-created-popup__ring--inner {
+.task-created-popup[data-kind="restored"] .task-created-popup__ring--inner,
+.task-created-popup[data-kind="rescheduled"] .task-created-popup__ring--inner {
   border-color: rgba(72, 103, 222, 0.15);
 }
 
-.task-created-popup[data-kind="restored"] .task-created-popup__copy > span {
+.task-created-popup[data-kind="restored"] .task-created-popup__copy > span,
+.task-created-popup[data-kind="rescheduled"] .task-created-popup__copy > span {
   border-color: rgba(105, 87, 225, 0.14);
   color: #594ac5;
 }
 
-.task-created-popup[data-kind="restored"] .task-created-popup__continue {
+.task-created-popup[data-kind="restored"] .task-created-popup__continue,
+.task-created-popup[data-kind="rescheduled"] .task-created-popup__continue {
   border-color: rgba(74, 81, 204, 0.16);
   background: linear-gradient(135deg, #745ff0, #3f65df);
   box-shadow: 0 16px 28px -16px rgba(66, 79, 199, 0.72);
 }
 
-.task-created-popup[data-kind="restored"] .task-created-popup__timer {
+.task-created-popup[data-kind="restored"] .task-created-popup__timer,
+.task-created-popup[data-kind="rescheduled"] .task-created-popup__timer {
   background: linear-gradient(90deg, #765ff0, #4779f4, #68c8ff);
 }
 

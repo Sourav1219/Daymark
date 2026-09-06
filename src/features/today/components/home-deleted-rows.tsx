@@ -79,7 +79,6 @@ function DeletedRow({
         <RestoreQuestScheduleDialog
           input={{ questId: card.id, expectedVersion: card.version }}
           onRestored={() => setRestored(true)}
-          referenceNow={referenceNow}
           timezone={timezone}
           title={card.title}
         />

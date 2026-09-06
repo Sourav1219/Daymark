@@ -125,6 +125,10 @@ describe("editQuestSchedule", () => {
   it.each([
     { dueAt: new Date("2026-11-01T06:30:00Z") },
     { startAt: new Date("2026-11-01T08:00:13Z") },
+    {
+      dueAt: new Date("2026-11-01T07:00:12Z"),
+      startAt: new Date("2026-11-01T07:00:12Z"),
+    },
   ])(
     "validates partial changes against exact persisted instants: %o",
     async (changes) => {
@@ -132,7 +136,7 @@ describe("editQuestSchedule", () => {
         editQuestSchedule(database, access, { ...command, ...changes }),
       ).rejects.toMatchObject({
         code: "VALIDATION_ERROR",
-        message: "Due time cannot be earlier than start time.",
+        message: "Due time must be after start time.",
       })
       expect(mocks.updateQuestRecord).not.toHaveBeenCalled()
     },
@@ -160,17 +164,22 @@ describe("editQuestSchedule", () => {
     })
   })
 
-  it("accepts equal instants and clearing both nonrecurring timestamps", async () => {
-    await editQuestSchedule(database, access, {
-      ...command,
-      dueAt: current.startAt,
+  it("rejects equal instants and accepts clearing both nonrecurring timestamps", async () => {
+    await expect(
+      editQuestSchedule(database, access, {
+        ...command,
+        dueAt: current.startAt,
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      message: "Due time must be after start time.",
     })
     await editQuestSchedule(database, access, {
       ...command,
       startAt: null,
       dueAt: null,
     })
-    expect(mocks.updateQuestRecord).toHaveBeenCalledTimes(2)
+    expect(mocks.updateQuestRecord).toHaveBeenCalledTimes(1)
   })
 
   it("reanchors recurring tasks without round-tripping the omitted ambiguous instant", async () => {

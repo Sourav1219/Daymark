@@ -304,64 +304,6 @@ describe("Quest organisation controls", () => {
     ).toHaveTextContent("Expired task")
   })
 
-  it("reveals and deletes an unneeded active Today task without a penalty", async () => {
-    questActions.softDeleteQuestAction.mockResolvedValue({
-      data: {
-        id: "unneeded-task",
-        progression: { totalXp: 35, xpDelta: 0 },
-        version: 2,
-      },
-      ok: true,
-    })
-    const user = userEvent.setup()
-
-    render(
-      <TodayTasks
-        empty={false}
-        sections={[
-          {
-            cards: [
-              {
-                id: "unneeded-task",
-                priority: "medium",
-                status: "open",
-                steps: 0,
-                timeLabel: "7:30 PM – 9:30 PM",
-                title: "No longer needed",
-                version: 1,
-              },
-            ],
-            title: "My tasks",
-          },
-        ]}
-      />,
-    )
-
-    const task = screen.getByRole("article", { name: "No longer needed" })
-    const deleteTask = screen.getByRole("button", {
-      name: "Move No longer needed to Trash",
-    })
-    expect(
-      screen.getByRole("button", { name: "Clear No longer needed" }),
-    ).toBeVisible()
-
-    await user.tab()
-    await user.tab()
-    await user.tab()
-    expect(deleteTask).toHaveFocus()
-    expect(task.parentElement).toHaveAttribute("data-actions-open", "true")
-
-    await user.click(deleteTask)
-    expect(questActions.softDeleteQuestAction).toHaveBeenCalledWith({
-      expectedVersion: 1,
-      questId: "unneeded-task",
-    })
-    expect(screen.queryByRole("article")).not.toBeInTheDocument()
-    expect(
-      screen.getByRole("dialog", { name: "Moved to Trash" }),
-    ).toHaveTextContent("No points were deducted")
-  })
-
   it("reopens a task when completion is undone", async () => {
     expect(taskCompletedResultDurationMs).toBe(8_000)
     let confirmUndo: (() => void) | undefined
@@ -659,7 +601,7 @@ describe("Quest organisation controls", () => {
     expect(screen.queryByLabelText("Time shortcuts")).not.toBeInTheDocument()
     expect(
       screen.getByLabelText("Start time · UTC exact value"),
-    ).toHaveAttribute("max", "23:59")
+    ).toHaveAttribute("max", "23:58")
     await user.keyboard("{Escape}")
     const refreshCallsBeforeRestore = navigation.refresh.mock.calls.length
     await user.click(screen.getByRole("button", { name: "Restore to Home" }))

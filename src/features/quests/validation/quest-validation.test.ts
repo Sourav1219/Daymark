@@ -64,7 +64,7 @@ describe("Quest validation", () => {
     expect(reversed.success).toBe(false)
     expect(
       reversed.success ? [] : reversed.error.flatten().fieldErrors.dueAt,
-    ).toContain("Due time cannot be earlier than start time.")
+    ).toContain("Due time must be after start time.")
   })
 
   it("accepts empty optional fields and rejects unknown input", () => {
@@ -195,7 +195,7 @@ describe("schedule-only edits", () => {
     })
   })
 
-  it("rejects reversed schedules but accepts equal start and due instants", () => {
+  it("rejects reversed schedules and equal start and due instants", () => {
     const input = { ...base, startAt: "2026-11-01T09:30" }
     const reversed = parseEditQuestSchedule(
       { ...input, dueAt: "2026-11-01T09:29" },
@@ -204,13 +204,19 @@ describe("schedule-only edits", () => {
     expect(reversed.success).toBe(false)
     if (!reversed.success) {
       expect(reversed.error.flatten().fieldErrors.dueAt).toContain(
-        "Due time cannot be earlier than start time.",
+        "Due time must be after start time.",
       )
     }
-    expect(
-      parseEditQuestSchedule({ ...input, dueAt: input.startAt }, "Asia/Kolkata")
-        .success,
-    ).toBe(true)
+    const equal = parseEditQuestSchedule(
+      { ...input, dueAt: input.startAt },
+      "Asia/Kolkata",
+    )
+    expect(equal.success).toBe(false)
+    if (!equal.success) {
+      expect(equal.error.flatten().fieldErrors.dueAt).toContain(
+        "Due time must be after start time.",
+      )
+    }
   })
 
   it("rejects elapsed schedule edits to match task creation rules", () => {

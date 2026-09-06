@@ -590,7 +590,6 @@ button.today-section__heading--collapsible:focus-visible {
 
 .today-card-shell {
   --today-card-height: 5.35rem;
-  --swipe-offset: 0px;
   position: relative;
   box-sizing: border-box;
   min-width: 0;
@@ -598,26 +597,6 @@ button.today-section__heading--collapsible:focus-visible {
   block-size: var(--today-card-height);
   min-block-size: var(--today-card-height);
   width: 100%;
-}
-
-.today-card-shell[data-swipeable="true"] {
-  overflow: hidden;
-  background: transparent;
-  box-shadow: none;
-}
-
-.today-card-shell[data-swipeable="true"][data-actions-open="true"],
-.today-card-shell[data-swipeable="true"][data-dragging="true"] {
-  background:
-    radial-gradient(
-      circle at 100% 0,
-      rgba(255, 255, 255, 0.76),
-      transparent 48%
-    ),
-    linear-gradient(135deg, #fff3f4, #ffe7ea);
-  box-shadow:
-    inset 0 0 0 1px rgba(199, 74, 91, 0.09),
-    0 17px 30px -27px rgba(126, 45, 57, 0.52);
 }
 
 .today-card-shell[data-discarding="true"] {
@@ -652,12 +631,6 @@ button.today-section__heading--collapsible:focus-visible {
     opacity 0.15s ease !important;
 }
 
-.today-card-shell[data-discarding="true"] .today-card__swipe-delete {
-  display: none !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
 .today-card {
   position: relative;
   display: block;
@@ -684,8 +657,6 @@ button.today-section__heading--collapsible:focus-visible {
   isolation: isolate;
   perspective: 900px;
   scroll-margin-block: 7rem;
-  touch-action: pan-y;
-  translate: var(--swipe-offset) 0;
   z-index: 1;
 }
 
@@ -693,17 +664,13 @@ button.today-section__heading--collapsible:focus-visible {
   position: relative;
   width: 100%;
   height: 100%;
-  transform: translateX(var(--detail-swipe-offset, 0)) rotateY(0deg);
+  transform: rotateY(0deg);
   transform-style: preserve-3d;
   transition: transform 0.42s var(--ease-emphasized);
 }
 
 .today-card-shell[data-details-open="true"] .today-card__flipper {
-  transform: translateX(var(--detail-swipe-offset, 0)) rotateY(180deg);
-}
-
-.today-card-shell[data-dragging="true"] .today-card__flipper {
-  transition: none;
+  transform: rotateY(180deg);
 }
 
 .today-card__front,
@@ -723,28 +690,10 @@ button.today-section__heading--collapsible:focus-visible {
 
 .today-card__back {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr;
   gap: 0.22rem;
   color: #253858;
   transform: rotateY(180deg);
-}
-
-.today-card-shell[data-dragging="true"] .today-card {
-  transition:
-    opacity 0.2s,
-    box-shadow 0.18s var(--ease-system);
-}
-
-.today-card::before {
-  position: absolute;
-  top: -1.5rem;
-  right: 3.7rem;
-  z-index: -1;
-  width: 4rem;
-  height: 4rem;
-  border: 1px solid var(--tone-ring);
-  border-radius: 999px;
-  content: "";
 }
 
 .today-card::after {
@@ -1059,14 +1008,6 @@ button.today-section__heading--collapsible:focus-visible {
   scrollbar-width: thin;
 }
 
-.today-card__note-hint {
-  color: color-mix(in srgb, var(--tone-fg) 66%, #75819a);
-  font-size: 0.46rem;
-  font-weight: 850;
-  letter-spacing: 0.03em;
-  text-align: right;
-}
-
 .today-card__check {
   position: relative;
   display: grid;
@@ -1077,8 +1018,8 @@ button.today-section__heading--collapsible:focus-visible {
   margin-top: 0;
   border: 2px solid var(--tone-check);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.24);
-  color: rgba(255, 255, 255, 0);
+  background: rgba(255, 255, 255, 0.45);
+  color: color-mix(in srgb, var(--tone-fg) 38%, transparent);
   cursor: pointer;
   transition:
     transform 0.16s var(--ease-emphasized),
@@ -1088,17 +1029,29 @@ button.today-section__heading--collapsible:focus-visible {
     color 0.15s;
 }
 
+.today-card__check svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  stroke-width: 2.5;
+  transition:
+    color 0.15s,
+    transform 0.16s var(--ease-emphasized);
+}
+
 .today-card__check:hover:not(:disabled) {
   border-color: var(--tone-fg);
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.85);
   color: var(--tone-fg);
   box-shadow: 0 8px 18px -12px var(--tone-shadow);
   transform: scale(1.08) rotate(-4deg);
 }
 
-.today-card__check svg {
-  width: 1.05rem;
-  height: 1.05rem;
+.today-card__check:hover:not(:disabled) svg {
+  transform: scale(1.04);
+}
+
+.today-card__check:active:not(:disabled) {
+  transform: scale(0.92);
 }
 
 .today-card__check[data-done="true"] {
@@ -1116,7 +1069,6 @@ button.today-section__heading--collapsible:focus-visible {
   --tone-check: rgba(78, 170, 119, 0.28);
   --tone-fg: #277a50;
   --tone-orb: rgba(78, 170, 119, 0.12);
-  --tone-ring: rgba(78, 170, 119, 0.15);
   --tone-shadow: rgba(39, 122, 80, 0.62);
 }
 
@@ -1127,7 +1079,6 @@ button.today-section__heading--collapsible:focus-visible {
   --tone-check: rgba(92, 111, 225, 0.28);
   --tone-fg: #4e5dca;
   --tone-orb: rgba(92, 111, 225, 0.12);
-  --tone-ring: rgba(92, 111, 225, 0.15);
   --tone-shadow: rgba(78, 93, 202, 0.66);
 }
 
@@ -1138,7 +1089,6 @@ button.today-section__heading--collapsible:focus-visible {
   --tone-check: rgba(227, 164, 61, 0.3);
   --tone-fg: #a9650b;
   --tone-orb: rgba(227, 164, 61, 0.13);
-  --tone-ring: rgba(227, 164, 61, 0.16);
   --tone-shadow: rgba(169, 101, 11, 0.62);
 }
 
@@ -1149,14 +1099,14 @@ button.today-section__heading--collapsible:focus-visible {
   --tone-check: rgba(220, 91, 103, 0.3);
   --tone-fg: #b83b49;
   --tone-orb: rgba(220, 91, 103, 0.13);
-  --tone-ring: rgba(220, 91, 103, 0.16);
   --tone-shadow: rgba(184, 59, 73, 0.62);
 }
 
 /* --- Missed tasks -----------------------------------------
    A task whose due time passed while still open. Declared after
-   the priority tones so the grey wash overrides them, signalling
-   "no longer actionable" while staying readable.
+   the priority tones so the grey wash sets the muted context,
+   while interactive buttons (reschedule & discard) retain
+   crisp, colorful accents so they are unmistakably clickable.
    --------------------------------------------------------- */
 .today-card[data-status="failed"] {
   --tone-bg: #f2f4f8;
@@ -1165,9 +1115,8 @@ button.today-section__heading--collapsible:focus-visible {
   --tone-check: rgba(104, 120, 148, 0.28);
   --tone-fg: #64748b;
   --tone-orb: rgba(104, 120, 148, 0.1);
-  --tone-ring: rgba(104, 120, 148, 0.14);
   --tone-shadow: rgba(100, 116, 139, 0.5);
-  opacity: 0.78;
+  opacity: 0.98;
 }
 
 .today-card[data-status="failed"] .today-card__title {
@@ -1186,121 +1135,158 @@ button.today-section__heading--collapsible:focus-visible {
   text-transform: uppercase;
 }
 
+/* Missed task interactive action buttons: subtle pastel tints matching site aesthetic */
+.today-card .restore-schedule-dialog__trigger--reschedule,
+.today-card__reschedule-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  height: 1.65rem;
+  min-height: 1.65rem;
+  margin-top: 0.4rem;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid #bcc6f8;
+  border-radius: 999px;
+  background: #e9edff;
+  color: #4e5dca;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 1px 3px -1px rgba(78, 93, 202, 0.12);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+}
+
+.today-card .restore-schedule-dialog__trigger--reschedule svg,
+.today-card__reschedule-btn svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: #4e5dca;
+  opacity: 0.85;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.today-card .restore-schedule-dialog__trigger--reschedule:hover:not(:disabled),
+.today-card__reschedule-btn:hover:not(:disabled) {
+  border-color: #9cbdfa;
+  background: #dbe4ff;
+  color: #3b4ab8;
+  transform: translateY(-0.5px);
+  box-shadow: 0 3px 8px -2px rgba(78, 93, 202, 0.2);
+}
+
+.today-card
+  .restore-schedule-dialog__trigger--reschedule:hover:not(:disabled)
+  svg,
+.today-card__reschedule-btn:hover:not(:disabled) svg {
+  opacity: 1;
+}
+
+.today-card .restore-schedule-dialog__trigger--reschedule:active:not(:disabled),
+.today-card__reschedule-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 .today-card__discard {
   display: grid;
   flex-shrink: 0;
   place-items: center;
   width: 2.25rem;
   height: 2.25rem;
-  border: 2px solid var(--tone-check);
+  border: 1.5px solid #f8b4bb;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.4);
-  color: var(--tone-fg);
+  background: #fff0f1;
+  color: #b83b49;
   cursor: pointer;
+  box-shadow: 0 1px 3px -1px rgba(184, 59, 73, 0.12);
   transition:
     transform 0.16s var(--ease-emphasized),
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+}
+
+.today-card__discard svg {
+  width: 0.98rem;
+  height: 0.98rem;
+  color: #b83b49;
+  opacity: 0.85;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .today-card__discard:hover:not(:disabled) {
-  border-color: #b83b49;
-  background: rgba(255, 255, 255, 0.85);
-  color: #b83b49;
-  transform: scale(1.08);
+  border-color: #f29aa4;
+  background: #ffe6e8;
+  color: #a42c3a;
+  transform: scale(1.06);
+  box-shadow: 0 3px 8px -2px rgba(184, 59, 73, 0.22);
+}
+
+.today-card__discard:hover:not(:disabled) svg {
+  opacity: 1;
+  transform: scale(1.04);
 }
 
 .today-card__discard:active:not(:disabled) {
-  transform: scale(0.9);
+  transform: scale(0.92);
 }
 
 .today-card__discard:disabled {
   cursor: wait;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
-.today-card__discard svg {
-  width: 1.02rem;
-  height: 1.02rem;
-}
-
-.today-card__swipe-delete {
-  position: absolute;
-  z-index: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  display: grid;
-  width: 4.375rem;
-  align-content: center;
-  justify-items: center;
+.restore-schedule-dialog__trigger--restore {
+  display: inline-flex;
+  align-items: center;
   gap: 0.32rem;
-  border: 0;
-  background: transparent;
-  color: #a93d4d;
+  height: 1.65rem;
+  min-height: 1.65rem;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid #a8dfbc;
+  border-radius: 999px;
+  background: #e8f7ee;
+  color: #277a50;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 750;
   cursor: pointer;
-  font-size: 0.54rem;
-  font-weight: 850;
-  letter-spacing: 0.01em;
-  opacity: 0;
-  transition: opacity 120ms var(--ease-system);
+  box-shadow: 0 1px 3px -1px rgba(39, 122, 80, 0.12);
+  transition: all 0.15s ease;
 }
 
-.today-card-shell[data-actions-open="true"] .today-card__swipe-delete,
-.today-card-shell[data-dragging="true"] .today-card__swipe-delete {
-  opacity: 1;
+.restore-schedule-dialog__trigger--restore svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: #277a50;
+  opacity: 0.85;
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
-.today-card-shell[data-details-open="true"] .today-card__swipe-delete {
-  pointer-events: none;
-  opacity: 0;
+.restore-schedule-dialog__trigger--restore:hover:not(:disabled) {
+  border-color: #8ed3a6;
+  background: #daf2e3;
+  color: #1e6240;
+  transform: translateY(-0.5px);
+  box-shadow: 0 3px 8px -2px rgba(39, 122, 80, 0.2);
 }
 
-.today-card__swipe-delete::before {
-  position: absolute;
-  inset: 0.62rem 0.48rem;
-  z-index: -1;
-  border: 1px solid rgba(193, 73, 91, 0.11);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 10px 18px -15px rgba(142, 46, 61, 0.66);
-  content: "";
-  transition: background 150ms var(--ease-system);
-}
-
-.today-card__swipe-delete:hover::before,
-.today-card__swipe-delete:focus-visible::before {
-  border-color: rgba(193, 73, 91, 0.2);
-  background: rgba(255, 255, 255, 0.94);
-}
-
-.today-card__swipe-delete:focus-visible {
-  outline: none;
-}
-
-.today-card__swipe-delete-icon {
-  display: grid;
-  width: 1.9rem;
-  height: 1.9rem;
-  place-items: center;
-  border: 1px solid rgba(197, 67, 87, 0.1);
-  border-radius: 11px;
-  background: linear-gradient(145deg, #fff7f8, #ffe9ec);
-  box-shadow: 0 7px 14px -12px rgba(139, 42, 57, 0.8);
-}
-
-.today-card__swipe-delete-icon svg {
-  width: 0.92rem;
-  height: 0.92rem;
-  stroke-width: 2.2;
-}
-
-.today-card__swipe-delete:disabled {
-  cursor: wait;
-  opacity: 0.7;
+.restore-schedule-dialog__trigger--restore:hover:not(:disabled) svg {
+  color: #1e6240;
+  transform: rotate(-6deg);
 }
 
 /* Explicit-date Today schedule. */
@@ -1359,7 +1345,6 @@ button.today-section__heading--collapsible:focus-visible {
   --tone-border: rgba(64, 101, 205, 0.16);
   --tone-fg: #4b68c7;
   --tone-orb: rgba(82, 108, 211, 0.08);
-  --tone-ring: rgba(82, 108, 211, 0.12);
   --tone-shadow: rgba(65, 91, 180, 0.42);
   opacity: 0.82;
   transition:

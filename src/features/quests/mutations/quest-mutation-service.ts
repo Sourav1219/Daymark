@@ -372,10 +372,10 @@ export async function editQuestSchedule(
     const startAt =
       command.startAt === undefined ? current.startAt : command.startAt
     const dueAt = command.dueAt === undefined ? current.dueAt : command.dueAt
-    if (startAt && dueAt && dueAt < startAt) {
+    if (startAt && dueAt && dueAt <= startAt) {
       throw new QuestServiceError(
         "VALIDATION_ERROR",
-        "Due time cannot be earlier than start time.",
+        "Due time must be after start time.",
       )
     }
     if (current.recurrenceRule && !startAt && !dueAt) {

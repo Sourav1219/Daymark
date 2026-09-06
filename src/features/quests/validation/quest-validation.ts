@@ -113,11 +113,11 @@ function validateSchedule(
   if (
     value.startAt &&
     value.dueAt &&
-    value.dueAt.getTime() < value.startAt.getTime()
+    value.dueAt.getTime() <= value.startAt.getTime()
   ) {
     context.addIssue({
       code: "custom",
-      message: "Due time cannot be earlier than start time.",
+      message: "Due time must be after start time.",
       path: ["dueAt"],
     })
   }

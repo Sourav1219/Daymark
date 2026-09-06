@@ -191,10 +191,6 @@ export function TaskUpdatedPopup({
   task: CreatedTaskNotice
 }>) {
   return (
-    <TaskCreatedPopup
-      onDismiss={onDismiss}
-      task={task}
-      variant="updated"
-    />
+    <TaskCreatedPopup onDismiss={onDismiss} task={task} variant="updated" />
   )
 }

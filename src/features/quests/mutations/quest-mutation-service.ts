@@ -353,6 +353,20 @@ export async function editQuestSchedule(
       )
     }
 
+    const now = new Date()
+    if (command.startAt && command.startAt < now) {
+      throw new QuestServiceError(
+        "VALIDATION_ERROR",
+        "That start time has already passed. Pick a later time.",
+      )
+    }
+    if (command.dueAt && command.dueAt < now) {
+      throw new QuestServiceError(
+        "VALIDATION_ERROR",
+        "That due time has already passed. Pick a later time.",
+      )
+    }
+
     // Omitted timestamps must retain their exact persisted instant, including
     // seconds and the selected offset during an ambiguous local minute.
     const startAt =

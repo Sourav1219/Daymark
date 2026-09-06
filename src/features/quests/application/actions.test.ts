@@ -95,6 +95,22 @@ describe("editQuestScheduleAction", () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled()
   })
 
+  it("rejects elapsed schedule values without mutating", async () => {
+    await expect(
+      editQuestScheduleAction({ ...input, dueAt: "2026-08-01T09:00" }),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        fieldErrors: {
+          dueAt: ["That due time has already passed. Pick a later time."],
+        },
+      },
+    })
+    expect(mocks.editQuestSchedule).not.toHaveBeenCalled()
+    expect(mocks.revalidatePath).not.toHaveBeenCalled()
+  })
+
   it("does not mutate or refresh when rate limited", async () => {
     mocks.enforceRateLimit.mockResolvedValue({ success: false })
     await expect(editQuestScheduleAction(input)).resolves.toMatchObject({

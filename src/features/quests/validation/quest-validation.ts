@@ -333,6 +333,7 @@ export function parseEditQuestForm(
 export function parseEditQuestSchedule(
   input: Readonly<Record<string, unknown>>,
   timezone: string,
+  options: Readonly<{ allowElapsedSchedule?: boolean; now?: Date }> = {},
 ) {
   const date = z
     .string()
@@ -352,9 +353,28 @@ export function parseEditQuestSchedule(
     .extend({ dueAt: date, startAt: date })
     .safeParse(input)
 
-  return parsed.success
-    ? editQuestScheduleSchema.safeParse(parsed.data)
-    : parsed
+  if (!parsed.success) {
+    return parsed
+  }
+
+  if (options.allowElapsedSchedule) {
+    return editQuestScheduleSchema.safeParse(parsed.data)
+  }
+
+  const now = options.now ?? new Date()
+
+  return editQuestScheduleSchema
+    .superRefine((value, context) => {
+      rejectElapsedSchedule(
+        {
+          dueAt: value.dueAt ?? null,
+          startAt: value.startAt ?? null,
+        },
+        context,
+        now,
+      )
+    })
+    .safeParse(parsed.data)
 }
 
 export function parseRestoreQuestSchedule(

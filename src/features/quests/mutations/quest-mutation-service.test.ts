@@ -138,6 +138,28 @@ describe("editQuestSchedule", () => {
     },
   )
 
+  it("rejects elapsed schedule changes that have already passed", async () => {
+    await expect(
+      editQuestSchedule(database, access, {
+        ...command,
+        startAt: new Date("2026-10-31T11:00:00Z"),
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      message: "That start time has already passed. Pick a later time.",
+    })
+
+    await expect(
+      editQuestSchedule(database, access, {
+        ...command,
+        dueAt: new Date("2026-10-31T11:30:00Z"),
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      message: "That due time has already passed. Pick a later time.",
+    })
+  })
+
   it("accepts equal instants and clearing both nonrecurring timestamps", async () => {
     await editQuestSchedule(database, access, {
       ...command,

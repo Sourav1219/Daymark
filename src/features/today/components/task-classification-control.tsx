@@ -100,23 +100,100 @@ export function TaskClassificationControl({
   const scheduleIncomplete = Object.values(scheduleDraft).some(
     (v) => v && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v),
   )
+
+  const [startDate = "", startTime = ""] = (scheduleDraft.startAt || "").split("T")
+  const [dueDate = "", dueTime = ""] = (scheduleDraft.dueAt || "").split("T")
+
+  const [referenceNow, setReferenceNow] = useState(() => Date.now())
+  const earliestSchedule = new Date(
+    (Math.floor(referenceNow / 60_000) + 1) * 60_000,
+  )
+  const earliestLocalInput = formatZonedLocalInput(earliestSchedule, timezone)
+  const earliestDate = earliestLocalInput.slice(0, 10)
+  const earliestTime = earliestLocalInput.slice(11, 16)
+
   const parsedStart = scheduleDraft.startAt
     ? parseZonedLocalDateTime(scheduleDraft.startAt, timezone)
     : null
   const parsedDue = scheduleDraft.dueAt
     ? parseZonedLocalDateTime(scheduleDraft.dueAt, timezone)
     : null
+
+  const startElapsed = Boolean(
+    parsedStart &&
+      parsedStart.getTime() < earliestSchedule.getTime() &&
+      scheduleDraft.startAt !== scheduleInitial.startAt,
+  )
+  const dueElapsed = Boolean(
+    parsedDue &&
+      parsedDue.getTime() < earliestSchedule.getTime() &&
+      scheduleDraft.dueAt !== scheduleInitial.dueAt,
+  )
+
   const scheduleValidation = scheduleIncomplete
     ? "Choose both a date and time, or clear the field."
     : (scheduleDraft.startAt && !parsedStart) ||
         (scheduleDraft.dueAt && !parsedDue)
       ? "That local time does not exist. Choose another time."
-      : parsedStart && parsedDue && parsedDue < parsedStart
-        ? "Due time cannot be earlier than start time."
-        : card.recurrenceRule && !parsedStart && !parsedDue
-          ? "Recurring tasks need a start or due time."
-          : ""
+      : startElapsed
+        ? "That start time has already passed. Pick a later time."
+        : dueElapsed
+          ? "That due time has already passed. Pick a later time."
+          : parsedStart && parsedDue && parsedDue < parsedStart
+            ? "Due time cannot be earlier than start time."
+            : card.recurrenceRule && !parsedStart && !parsedDue
+              ? "Recurring tasks need a start or due time."
+              : ""
   const scheduleUnavailable = Boolean(offline?.isOffline)
+
+  function updateSchedule(
+    key: "startAt" | "dueAt",
+    part: "date" | "time",
+    val: string,
+  ) {
+    setScheduleDraft((current) => {
+      const parts = (current[key] || "").split("T")
+      const curDate = parts[0] || ""
+      const curTime = parts[1] || ""
+
+      if (part === "date" && !val) {
+        return { ...current, [key]: "" }
+      }
+
+      const nextDate = part === "date" ? val : curDate
+      const fallbackTime = key === "startAt" ? "09:00" : "17:00"
+      const requestedTime =
+        part === "time" ? val || fallbackTime : curTime || fallbackTime
+
+      // If the chosen date is today, pull earlier times forward
+      const effectiveTime =
+        nextDate === earliestDate && requestedTime < earliestTime
+          ? earliestTime
+          : requestedTime
+
+      const nextValue = nextDate ? `${nextDate}T${effectiveTime}` : ""
+      const next = { ...current, [key]: nextValue }
+
+      // If startAt moves past dueAt, push dueAt forward
+      if (
+        key === "startAt" &&
+        nextValue &&
+        current.dueAt &&
+        current.dueAt <= nextValue
+      ) {
+        const shiftedDue = parseZonedLocalDateTime(nextValue, timezone)
+        if (shiftedDue) {
+          next.dueAt = formatZonedLocalInput(
+            new Date(shiftedDue.getTime() + 60 * 60_000),
+            timezone,
+          )
+        }
+      }
+
+      return next
+    })
+    setScheduleError("")
+  }
 
 
   // Auto-close when clicking outside or pressing Escape
@@ -247,7 +324,8 @@ export function TaskClassificationControl({
           setCustomInput(value.customType ?? "")
           setSelectedPriority(card.priority)
           if (!open) {
-            // Reset schedule draft when opening
+            // Reset schedule draft and update referenceNow when opening
+            setReferenceNow(Date.now())
             setScheduleDraft(scheduleInitial)
             setScheduleError("")
           }
@@ -258,6 +336,7 @@ export function TaskClassificationControl({
         <span>{formatTaskTypeLabel(value)}</span>
         <Pencil aria-hidden="true" />
       </button>
+
       {open ? (
         <div
           aria-label={`Edit ${card.title}`}
@@ -351,62 +430,106 @@ export function TaskClassificationControl({
             <span>Schedule</span>
           </div>
           <div className="task-edit-schedule">
-            {(["startAt", "dueAt"] as const).map((key) => {
-              const label = key === "startAt" ? "Start" : "Due"
-              const [date = "", time = ""] = scheduleDraft[key].split("T")
+            {/* Start moment */}
+            <fieldset
+              className="task-edit-schedule__field"
+              disabled={anyPending || scheduleUnavailable}
+            >
+              <legend>Start</legend>
+              <div className="task-edit-schedule__pickers">
+                <QuestDatePicker
+                  ariaLabel="Start date"
+                  disabled={anyPending || scheduleUnavailable}
+                  id={`${pickerId}-startAt-date`}
+                  minDate={earliestDate}
+                  onChange={(v) => updateSchedule("startAt", "date", v)}
+                  portalContainer={pickerPortal}
+                  value={startDate}
+                />
+                <QuestTimePicker
+                  ariaLabel="Start time"
+                  disabled={!startDate || anyPending || scheduleUnavailable}
+                  id={`${pickerId}-startAt-time`}
+                  minTime={
+                    startDate === earliestDate ? earliestTime : undefined
+                  }
+                  onChange={(v) => updateSchedule("startAt", "time", v)}
+                  portalContainer={pickerPortal}
+                  value={startTime}
+                />
+              </div>
+              <button
+                className="task-edit-schedule__clear"
+                disabled={
+                  !scheduleDraft.startAt ||
+                  anyPending ||
+                  scheduleUnavailable
+                }
+                onClick={() => {
+                  setScheduleDraft((cur) => ({ ...cur, startAt: "" }))
+                  setScheduleError("")
+                }}
+                type="button"
+              >
+                Clear start
+              </button>
+            </fieldset>
+
+            {/* Due moment */}
+            {(() => {
+              const dueMinTime =
+                dueDate === startDate && startTime
+                  ? dueDate === earliestDate && earliestTime > startTime
+                    ? earliestTime
+                    : startTime
+                  : dueDate === earliestDate
+                    ? earliestTime
+                    : undefined
+
               return (
                 <fieldset
                   className="task-edit-schedule__field"
                   disabled={anyPending || scheduleUnavailable}
-                  key={key}
                 >
-                  <legend>{label}</legend>
+                  <legend>Due</legend>
                   <div className="task-edit-schedule__pickers">
                     <QuestDatePicker
-                      ariaLabel={`${label} date`}
-                      id={`${pickerId}-${key}-date`}
+                      ariaLabel="Due date"
                       disabled={anyPending || scheduleUnavailable}
+                      id={`${pickerId}-dueAt-date`}
+                      minDate={startDate || earliestDate}
+                      onChange={(v) => updateSchedule("dueAt", "date", v)}
                       portalContainer={pickerPortal}
-                      value={date}
-                      onChange={(v) => {
-                        setScheduleDraft((cur) => ({
-                          ...cur,
-                          [key]: `${v}T${time}`,
-                        }))
-                        setScheduleError("")
-                      }}
+                      value={dueDate}
                     />
                     <QuestTimePicker
-                      ariaLabel={`${label} time`}
-                      id={`${pickerId}-${key}-time`}
-                      disabled={!date || anyPending || scheduleUnavailable}
+                      ariaLabel="Due time"
+                      disabled={!dueDate || anyPending || scheduleUnavailable}
+                      id={`${pickerId}-dueAt-time`}
+                      minTime={dueMinTime}
+                      onChange={(v) => updateSchedule("dueAt", "time", v)}
                       portalContainer={pickerPortal}
-                      value={time}
-                      onChange={(v) => {
-                        setScheduleDraft((cur) => ({
-                          ...cur,
-                          [key]: `${date}T${v}`,
-                        }))
-                        setScheduleError("")
-                      }}
+                      value={dueTime}
                     />
                   </div>
                   <button
                     className="task-edit-schedule__clear"
                     disabled={
-                      !scheduleDraft[key] || anyPending || scheduleUnavailable
+                      !scheduleDraft.dueAt ||
+                      anyPending ||
+                      scheduleUnavailable
                     }
                     onClick={() => {
-                      setScheduleDraft((cur) => ({ ...cur, [key]: "" }))
+                      setScheduleDraft((cur) => ({ ...cur, dueAt: "" }))
                       setScheduleError("")
                     }}
                     type="button"
                   >
-                    Clear {label.toLowerCase()}
+                    Clear due
                   </button>
                 </fieldset>
               )
-            })}
+            })()}
             <p className="task-edit-schedule__zone">
               Times shown in {timezone}
             </p>

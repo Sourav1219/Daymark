@@ -213,6 +213,40 @@ describe("schedule-only edits", () => {
     ).toBe(true)
   })
 
+  it("rejects elapsed schedule edits to match task creation rules", () => {
+    const now = new Date("2026-11-01T10:00:00.000Z")
+    const elapsedStart = parseEditQuestSchedule(
+      { ...base, startAt: "2026-11-01T09:30" },
+      "UTC",
+      { now },
+    )
+    expect(elapsedStart.success).toBe(false)
+    if (!elapsedStart.success) {
+      expect(elapsedStart.error.flatten().fieldErrors.startAt).toContain(
+        "That start time has already passed. Pick a later time.",
+      )
+    }
+
+    const elapsedDue = parseEditQuestSchedule(
+      { ...base, dueAt: "2026-11-01T09:30" },
+      "UTC",
+      { now },
+    )
+    expect(elapsedDue.success).toBe(false)
+    if (!elapsedDue.success) {
+      expect(elapsedDue.error.flatten().fieldErrors.dueAt).toContain(
+        "That due time has already passed. Pick a later time.",
+      )
+    }
+
+    const future = parseEditQuestSchedule(
+      { ...base, dueAt: "2026-11-01T11:00" },
+      "UTC",
+      { now },
+    )
+    expect(future.success).toBe(true)
+  })
+
   it.each([
     { title: "Unrelated edit" },
     { recurrenceRule: "FREQ=DAILY" },

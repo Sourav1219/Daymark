@@ -857,7 +857,7 @@ Quest studio — creation-first workspace. The page borrows the
   z-index: 51;
   display: flex;
   width: min(22rem, calc(100% - 1rem));
-  max-height: calc(100% - 1rem);
+  max-height: min(25.5rem, calc(100% - 1.5rem));
   flex-direction: column;
   gap: 0;
   padding: 0;
@@ -959,6 +959,7 @@ Quest studio — creation-first workspace. The page borrows the
     0 24px 60px -28px rgba(30, 64, 140, 0.5),
     0 8px 24px -18px rgba(30, 64, 140, 0.35);
   backdrop-filter: blur(18px);
+  max-height: min(23.5rem, calc(100% - 1.5rem));
 }
 
 .quest-time-popover__header {
@@ -1085,6 +1086,7 @@ Quest studio — creation-first workspace. The page borrows the
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.32rem;
   min-height: 0;
+  max-height: 11.5rem;
   flex: 1;
   overflow-y: auto;
   padding: 0.75rem;

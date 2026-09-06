@@ -20,6 +20,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/features/quests/application/actions", () => ({
   classifyQuestAction: vi.fn(),
   completeQuestAction: vi.fn(),
+  editQuestScheduleAction: vi.fn(),
   softDeleteQuestAction: vi.fn(),
 }))
 
@@ -259,14 +260,14 @@ describe("TodayTasks completed section", () => {
     )
 
     const trigger = screen.getByRole("button", {
-      name: /Classify Active task:/i,
+      name: /Edit Active task:/i,
     })
     expect(trigger).toBeVisible()
 
     // Open classification panel
     fireEvent.click(trigger)
     expect(
-      screen.getByLabelText("Classification for Active task"),
+      screen.getByLabelText("Edit Active task"),
     ).toBeVisible()
 
     // Select Work type - save without closing the panel
@@ -281,15 +282,15 @@ describe("TodayTasks completed section", () => {
     })
 
     expect(
-      screen.getByLabelText("Classification for Active task"),
+      screen.getByLabelText("Edit Active task"),
     ).toBeVisible()
 
     await screen.findByText("Your choice is saved.")
     fireEvent.click(
-      screen.getByRole("button", { name: "Done editing classification" }),
+      screen.getByRole("button", { name: "Done editing" }),
     )
     expect(
-      screen.queryByLabelText("Classification for Active task"),
+      screen.queryByLabelText("Edit Active task"),
     ).not.toBeInTheDocument()
   })
 
@@ -324,11 +325,11 @@ describe("TodayTasks completed section", () => {
     )
 
     const trigger = screen.getByRole("button", {
-      name: /Classify Active task:/i,
+      name: /Edit Active task:/i,
     })
     fireEvent.click(trigger)
     expect(
-      screen.getByLabelText("Classification for Active task"),
+      screen.getByLabelText("Edit Active task"),
     ).toBeVisible()
 
     // Priority buttons should be present
@@ -345,8 +346,61 @@ describe("TodayTasks completed section", () => {
     })
 
     expect(
-      screen.getByLabelText("Classification for Active task"),
+      screen.getByLabelText("Edit Active task"),
     ).toBeVisible()
+  })
+
+  it("renders a single edit trigger that opens the unified panel with Task type, Priority, and Schedule sections", () => {
+    render(
+      <TodayTasks
+        empty={false}
+        sections={[
+          {
+            cards: [
+              {
+                dateLabel: "Tomorrow",
+                id: "open-1",
+                priority: "medium",
+                startAt: "2026-11-01T09:00:00.000Z",
+                dueAt: "2026-11-01T17:00:00.000Z",
+                status: "open",
+                steps: 2,
+                timeLabel: "09:00 – 17:00",
+                title: "Unified edit test task",
+                version: 1,
+              },
+            ],
+            title: "Today",
+          },
+        ]}
+        timezone="UTC"
+      />,
+    )
+
+    // Verify there is only one edit button for this task, not two
+    const editButtons = screen.getAllByRole("button", {
+      name: /Edit Unified edit test task/i,
+    })
+    expect(editButtons).toHaveLength(1)
+
+    // Schedule meta is displayed statically with icons
+    expect(screen.getByText("Tomorrow")).toBeVisible()
+    expect(screen.getByText("09:00 – 17:00")).toBeVisible()
+
+    // Open the unified panel
+    fireEvent.click(editButtons[0]!)
+    const panel = screen.getByLabelText("Edit Unified edit test task")
+    expect(panel).toBeVisible()
+
+    // All three sections are present in one unified panel
+    expect(screen.getByText("Task type")).toBeVisible()
+    expect(screen.getByText("Priority")).toBeVisible()
+    expect(screen.getByText("Schedule")).toBeVisible()
+
+    // Schedule inputs are present
+    expect(screen.getByLabelText("Start date")).toBeVisible()
+    expect(screen.getByLabelText("Due date")).toBeVisible()
+    expect(screen.getByText("Times shown in UTC")).toBeVisible()
   })
 
   it("does not render classification trigger on completed tasks", () => {
@@ -374,7 +428,7 @@ describe("TodayTasks completed section", () => {
 
     expect(
       screen.queryByRole("button", {
-        name: /Classify Finished morning report:/i,
+        name: /Edit Finished morning report:/i,
       }),
     ).not.toBeInTheDocument()
   })

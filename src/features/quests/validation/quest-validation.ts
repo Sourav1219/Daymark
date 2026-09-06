@@ -211,6 +211,29 @@ export const questTransitionSchema = z
   })
   .strict()
 
+export const editQuestScheduleSchema = questTransitionSchema
+  .extend({
+    dueAt: z.date().nullable().optional(),
+    startAt: z.date().nullable().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.startAt === undefined && value.dueAt === undefined) {
+      context.addIssue({
+        code: "custom",
+        message: "Change at least one schedule field.",
+        path: ["startAt"],
+      })
+    }
+    validateSchedule(
+      {
+        dueAt: value.dueAt ?? null,
+        recurrenceRule: null,
+        startAt: value.startAt ?? null,
+      },
+      context,
+    )
+  })
+
 const restoreQuestScheduleSchema = z
   .object({
     dueAt: z.date(),
@@ -252,6 +275,7 @@ export const questReorderSchema = z
 
 export type CreateQuestCommand = z.output<typeof createQuestSchema>
 export type EditQuestCommand = z.output<typeof editQuestSchema>
+export type EditQuestScheduleCommand = z.output<typeof editQuestScheduleSchema>
 export type QuestTransitionCommand = z.output<typeof questTransitionSchema>
 export type RestoreQuestScheduleCommand = z.output<
   typeof restoreQuestScheduleSchema
@@ -304,6 +328,33 @@ export function parseEditQuestForm(
     dueAt: zonedFormDate(input.dueAt, timezone),
     startAt: zonedFormDate(input.startAt, timezone),
   })
+}
+
+export function parseEditQuestSchedule(
+  input: Readonly<Record<string, unknown>>,
+  timezone: string,
+) {
+  const date = z
+    .string()
+    .transform((value, context) => {
+      const parsed = parseZonedLocalDateTime(value, timezone)
+      if (parsed) return parsed
+      context.addIssue({
+        code: "custom",
+        message: "Enter a valid date and time in your timezone.",
+      })
+      return z.NEVER
+    })
+    .nullable()
+    .optional()
+
+  const parsed = questTransitionSchema
+    .extend({ dueAt: date, startAt: date })
+    .safeParse(input)
+
+  return parsed.success
+    ? editQuestScheduleSchema.safeParse(parsed.data)
+    : parsed
 }
 
 export function parseRestoreQuestSchedule(

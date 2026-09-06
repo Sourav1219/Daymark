@@ -1,7 +1,12 @@
 "use client"
 
-import { useEffect, useRef, useState, useTransition } from "react"
-import { Check, Pencil } from "lucide-react"
+import { useEffect, useId, useRef, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import {
+  CalendarDays,
+  Check,
+  Pencil,
+} from "lucide-react"
 import { toast } from "sonner"
 import {
   taskTypes,
@@ -17,7 +22,14 @@ import {
 } from "@/features/quests/domain/types"
 import type { ClassifyQuestCommand } from "@/features/quests/validation/classification-validation"
 import { classifyQuestAction } from "@/features/quests/application/actions"
+import { editQuestScheduleAction } from "@/features/quests/application/actions"
 import { useOptionalOffline } from "@/features/offline/components/offline-provider"
+import { QuestDatePicker } from "@/features/quests/components/quest-date-picker"
+import { QuestTimePicker } from "@/features/quests/components/quest-time-picker"
+import {
+  formatZonedLocalInput,
+  parseZonedLocalDateTime,
+} from "@/features/reminders/domain/timezone"
 import type { TodayCard } from "@/features/today/types"
 
 const priorityLabels: Record<QuestPriority, string> = {
@@ -30,6 +42,7 @@ const priorityLabels: Record<QuestPriority, string> = {
 export function TaskClassificationControl({
   card,
   onClassified,
+  timezone = "UTC",
 }: Readonly<{
   card: TodayCard
   onClassified?:
@@ -40,7 +53,11 @@ export function TaskClassificationControl({
         priority?: QuestPriority,
       ) => void)
     | undefined
+  timezone?: string
 }>) {
+  const router = useRouter()
+  const offline = useOptionalOffline()
+  const pickerId = useId()
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState(() => resolveClassification(card))
   const [selectedType, setSelectedType] = useState<TaskType>(value.taskType)
@@ -51,6 +68,7 @@ export function TaskClassificationControl({
   const [version, setVersion] = useState(card.version)
   const [source, setSource] = useState(card)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [pickerPortal, setPickerPortal] = useState<HTMLDivElement | null>(null)
 
   if (source !== card) {
     setSource(card)
@@ -63,7 +81,43 @@ export function TaskClassificationControl({
   }
 
   const [pending, startTransition] = useTransition()
-  const offline = useOptionalOffline()
+
+  // Schedule editing state
+  const scheduleInitial = {
+    startAt: card.startAt
+      ? formatZonedLocalInput(new Date(card.startAt), timezone)
+      : "",
+    dueAt: card.dueAt
+      ? formatZonedLocalInput(new Date(card.dueAt), timezone)
+      : "",
+  }
+  const [scheduleDraft, setScheduleDraft] = useState(scheduleInitial)
+  const [scheduleError, setScheduleError] = useState("")
+  const [schedulePending, startScheduleTransition] = useTransition()
+  const scheduleChanged =
+    scheduleDraft.startAt !== scheduleInitial.startAt ||
+    scheduleDraft.dueAt !== scheduleInitial.dueAt
+  const scheduleIncomplete = Object.values(scheduleDraft).some(
+    (v) => v && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v),
+  )
+  const parsedStart = scheduleDraft.startAt
+    ? parseZonedLocalDateTime(scheduleDraft.startAt, timezone)
+    : null
+  const parsedDue = scheduleDraft.dueAt
+    ? parseZonedLocalDateTime(scheduleDraft.dueAt, timezone)
+    : null
+  const scheduleValidation = scheduleIncomplete
+    ? "Choose both a date and time, or clear the field."
+    : (scheduleDraft.startAt && !parsedStart) ||
+        (scheduleDraft.dueAt && !parsedDue)
+      ? "That local time does not exist. Choose another time."
+      : parsedStart && parsedDue && parsedDue < parsedStart
+        ? "Due time cannot be earlier than start time."
+        : card.recurrenceRule && !parsedStart && !parsedDue
+          ? "Recurring tasks need a start or due time."
+          : ""
+  const scheduleUnavailable = Boolean(offline?.isOffline)
+
 
   // Auto-close when clicking outside or pressing Escape
   useEffect(() => {
@@ -144,17 +198,59 @@ export function TaskClassificationControl({
     })
   }
 
+  function saveSchedule() {
+    if (
+      !scheduleChanged ||
+      scheduleValidation ||
+      schedulePending ||
+      scheduleUnavailable
+    )
+      return
+    setScheduleError("")
+    startScheduleTransition(async () => {
+      try {
+        const result = await editQuestScheduleAction({
+          questId: card.id,
+          expectedVersion: version,
+          ...(scheduleDraft.startAt !== scheduleInitial.startAt
+            ? { startAt: scheduleDraft.startAt || null }
+            : {}),
+          ...(scheduleDraft.dueAt !== scheduleInitial.dueAt
+            ? { dueAt: scheduleDraft.dueAt || null }
+            : {}),
+        })
+        if (!result.ok) {
+          setScheduleError(result.error.message)
+          return
+        }
+        setVersion(result.data.version)
+        setOpen(false)
+        toast.success("Schedule updated")
+        router.refresh()
+      } catch {
+        setScheduleError("Could not save the schedule. Please try again.")
+      }
+    })
+  }
+
+  const anyPending = pending || schedulePending
+
   return (
     <div className="task-classification" ref={containerRef}>
       <button
         aria-expanded={open}
-        aria-label={`Classify ${card.title}: ${formatTaskTypeLabel(value)}`}
+        aria-label={`Edit ${card.title}: ${formatTaskTypeLabel(value)}`}
         className="task-classification__trigger"
         data-type={value.taskType}
         onClick={() => {
           setSelectedType(value.taskType)
           setCustomInput(value.customType ?? "")
           setSelectedPriority(card.priority)
+          if (!open) {
+            // Reset schedule draft when opening
+            setScheduleDraft(scheduleInitial)
+            setScheduleError("")
+          }
           setOpen(!open)
         }}
         type="button"
@@ -164,13 +260,14 @@ export function TaskClassificationControl({
       </button>
       {open ? (
         <div
-          aria-label={`Classification for ${card.title}`}
+          aria-label={`Edit ${card.title}`}
           className="home-choice-panel task-classification__panel"
+          ref={setPickerPortal}
         >
           <div className="home-choice-panel__heading">
             <span>Task type</span>
           </div>
-          <fieldset disabled={pending}>
+          <fieldset disabled={anyPending}>
             <div className="home-choice-grid">
               {taskTypes.map((type) => (
                 <button
@@ -227,7 +324,7 @@ export function TaskClassificationControl({
           >
             <span>Priority</span>
           </div>
-          <fieldset disabled={pending}>
+          <fieldset disabled={anyPending}>
             <div className="home-choice-grid task-priority-grid">
               {questPriorities.map((p) => (
                 <button
@@ -246,18 +343,110 @@ export function TaskClassificationControl({
             </div>
           </fieldset>
 
+          {/* ── Schedule section ────────────────────────────── */}
+          <div
+            className="home-choice-panel__heading"
+            style={{ marginTop: "0.55rem" }}
+          >
+            <span>Schedule</span>
+          </div>
+          <div className="task-edit-schedule">
+            {(["startAt", "dueAt"] as const).map((key) => {
+              const label = key === "startAt" ? "Start" : "Due"
+              const [date = "", time = ""] = scheduleDraft[key].split("T")
+              return (
+                <fieldset
+                  className="task-edit-schedule__field"
+                  disabled={anyPending || scheduleUnavailable}
+                  key={key}
+                >
+                  <legend>{label}</legend>
+                  <div className="task-edit-schedule__pickers">
+                    <QuestDatePicker
+                      ariaLabel={`${label} date`}
+                      id={`${pickerId}-${key}-date`}
+                      disabled={anyPending || scheduleUnavailable}
+                      portalContainer={pickerPortal}
+                      value={date}
+                      onChange={(v) => {
+                        setScheduleDraft((cur) => ({
+                          ...cur,
+                          [key]: `${v}T${time}`,
+                        }))
+                        setScheduleError("")
+                      }}
+                    />
+                    <QuestTimePicker
+                      ariaLabel={`${label} time`}
+                      id={`${pickerId}-${key}-time`}
+                      disabled={!date || anyPending || scheduleUnavailable}
+                      portalContainer={pickerPortal}
+                      value={time}
+                      onChange={(v) => {
+                        setScheduleDraft((cur) => ({
+                          ...cur,
+                          [key]: `${date}T${v}`,
+                        }))
+                        setScheduleError("")
+                      }}
+                    />
+                  </div>
+                  <button
+                    className="task-edit-schedule__clear"
+                    disabled={
+                      !scheduleDraft[key] || anyPending || scheduleUnavailable
+                    }
+                    onClick={() => {
+                      setScheduleDraft((cur) => ({ ...cur, [key]: "" }))
+                      setScheduleError("")
+                    }}
+                    type="button"
+                  >
+                    Clear {label.toLowerCase()}
+                  </button>
+                </fieldset>
+              )
+            })}
+            <p className="task-edit-schedule__zone">
+              Times shown in {timezone}
+            </p>
+            {scheduleValidation || scheduleError || scheduleUnavailable ? (
+              <p className="task-edit-schedule__error" role="alert">
+                {scheduleUnavailable
+                  ? "Connect to save schedule changes."
+                  : scheduleValidation || scheduleError}
+              </p>
+            ) : null}
+            {scheduleChanged ? (
+              <button
+                className="task-edit-schedule__save"
+                disabled={
+                  !scheduleChanged ||
+                  Boolean(scheduleValidation) ||
+                  anyPending ||
+                  scheduleUnavailable
+                }
+                onClick={saveSchedule}
+                type="button"
+              >
+                <CalendarDays aria-hidden="true" />
+                {schedulePending ? "Saving..." : "Save schedule"}
+              </button>
+            ) : null}
+          </div>
+
           <div className="task-classification__footer">
             <p role="status">
-              {pending
+              {anyPending
                 ? "Saving…"
                 : value.typeManual
                   ? "Your choice is saved."
                   : "Suggested from your task. Change whenever you like."}
             </p>
             <button
-              aria-label="Done editing classification"
+              aria-label="Done editing"
               className="task-classification__done"
-              disabled={pending}
+              disabled={anyPending}
               onClick={() => setOpen(false)}
               type="button"
             >

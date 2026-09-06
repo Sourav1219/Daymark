@@ -5,8 +5,10 @@ import { describe, expect, it } from "vitest"
 import {
   createQuestSchema,
   editQuestSchema,
+  editQuestScheduleSchema,
   parseCreateQuestForm,
   parseEditQuestForm,
+  parseEditQuestSchedule,
   parseRestoreQuestSchedule,
   questReorderSchema,
   questTransitionSchema,
@@ -137,6 +139,89 @@ describe("Quest validation", () => {
         ],
       }).success,
     ).toBe(true)
+  })
+})
+
+describe("schedule-only edits", () => {
+  const base = { expectedVersion: 2, questId: randomUUID() }
+
+  it("parses only supplied local minutes in the saved timezone", () => {
+    const result = parseEditQuestSchedule(
+      { ...base, dueAt: "2026-11-01T09:30" },
+      "Asia/Kolkata",
+    )
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data).toEqual({
+      ...base,
+      dueAt: new Date("2026-11-01T04:00:00.000Z"),
+    })
+    expect(result.data).not.toHaveProperty("startAt")
+  })
+
+  it("preserves null clears and requires at least one supplied schedule value", () => {
+    expect(parseEditQuestSchedule({ ...base, startAt: null }, "UTC")).toEqual({
+      success: true,
+      data: { ...base, startAt: null },
+    })
+    for (const input of [base, { ...base, startAt: undefined }]) {
+      expect(parseEditQuestSchedule(input, "UTC").success).toBe(false)
+      expect(editQuestScheduleSchema.safeParse(input).success).toBe(false)
+    }
+  })
+
+  it.each([
+    ["2026-02-30T09:00", "UTC"],
+    ["2026-08-08T24:00", "UTC"],
+    ["2026-08-08T09:00", "Invalid/Timezone"],
+    ["2026-03-08T02:30", "America/New_York"],
+    ["2026-08-08T09:00:12Z", "UTC"],
+    ["", "UTC"],
+    [new Date("2026-08-08T09:00Z"), "UTC"],
+  ])("rejects invalid local input %s in %s", (startAt, timezone) => {
+    expect(parseEditQuestSchedule({ ...base, startAt }, timezone).success).toBe(
+      false,
+    )
+  })
+
+  it("uses the existing deterministic offset for a changed fall-back minute", () => {
+    const result = parseEditQuestSchedule(
+      { ...base, startAt: "2026-11-01T01:30" },
+      "America/New_York",
+    )
+    expect(result).toEqual({
+      success: true,
+      data: { ...base, startAt: new Date("2026-11-01T05:30:00.000Z") },
+    })
+  })
+
+  it("rejects reversed schedules but accepts equal start and due instants", () => {
+    const input = { ...base, startAt: "2026-11-01T09:30" }
+    const reversed = parseEditQuestSchedule(
+      { ...input, dueAt: "2026-11-01T09:29" },
+      "Asia/Kolkata",
+    )
+    expect(reversed.success).toBe(false)
+    if (!reversed.success) {
+      expect(reversed.error.flatten().fieldErrors.dueAt).toContain(
+        "Due time cannot be earlier than start time.",
+      )
+    }
+    expect(
+      parseEditQuestSchedule({ ...input, dueAt: input.startAt }, "Asia/Kolkata")
+        .success,
+    ).toBe(true)
+  })
+
+  it.each([
+    { title: "Unrelated edit" },
+    { recurrenceRule: "FREQ=DAILY" },
+    { expectedVersion: 0 },
+    { questId: "invalid" },
+  ])("rejects unrelated fields or invalid identity: %o", (extra) => {
+    expect(
+      parseEditQuestSchedule({ ...base, dueAt: null, ...extra }, "UTC").success,
+    ).toBe(false)
   })
 })
 

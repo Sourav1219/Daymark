@@ -488,8 +488,18 @@
 }
 
 @media (max-width: 480px) {
+  .home-choice-panel[data-kind="type"] .home-choice-grid,
   .home-choice-panel[data-kind="priority"] .home-choice-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .home-choice-panel[data-kind="type"] .home-choice-grid button,
+  .home-choice-panel[data-kind="priority"] .home-choice-grid button {
+    width: 100%;
+    min-height: 2.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 .home-choice-grid button:disabled {
@@ -668,6 +678,105 @@
   padding: 0.65rem 0.85rem;
   border-radius: 1rem;
   box-sizing: border-box;
+}
+
+/* ── Inline schedule section (inside classification panel) ── */
+.task-edit-schedule {
+  margin-top: 0.35rem;
+}
+.task-edit-schedule__field {
+  min-width: 0;
+  margin-bottom: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(79, 105, 213, 0.14);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.7);
+}
+.task-edit-schedule__field legend {
+  padding-inline: 0.25rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: #4d6097;
+}
+.task-edit-schedule__pickers {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 0.4rem;
+}
+.task-edit-schedule__clear {
+  min-height: 1.6rem;
+  margin-top: 0.15rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #556580;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.task-edit-schedule__clear:hover:not(:disabled) {
+  color: #3a4f75;
+}
+.task-edit-schedule__clear:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.task-edit-schedule__zone {
+  margin: 0.35rem 0 0.1rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #64748b;
+}
+.task-edit-schedule__error {
+  margin: 0.25rem 0;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #a32f46;
+}
+.task-edit-schedule__save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.32rem;
+  width: 100%;
+  min-height: 2rem;
+  margin-top: 0.25rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(79, 105, 213, 0.25);
+  border-radius: 0.7rem;
+  background: linear-gradient(145deg, #eef2ff, #e5eaff);
+  color: #3d5bc6;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px -6px rgba(51, 76, 178, 0.35);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.12s ease;
+}
+.task-edit-schedule__save:hover:not(:disabled) {
+  border-color: rgba(79, 105, 213, 0.4);
+  background: linear-gradient(145deg, #e5eaff, #dce2ff);
+  box-shadow: 0 6px 14px -6px rgba(51, 76, 178, 0.45);
+  transform: translateY(-0.5px);
+}
+.task-edit-schedule__save:active:not(:disabled) {
+  box-shadow: 0 2px 6px -4px rgba(51, 76, 178, 0.35);
+  transform: translateY(0);
+}
+.task-edit-schedule__save:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.task-edit-schedule__save svg {
+  width: 0.78rem;
+  height: 0.78rem;
+  stroke-width: 2.4;
 }
 
 .task-classification__footer {
@@ -953,6 +1062,135 @@
   height: 0.85rem;
 }
 
+.task-schedule-trigger {
+  min-width: 0;
+  min-height: 2.25rem;
+  padding: 0.25rem 0.45rem;
+  margin-left: -0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.task-schedule-trigger:hover:not(:disabled),
+.task-schedule-trigger[aria-expanded="true"] {
+  border-color: rgba(79, 105, 213, 0.15);
+  background: rgba(79, 105, 213, 0.06);
+}
+.task-schedule-trigger:disabled {
+  cursor: default;
+}
+.task-schedule-trigger__edit {
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  color: #657bc0;
+}
+.task-schedule-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(30, 47, 88, 0.24);
+  backdrop-filter: blur(4px);
+}
+.task-schedule-dialog {
+  position: fixed;
+  z-index: 51;
+  top: 50%;
+  left: 50%;
+  width: min(24rem, calc(100vw - 1.5rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 1.1rem;
+  overflow-y: auto;
+  border: 1px solid #dfe5f4;
+  border-radius: 1.4rem;
+  background: linear-gradient(145deg, #ffffff, #f4f7ff);
+  box-shadow: 0 24px 65px -25px rgba(35, 56, 122, 0.4);
+  transform: translate(-50%, -50%);
+}
+.task-schedule-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+}
+.task-schedule-dialog__header > svg {
+  flex: none;
+  width: 1.4rem;
+  color: #5268d6;
+}
+.task-schedule-dialog__header > div {
+  min-width: 0;
+  flex: 1;
+}
+.task-schedule-dialog [data-slot="dialog-title"] {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #263b5b;
+}
+.task-schedule-dialog [data-slot="dialog-description"] {
+  overflow-wrap: anywhere;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+.task-schedule-dialog__field {
+  min-width: 0;
+  margin-bottom: 0.7rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #e0e6f3;
+  border-radius: 1rem;
+  background: #ffffff;
+}
+.task-schedule-dialog__field legend {
+  padding-inline: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #4d6097;
+}
+.task-schedule-dialog__pickers {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 0.45rem;
+}
+.task-schedule-dialog__clear {
+  min-height: 2rem;
+  margin-top: 0.2rem;
+  color: #556580;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.task-schedule-dialog__clear:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.task-schedule-dialog__zone,
+.task-schedule-dialog__error {
+  margin: 0.6rem 0;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+.task-schedule-dialog__error {
+  color: #a32f46;
+}
+.task-schedule-dialog__actions {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.task-schedule-dialog__actions button {
+  min-height: 2.75rem;
+  border-radius: 0.9rem;
+}
+.task-schedule-dialog button:focus-visible,
+.task-schedule-trigger:focus-visible {
+  outline: 2px solid #4468e9;
+  outline-offset: 2px;
+}
+
 /* ── Focus rings ──────────────────────────────────────────── */
 .home-filters button:focus-visible,
 .task-classification button:focus-visible,
@@ -1026,7 +1264,8 @@
     height: 2.35rem;
     min-height: 2.35rem;
   }
-  .home-choice-grid {
+  .home-choice-panel:not([data-kind="type"]):not([data-kind="priority"])
+    .home-choice-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

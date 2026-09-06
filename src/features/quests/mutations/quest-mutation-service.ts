@@ -58,6 +58,7 @@ import {
 import type {
   CreateQuestCommand,
   EditQuestCommand,
+  EditQuestScheduleCommand,
   QuestReorderCommand,
   QuestTransitionCommand,
   RestoreQuestScheduleCommand,
@@ -325,6 +326,71 @@ export async function editQuest(
       ...(await recurrenceFields(transaction, access, command, current)),
     })
 
+    return updated
+      ? summary(updated)
+      : mutationFailure(transaction, access, command)
+  })
+}
+
+export async function editQuestSchedule(
+  database: Database,
+  access: AccessContext,
+  command: EditQuestScheduleCommand,
+): Promise<QuestMutationSummary> {
+  authorizeQuestAccess(access)
+  return withWorkspaceMutation(database, access, async (transaction) => {
+    const current = await findQuestRecord(transaction, access, command.questId)
+    if (!current) throw new QuestServiceError("NOT_FOUND", "Task not found.")
+    if (current.version !== command.expectedVersion)
+      return mutationFailure(transaction, access, command)
+    if (
+      current.status !== "open" ||
+      (current.dueAt && current.dueAt < new Date())
+    ) {
+      throw new QuestServiceError(
+        "CONFLICT",
+        "Only open tasks without an elapsed deadline can be edited here. Use the missed task reschedule flow instead.",
+      )
+    }
+
+    // Omitted timestamps must retain their exact persisted instant, including
+    // seconds and the selected offset during an ambiguous local minute.
+    const startAt =
+      command.startAt === undefined ? current.startAt : command.startAt
+    const dueAt = command.dueAt === undefined ? current.dueAt : command.dueAt
+    if (startAt && dueAt && dueAt < startAt) {
+      throw new QuestServiceError(
+        "VALIDATION_ERROR",
+        "Due time cannot be earlier than start time.",
+      )
+    }
+    if (current.recurrenceRule && !startAt && !dueAt) {
+      throw new QuestServiceError(
+        "VALIDATION_ERROR",
+        "Recurring tasks need a start or due time.",
+      )
+    }
+
+    const updated = await updateQuestRecord(
+      transaction,
+      access,
+      command.questId,
+      command.expectedVersion,
+      {
+        ...(command.startAt !== undefined ? { startAt: command.startAt } : {}),
+        ...(command.dueAt !== undefined ? { dueAt: command.dueAt } : {}),
+        ...(current.recurrenceRule
+          ? await recurrenceFields(
+              transaction,
+              access,
+              { startAt, dueAt, recurrenceRule: current.recurrenceRule },
+              current,
+            )
+          : {}),
+      },
+      "active",
+      "open",
+    )
     return updated
       ? summary(updated)
       : mutationFailure(transaction, access, command)

@@ -15,6 +15,7 @@ import {
   completeQuest,
   createQuest,
   editQuest,
+  editQuestSchedule,
   permanentlyDeleteQuest,
   reopenQuest,
   reorderQuests,
@@ -27,6 +28,7 @@ import {
 import {
   parseCreateQuestForm,
   parseEditQuestForm,
+  parseEditQuestSchedule,
   parseRestoreQuestSchedule,
   questTransitionSchema,
   questReorderSchema,
@@ -51,6 +53,12 @@ export type RestoreQuestScheduleInput = Readonly<{
   expectedVersion: number
   questId: string
   startAt: string
+}>
+export type EditQuestScheduleInput = Readonly<{
+  dueAt?: string | null
+  expectedVersion: number
+  questId: string
+  startAt?: string | null
 }>
 
 /**
@@ -179,6 +187,25 @@ export async function editQuestAction(
 
   return runQuestMutation(access.userId, lifecyclePaths, () =>
     editQuest(getDatabase(), access, parsed.data),
+  )
+}
+
+export async function editQuestScheduleAction(
+  input: EditQuestScheduleInput,
+): Promise<ActionResult<QuestMutationSummary>> {
+  const access = await requireWorkspaceAccess()
+  const settings = await getUserSettings(access)
+  const parsed = parseEditQuestSchedule(input, settings.timezone)
+
+  if (!parsed.success) {
+    return validationFailure(
+      "Review the highlighted schedule fields and try again.",
+      parsed.error.flatten().fieldErrors,
+    )
+  }
+
+  return runQuestMutation(access.userId, lifecyclePaths, () =>
+    editQuestSchedule(getDatabase(), access, parsed.data),
   )
 }
 

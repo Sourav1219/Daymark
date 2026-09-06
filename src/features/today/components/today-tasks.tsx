@@ -797,6 +797,7 @@ function TodayTaskCard({
                 <TaskClassificationControl
                   card={card}
                   onClassified={onClassified}
+                  timezone={timezone}
                 />
               ) : null}
               <p className="today-card__meta">

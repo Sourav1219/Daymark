@@ -58,11 +58,14 @@ export async function getQuestParentOptions(
   )
 }
 
-function toQuestView(
+export function toQuestView(
   record: QuestListItem,
   labelsByQuest: ReadonlyMap<string, readonly QuestLabelBadge[]>,
 ): QuestView {
   return {
+    taskType: record.taskType ?? "personal",
+    customType: record.customType ?? null,
+    typeManual: record.typeManual ?? false,
     completedAt: record.completedAt?.toISOString() ?? null,
     deletedAt: record.deletedAt?.toISOString() ?? null,
     description: record.description,
@@ -127,6 +130,8 @@ export async function getQuestList(
 
   if (filters.sort !== "manual") {
     listOptions.sort = filters.sort satisfies QuestListSort
+  } else if (kind === "cleared") {
+    listOptions.sort = "recently-completed"
   }
 
   const needsDayWindow =

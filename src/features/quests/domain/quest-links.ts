@@ -1,6 +1,13 @@
 import type { Route } from "next"
 
 export const focusTodayTaskEvent = "traketo:focus-today-task"
+export const taskCompletionUndoEvent = "traketo:task-completion-undo"
+
+export type TaskCompletionUndoEventDetail = Readonly<{
+  phase: "confirmed" | "failed" | "started"
+  questId: string
+  version?: number | undefined
+}>
 
 export function questHomeHref(questId: string, selectedDate?: string | null) {
   const params = new URLSearchParams()

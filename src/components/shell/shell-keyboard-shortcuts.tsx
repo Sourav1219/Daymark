@@ -5,6 +5,7 @@ import type { Route } from "next"
 import { useRouter } from "next/navigation"
 
 const navigationShortcuts = new Map<string, Route>([
+  ["h", "/today"],
   ["t", "/today"],
   ["q", "/quests"],
   ["g", "/gates"],

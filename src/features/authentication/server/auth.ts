@@ -129,7 +129,12 @@ export function createAuth(
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
     },
-    trustedOrigins: [env.BETTER_AUTH_URL],
+    trustedOrigins: [
+      env.BETTER_AUTH_URL,
+      "traketo://*",
+      "daymark://*",
+      "capacitor://localhost",
+    ],
     advanced: {
       cookiePrefix: AUTH_COOKIE_PREFIX,
       database: { generateId: "uuid" },

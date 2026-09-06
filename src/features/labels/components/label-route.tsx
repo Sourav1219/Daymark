@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import { LabelCard } from "@/features/labels/components/label-card"
 import { LabelCreateForm } from "@/features/labels/components/label-create-form"
+import { LabelOfflineSync } from "@/features/labels/components/label-offline-sync"
 import { getLabelList } from "@/features/labels/queries/label-query-service"
 
 export async function LabelRoute({
@@ -47,6 +48,7 @@ export async function LabelRoute({
           </div>
         )}
       </section>
+      <LabelOfflineSync labels={labels} />
     </div>
   )
 }

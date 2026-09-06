@@ -20,7 +20,6 @@ import {
 import {
   QuestFormFields,
   type QuestGateOption,
-  type QuestParentOption,
 } from "@/features/quests/components/quest-form-fields"
 import {
   TaskCreatedPopup,
@@ -39,12 +38,10 @@ const initialState: QuestActionState = null
 export function QuestCreateForm({
   gates,
   onOfflineQueued,
-  parentOptions,
   timezone = defaultTimezone,
 }: Readonly<{
   gates?: readonly QuestGateOption[] | undefined
   onOfflineQueued?: ((quest: QuestView) => void) | undefined
-  parentOptions?: readonly QuestParentOption[] | undefined
   timezone?: string | undefined
 }>) {
   const [state, formAction] = useActionState(createQuestAction, initialState)
@@ -153,7 +150,6 @@ export function QuestCreateForm({
               }
               gates={gates}
               idPrefix="create-quest"
-              parentOptions={parentOptions}
               timezone={timezone}
               variant="create"
             />

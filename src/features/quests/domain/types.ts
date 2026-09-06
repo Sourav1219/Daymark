@@ -1,3 +1,5 @@
+import type { TaskOptionalClassification } from "./classification"
+
 export const questPriorities = ["low", "medium", "high", "critical"] as const
 
 /**
@@ -17,29 +19,30 @@ export type QuestLabelBadge = Readonly<{
   colorToken: string
 }>
 
-export type QuestView = Readonly<{
-  id: string
-  title: string
-  description: string
-  status: QuestStatus
-  priority: QuestPriority
-  position: number
-  startAt: string | null
-  dueAt: string | null
-  recurrenceOccurrenceAt: string | null
-  recurrenceRule: string | null
-  recurrenceSequence: number | null
-  recurrenceSeriesId: string | null
-  recurrenceTimezone: string | null
-  completedAt: string | null
-  deletedAt: string | null
-  version: number
-  projectId: string | null
-  parentTaskId: string | null
-  gateName: string | null
-  subquestCount: number
-  labels: readonly QuestLabelBadge[]
-}>
+export type QuestView = TaskOptionalClassification &
+  Readonly<{
+    id: string
+    title: string
+    description: string
+    status: QuestStatus
+    priority: QuestPriority
+    position: number
+    startAt: string | null
+    dueAt: string | null
+    recurrenceOccurrenceAt: string | null
+    recurrenceRule: string | null
+    recurrenceSequence: number | null
+    recurrenceSeriesId: string | null
+    recurrenceTimezone: string | null
+    completedAt: string | null
+    deletedAt: string | null
+    version: number
+    projectId: string | null
+    parentTaskId: string | null
+    gateName: string | null
+    subquestCount: number
+    labels: readonly QuestLabelBadge[]
+  }>
 
 export type QuestListKind = "active" | "cleared" | "deleted" | "today"
 

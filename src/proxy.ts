@@ -4,10 +4,6 @@ import { NextResponse, type NextRequest } from "next/server"
 import { AUTH_COOKIE_PREFIX } from "@/features/authentication/config"
 
 const r2AccountIdPattern = /^[a-f\d]{32}$/iu
-// next/image emits style="color:transparent" to prevent an image flash. This
-// hash permits only that exact framework-generated style attribute.
-const nextImageTransparentStyleHash =
-  "'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='"
 
 function r2ConnectSources(accountId: string | undefined) {
   if (!accountId || !r2AccountIdPattern.test(accountId)) return []
@@ -42,12 +38,11 @@ export function buildContentSecurityPolicy(
     "frame-ancestors 'none'",
     "img-src 'self' data: blob:",
     "object-src 'none'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${
-      development ? " 'unsafe-eval'" : ""
-    }`,
-    `style-src 'self' 'nonce-${nonce}' 'unsafe-hashes' ${nextImageTransparentStyleHash}${
-      development ? " 'unsafe-inline'" : ""
-    }`,
+    `script-src 'self' 'nonce-${nonce}'${development ? " 'unsafe-eval'" : ""}`,
+    development
+      ? "style-src 'self' 'unsafe-inline'"
+      : `style-src 'self' 'nonce-${nonce}'`,
+    ...(!development ? ["style-src-attr 'unsafe-inline'"] : []),
     `connect-src ${connectSources.join(" ")}`,
     "worker-src 'self' blob:",
     ...(!development ? ["upgrade-insecure-requests"] : []),
@@ -72,7 +67,6 @@ function isProtectedPath(pathname: string) {
       "/cleared",
       "/progress",
       "/profile",
-      "/contact",
       "/settings",
     ].includes(pathname)
   )
@@ -102,9 +96,9 @@ export function proxy(request: NextRequest) {
     const signOutUrl = request.nextUrl.clone()
     signOutUrl.pathname = "/sign-out"
     response = NextResponse.redirect(signOutUrl)
-  } else if (request.nextUrl.pathname === "/" && sessionCookie) {
-    const todayUrl = new URL("/today", request.url)
-    response = NextResponse.redirect(todayUrl)
+  } else if (request.nextUrl.pathname === "/") {
+    const destination = sessionCookie ? "/today" : "/sign-in"
+    response = NextResponse.redirect(new URL(destination, request.url))
   } else if (isProtectedPath(request.nextUrl.pathname) && !sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url)
     signInUrl.searchParams.set(

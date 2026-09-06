@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({
 }))
 
 describe("SignOutPage", () => {
-  it("renders the remote sign-out page and preserves a safe return path", async () => {
+  it("renders the calm signed-out page by default and preserves a safe return path", async () => {
     render(
       await SignOutPage({
         searchParams: Promise.resolve({ next: "/profile" }),
@@ -17,12 +17,37 @@ describe("SignOutPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "This device has been signed out.",
+        name: "You have been signed out.",
       }),
     ).toBeInTheDocument()
+    expect(screen.getByText("Signed Out")).toBeInTheDocument()
+    expect(screen.getByText("Safe & Secure")).toBeInTheDocument()
     expect(
       screen.getByRole("link", { name: /Sign in again/iu }),
     ).toHaveAttribute("href", "/sign-in?mode=login&next=%2Fprofile")
+  })
+
+  it("renders the remote sign-out notice when reason is expired or remote", async () => {
+    render(
+      await SignOutPage({
+        searchParams: Promise.resolve({
+          next: "/profile",
+          reason: "expired",
+        }),
+      }),
+    )
+
+    expect(
+      screen.getByRole("heading", {
+        name: "This device has been signed out.",
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText("Session Ended")).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /This device was signed out from another active session/iu,
+      ),
+    ).toBeInTheDocument()
   })
 
   it("does not accept an external return URL", async () => {

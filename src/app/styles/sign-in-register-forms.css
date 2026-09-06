@@ -34,6 +34,24 @@ Sign-in / Register forms — same clean app-width column as the
   animation: none;
 }
 
+.auth__help-footer {
+  margin-top: 1.25rem;
+  color: var(--app-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.auth__help-link {
+  color: #2b60de;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.auth__help-link:hover {
+  color: #1943a8;
+}
+
 /* Timed authentication success moments. These replace the old green inline
    banners with focused feedback that matches Traketo's blue-violet surfaces. */
 .auth-success__stage {

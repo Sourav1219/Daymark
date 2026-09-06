@@ -104,9 +104,11 @@ function timeAgo(iso: string): string {
 
 export function SecurityDataPanel({
   currentSessionId,
+  hasPassword = true,
   initialSessions,
 }: Readonly<{
   currentSessionId: string | null
+  hasPassword?: boolean
   initialSessions: readonly SessionView[]
 }>) {
   return (
@@ -116,17 +118,30 @@ export function SecurityDataPanel({
         initialSessions={initialSessions}
       />
       <DataCard />
-      <DeleteAccountCard />
+      <DeleteAccountCard hasPassword={hasPassword} />
     </div>
   )
 }
 
 // Loopback addresses shown in dev/localhost — meaningless to the user
 const LOOPBACK_PATTERN =
-  /^(::1?|127\.0\.0\.1|::ffff:127\.0\.0\.1|(?:0000:){7}000[01])$/
+  /^(::1?|127(?:\.\d{1,3}){3}|::ffff:127(?:\.\d{1,3}){3}|(?:0000:){7}000[01]|(?:0000:){7}0000|0\.0\.0\.0|::|localhost)$/i
 
 function isRealIp(ip: string | null): ip is string {
-  return ip !== null && !LOOPBACK_PATTERN.test(ip)
+  return ip !== null && !LOOPBACK_PATTERN.test(ip.trim())
+}
+
+export function isLocalhostSession(session: SessionView): boolean {
+  if (session.ipAddress && LOOPBACK_PATTERN.test(session.ipAddress.trim())) {
+    return true
+  }
+  if (
+    session.userAgent &&
+    /(?:headlesschrome|playwright|curl\/)/i.test(session.userAgent)
+  ) {
+    return true
+  }
+  return false
 }
 
 function SessionsCard({
@@ -137,8 +152,9 @@ function SessionsCard({
   initialSessions: readonly SessionView[]
 }>) {
   const router = useRouter()
-  const [sessions, setSessions] =
-    useState<readonly SessionView[]>(initialSessions)
+  const [sessions, setSessions] = useState<readonly SessionView[]>(() =>
+    initialSessions.filter((s) => !isLocalhostSession(s)),
+  )
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [signedOutDevice, setSignedOutDevice] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -146,7 +162,9 @@ function SessionsCard({
   const refreshSessions = useCallback(async () => {
     try {
       const result = await listActiveSessionsAction()
-      if (result.ok) setSessions(result.data)
+      if (result.ok) {
+        setSessions(result.data.filter((s) => !isLocalhostSession(s)))
+      }
     } catch {
       // The global session watcher owns expired-session handling. A transient
       // network failure should leave the last known device list in place.
@@ -498,7 +516,11 @@ function DataCard() {
   )
 }
 
-function DeleteAccountCard() {
+function DeleteAccountCard({
+  hasPassword = true,
+}: Readonly<{
+  hasPassword?: boolean
+}>) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   // Stable so the dialog's completion effect does not re-fire on re-render.
@@ -534,6 +556,7 @@ function DeleteAccountCard() {
       </Button>
       {open ? (
         <DeleteAccountDialog
+          hasPassword={hasPassword}
           onClose={() => setOpen(false)}
           onDeleted={handleDeleted}
         />
@@ -543,9 +566,11 @@ function DeleteAccountCard() {
 }
 
 function DeleteAccountDialog({
+  hasPassword = true,
   onClose,
   onDeleted,
 }: Readonly<{
+  hasPassword?: boolean
   onClose: () => void
   onDeleted: () => Promise<void> | void
 }>) {
@@ -601,20 +626,46 @@ function DeleteAccountDialog({
         </header>
         <form action={action} className="account-delete-dialog__form">
           <div className="account-delete-dialog__field">
-            <Label htmlFor="delete-account-password">Password</Label>
-            <Input
-              autoComplete="current-password"
-              autoFocus
-              id="delete-account-password"
-              name="password"
-              required
-              type="password"
-            />
-            {state && !state.ok ? (
-              <p className="account-delete-dialog__error" role="alert">
-                {state.error.fieldErrors?.password?.[0] ?? state.error.message}
-              </p>
-            ) : null}
+            {hasPassword ? (
+              <>
+                <Label htmlFor="delete-account-password">Password</Label>
+                <Input
+                  autoComplete="current-password"
+                  autoFocus
+                  id="delete-account-password"
+                  name="password"
+                  required
+                  type="password"
+                />
+                {state && !state.ok ? (
+                  <p className="account-delete-dialog__error" role="alert">
+                    {state.error.fieldErrors?.password?.[0] ??
+                      state.error.message}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <Label htmlFor="delete-account-confirm">
+                  Type <strong>DELETE</strong> to confirm
+                </Label>
+                <Input
+                  autoComplete="off"
+                  autoFocus
+                  id="delete-account-confirm"
+                  name="confirmation"
+                  placeholder="DELETE"
+                  required
+                  type="text"
+                />
+                {state && !state.ok ? (
+                  <p className="account-delete-dialog__error" role="alert">
+                    {state.error.fieldErrors?.confirmation?.[0] ??
+                      state.error.message}
+                  </p>
+                ) : null}
+              </>
+            )}
           </div>
           <div className="account-delete-dialog__actions">
             <Button

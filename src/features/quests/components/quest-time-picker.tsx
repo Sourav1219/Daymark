@@ -49,8 +49,18 @@ function isIPhoneDevice(): boolean {
 function pickerPortal(): HTMLElement | undefined {
   if (typeof document === "undefined") return undefined
 
+  const activeDialog =
+    document.activeElement instanceof Element
+      ? document.activeElement.closest<HTMLElement>(
+          '[data-slot="alert-dialog-content"]',
+        )
+      : null
+
   return (
-    document.querySelector<HTMLElement>(".device-main-viewport") ?? undefined
+    activeDialog ??
+    document.querySelector<HTMLElement>(".restore-schedule-dialog") ??
+    document.querySelector<HTMLElement>(".device-main-viewport") ??
+    undefined
   )
 }
 
@@ -60,8 +70,11 @@ export function QuestTimePicker({
   ariaLabel,
   disabled,
   id,
+  maxTime,
   minTime,
   onChange,
+  portalContainer,
+  showShortcuts = true,
   value,
 }: Readonly<{
   ariaDescribedby?: string | undefined
@@ -69,9 +82,13 @@ export function QuestTimePicker({
   ariaLabel: string
   disabled: boolean
   id: string
+  /** Latest selectable time on the chosen local day. */
+  maxTime?: string | undefined
   /** Earlier choices are visibly unavailable when the selected date is today. */
   minTime?: string | undefined
   onChange: (value: string) => void
+  portalContainer?: HTMLElement | null | undefined
+  showShortcuts?: boolean | undefined
   value: string
 }>) {
   const [open, setOpen] = useState(false)
@@ -81,25 +98,37 @@ export function QuestTimePicker({
   const exactInputRef = useRef<HTMLInputElement>(null)
   const draftIsComplete = exactTimePattern.test(draft)
   const draftIsElapsed = Boolean(draftIsComplete && minTime && draft < minTime)
-  const draftIsUsable = draftIsComplete && !draftIsElapsed
-  const visibleTimeOptions = minTime
-    ? timeOptions.filter((option) => option.value >= minTime)
-    : timeOptions
-  const portal = pickerPortal()
+  const draftIsTooLate = Boolean(draftIsComplete && maxTime && draft > maxTime)
+  const draftIsUsable = draftIsComplete && !draftIsElapsed && !draftIsTooLate
+  const visibleTimeOptions = timeOptions.filter(
+    (option) =>
+      (!minTime || option.value >= minTime) &&
+      (!maxTime || option.value <= maxTime),
+  )
+  const portal = portalContainer ?? pickerPortal()
 
   function updateExactTime(next: string) {
     // Native time inputs temporarily emit an empty value while a person edits
     // individual hour/minute segments. Keep that draft local so the parent
     // does not replace it with its 09:00/17:00 fallback mid-entry.
     setDraft(next)
-    if (exactTimePattern.test(next) && (!minTime || next >= minTime)) {
+    if (
+      exactTimePattern.test(next) &&
+      (!minTime || next >= minTime) &&
+      (!maxTime || next <= maxTime)
+    ) {
       onChange(next)
     }
   }
 
   function acceptExactTime() {
     const next = exactInputRef.current?.value ?? draft
-    if (!exactTimePattern.test(next) || (minTime && next < minTime)) return
+    if (
+      !exactTimePattern.test(next) ||
+      (minTime && next < minTime) ||
+      (maxTime && next > maxTime)
+    )
+      return
 
     onChange(next)
     setOpen(false)
@@ -155,7 +184,9 @@ export function QuestTimePicker({
           <div>
             <DialogTitle>Choose an exact time</DialogTitle>
             <DialogDescription>
-              Enter any minute, or use a 15-minute shortcut.
+              {showShortcuts
+                ? "Enter any minute, or use a 15-minute shortcut."
+                : "Enter the exact hour and minute."}
             </DialogDescription>
           </div>
         </div>
@@ -171,6 +202,7 @@ export function QuestTimePicker({
             <Input
               aria-label={`${ariaLabel} exact value`}
               id={`${id}-exact`}
+              max={maxTime}
               min={minTime}
               onChange={(event) => updateExactTime(event.target.value)}
               onKeyDown={(event) => {
@@ -195,11 +227,15 @@ export function QuestTimePicker({
             <p aria-live="polite">
               {draftIsElapsed
                 ? `Choose ${minTime} or later for today.`
-                : !draftIsComplete && draft
-                  ? "Enter a complete time."
-                  : minTime
-                    ? "Earlier times today are unavailable."
-                    : "Use any hour and minute."}
+                : draftIsTooLate
+                  ? `Choose ${maxTime} or earlier for today.`
+                  : !draftIsComplete && draft
+                    ? "Enter a complete time."
+                    : minTime
+                      ? maxTime
+                        ? `Use a future time no later than ${maxTime}.`
+                        : "Earlier times today are unavailable."
+                      : "Use any hour and minute."}
             </p>
             <button
               disabled={!draftIsUsable}
@@ -211,29 +247,31 @@ export function QuestTimePicker({
           </div>
         </div>
 
-        <div aria-label="Time shortcuts" className="quest-time-popover__grid">
-          {visibleTimeOptions.length > 0 ? (
-            visibleTimeOptions.map((option) => (
-              <button
-                aria-label={option.label}
-                aria-pressed={option.value === value}
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value)
-                  setOpen(false)
-                }}
-                type="button"
-              >
-                {option.label}
-              </button>
-            ))
-          ) : (
-            <p className="quest-time-popover__empty">
-              No 15-minute shortcuts remain today. Enter an exact future time
-              above.
-            </p>
-          )}
-        </div>
+        {showShortcuts ? (
+          <div aria-label="Time shortcuts" className="quest-time-popover__grid">
+            {visibleTimeOptions.length > 0 ? (
+              visibleTimeOptions.map((option) => (
+                <button
+                  aria-label={option.label}
+                  aria-pressed={option.value === value}
+                  key={option.value}
+                  onClick={() => {
+                    onChange(option.value)
+                    setOpen(false)
+                  }}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ))
+            ) : (
+              <p className="quest-time-popover__empty">
+                No 15-minute shortcuts remain today. Enter an exact future time
+                above.
+              </p>
+            )}
+          </div>
+        ) : null}
       </DialogContent>
     </Dialog>
   )

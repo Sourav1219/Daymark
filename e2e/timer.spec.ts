@@ -49,7 +49,7 @@ test("runs, pauses, resumes, edits, isolates history, and stops on close", async
   await page.goto("/sign-up")
   await page.getByLabel("Name").fill("Timer Operator")
   await page.getByLabel("Email").fill(email)
-  await page.getByLabel("Password").fill(password)
+  await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page).toHaveURL(/\/today$/u)
 

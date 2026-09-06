@@ -48,12 +48,21 @@ const commands = [
 ] as const
 
 const navigationShortcuts = new Map<string, Route>([
+  ["h", "/today"],
   ["t", "/today"],
   ["q", "/quests"],
   ["g", "/gates"],
   ["l", "/labels"],
   ["c", "/cleared"],
 ])
+
+export const OPEN_COMMAND_MENU_EVENT = "traketo:open-command-menu"
+
+export function openCommandMenu() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(OPEN_COMMAND_MENU_EVENT))
+  }
+}
 
 function isEditingTarget(target: EventTarget | null) {
   return (
@@ -64,7 +73,11 @@ function isEditingTarget(target: EventTarget | null) {
   )
 }
 
-export function CommandMenu() {
+export function CommandMenu({
+  trigger = true,
+}: Readonly<{
+  trigger?: boolean
+}> = {}) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -139,26 +152,32 @@ export function CommandMenu() {
     }
 
     window.addEventListener("keydown", handleShortcut)
+    const handleOpen = () => setOpen(true)
+    window.addEventListener(OPEN_COMMAND_MENU_EVENT, handleOpen)
+
     return () => {
       window.removeEventListener("keydown", handleShortcut)
+      window.removeEventListener(OPEN_COMMAND_MENU_EVENT, handleOpen)
       if (navigationTimer.current) clearTimeout(navigationTimer.current)
     }
   }, [run])
 
   return (
     <Dialog.Root onOpenChange={setOpen} open={open}>
-      <Dialog.Trigger asChild>
-        <Button
-          aria-label="Open command menu"
-          className="size-11"
-          ref={triggerRef}
-          size="icon-lg"
-          type="button"
-          variant="outline"
-        >
-          <Search aria-hidden="true" />
-        </Button>
-      </Dialog.Trigger>
+      {trigger ? (
+        <Dialog.Trigger asChild>
+          <Button
+            aria-label="Open command menu"
+            className="size-11"
+            ref={triggerRef}
+            size="icon-lg"
+            type="button"
+            variant="outline"
+          >
+            <Search aria-hidden="true" />
+          </Button>
+        </Dialog.Trigger>
+      ) : null}
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-80 bg-background/75 supports-backdrop-filter:backdrop-blur-sm" />
         <Dialog.Content

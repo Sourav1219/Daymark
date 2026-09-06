@@ -1,11 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useState, useTransition } from "react"
+import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import {
   BarChart3,
   CalendarDays,
   Check,
   Clock3,
+  Coffee,
+  Flame,
   History,
   Pause,
   Pencil,
@@ -15,6 +17,7 @@ import {
   TimerReset,
   TrendingUp,
   X,
+  Zap,
   type LucideIcon,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -24,6 +27,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import "@/app/styles/progress-page.css"
 import { getLocalDayWindow } from "@/features/quests/domain/today-window"
+import {
+  clearSessionMode,
+  getPreferredMode,
+  getPresetById,
+  getSessionMode,
+  playTimerChime,
+  setPreferredMode,
+  setSessionMode,
+  timerPresets,
+  type TimerMode,
+} from "@/features/timer/domain/timer-modes"
+import {
+  cancelTimerNotification,
+  requestNotificationPermission,
+  scheduleTimerNotification,
+  triggerHaptic,
+} from "@/lib/platform/platform-bridge"
 import {
   editTimerSubjectAction,
   pauseTimerAction,
@@ -74,23 +94,30 @@ function formatClock(milliseconds: number) {
 }
 
 function TimerClockDisplay({
+  isOvertime = false,
   milliseconds,
-}: Readonly<{ milliseconds: number }>) {
+  progressPercent = null,
+}: Readonly<{
+  isOvertime?: boolean
+  milliseconds: number
+  progressPercent?: number | null
+}>) {
   const clock = formatClock(milliseconds)
   const [hours, minutes, seconds] = clock.split(":")
 
   return (
     <div className="timer-clock-wrap">
       <div
-        aria-label={`Elapsed time ${clock}`}
+        aria-label={`${isOvertime ? "Overtime " : "Elapsed time "}${clock}`}
         aria-live="off"
         className="timer-clock"
+        data-overtime={isOvertime}
         role="timer"
       >
-        <span className="sr-only">{clock}</span>
+        <span className="sr-only">{isOvertime ? `+${clock}` : clock}</span>
         <span aria-hidden="true" className="timer-clock-unit">
-          <strong>{hours}</strong>
-          <small>Hours</small>
+          <strong>{isOvertime ? `+${hours}` : hours}</strong>
+          <small>{isOvertime ? "Extra hrs" : "Hours"}</small>
         </span>
         <span aria-hidden="true" className="timer-clock-separator">
           :
@@ -107,6 +134,15 @@ function TimerClockDisplay({
           <small>Seconds</small>
         </span>
       </div>
+      {progressPercent !== null ? (
+        <div aria-hidden="true" className="timer-progress-bar-wrap">
+          <div
+            className="timer-progress-bar-fill"
+            data-overtime={isOvertime}
+            style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -155,6 +191,60 @@ export function TimerRoute({
     sharedSession?.participants.some(
       (participant) => participant.status === "running",
     ) ?? false
+
+  const [mode, setMode] = useState<TimerMode>(() =>
+    activeSessionId ? getSessionMode(activeSessionId) : getPreferredMode(),
+  )
+  const [prevSessionId, setPrevSessionId] = useState(activeSessionId)
+  const chimePlayedRef = useRef(false)
+
+  if (activeSessionId !== prevSessionId) {
+    setPrevSessionId(activeSessionId)
+    setMode(
+      activeSessionId ? getSessionMode(activeSessionId) : getPreferredMode(),
+    )
+  }
+
+  const activePreset = getPresetById(mode)
+  const targetMs = activePreset.durationMinutes * 60 * 1000
+  const isCountdown = targetMs > 0
+
+  let displayMs = 0
+  let isOvertime = false
+  let progressPercent: number | null = null
+
+  if (activeSession) {
+    if (isCountdown) {
+      const remainingMs = targetMs - activeElapsed
+      if (remainingMs <= 0) {
+        displayMs = Math.abs(remainingMs)
+        isOvertime = true
+        progressPercent = 100
+      } else {
+        displayMs = remainingMs
+        isOvertime = false
+        progressPercent = Math.min(100, (activeElapsed / targetMs) * 100)
+      }
+    } else {
+      displayMs = activeElapsed
+      isOvertime = false
+      progressPercent = null
+    }
+  } else {
+    displayMs = isCountdown ? targetMs : 0
+  }
+
+  useEffect(() => {
+    if (!activeSession) {
+      chimePlayedRef.current = false
+      return
+    }
+    if (isCountdown && isOvertime && !chimePlayedRef.current) {
+      chimePlayedRef.current = true
+      playTimerChime()
+      void cancelTimerNotification("timer-completion")
+    }
+  }, [activeSession, isCountdown, isOvertime])
 
   useEffect(() => {
     if (activeSession?.status !== "running" && !hasRunningGroupTimer) return
@@ -213,17 +303,44 @@ export function TimerRoute({
     return true
   }
 
-  function startNewTimer() {
+  function handleSelectMode(newMode: TimerMode) {
+    if (activeSession) return
+    triggerHaptic("selection")
+    setMode(newMode)
+    setPreferredMode(newMode)
+  }
+
+  function startNewTimer(overrideSubject?: string) {
+    triggerHaptic("heavy")
+    const chosenSubject =
+      (overrideSubject ?? subject).trim() || activePreset.defaultSubject
+    if (activePreset.durationMinutes > 0) {
+      void requestNotificationPermission().then(() => {
+        void scheduleTimerNotification({
+          targetTimestamp:
+            Date.now() + activePreset.durationMinutes * 60 * 1000,
+          title: `${activePreset.label} Complete! 🎯`,
+          body: `Great focus on "${chosenSubject}". Time for a break!`,
+          tag: "timer-completion",
+        })
+      })
+    }
     startTransition(async () => {
-      const result = await startTimerAction({ subject })
+      const result = await startTimerAction({ subject: chosenSubject })
       if (!handleResult(result)) return
+      setSessionMode(result.data.id, mode)
       setSubject("")
+      chimePlayedRef.current = false
       setCelebration({ kind: "started", subject: result.data.subject })
     })
   }
 
   function finishTimer() {
     if (!activeSession) return
+    triggerHaptic("success")
+    void cancelTimerNotification("timer-completion")
+    clearSessionMode(activeSession.id)
+    chimePlayedRef.current = false
     startTransition(async () => {
       const result = await stopTimerAction({
         expectedVersion: activeSession.version,
@@ -238,8 +355,42 @@ export function TimerRoute({
     })
   }
 
+  function handleTakeBreak() {
+    if (!activeSession) return
+    triggerHaptic("selection")
+    void cancelTimerNotification("timer-completion")
+    clearSessionMode(activeSession.id)
+    chimePlayedRef.current = false
+    void scheduleTimerNotification({
+      targetTimestamp: Date.now() + 5 * 60 * 1000,
+      title: "5m Break Complete! ☕",
+      body: "Break finished! Ready to jump back into focus?",
+      tag: "timer-completion",
+    })
+    startTransition(async () => {
+      const stopResult = await stopTimerAction({
+        expectedVersion: activeSession.version,
+        sessionId: activeSession.id,
+      })
+      if (!stopResult.ok) {
+        toast.error(stopResult.error.message)
+        return
+      }
+      setMode("short-break")
+      setPreferredMode("short-break")
+      const startResult = await startTimerAction({
+        subject: "Short break & stretch",
+      })
+      if (handleResult(startResult, "Focus block saved! Starting 5m break.")) {
+        setSessionMode(startResult.data.id, "short-break")
+      }
+    })
+  }
+
   function pauseTimer() {
     if (!activeSession) return
+    triggerHaptic("selection")
+    void cancelTimerNotification("timer-completion")
     startTransition(async () => {
       const result = await pauseTimerAction({
         expectedVersion: activeSession.version,
@@ -252,6 +403,7 @@ export function TimerRoute({
 
   function transition(action: typeof pauseTimerAction, successMessage: string) {
     if (!activeSession) return
+    triggerHaptic("selection")
     startTransition(async () => {
       const result = await action({
         expectedVersion: activeSession.version,
@@ -292,6 +444,7 @@ export function TimerRoute({
       <section
         aria-labelledby="focus-timer-heading"
         className="timer-focus-card"
+        data-mode={mode}
         data-state={timerStatus}
       >
         <span
@@ -318,14 +471,103 @@ export function TimerRoute({
           <span className="timer-status-pill" data-state={timerStatus}>
             <span aria-hidden="true" />
             {timerStatus === "running"
-              ? "Focusing"
+              ? isOvertime
+                ? "Overtime"
+                : "Focusing"
               : timerStatus === "paused"
                 ? "Paused"
                 : "Ready"}
           </span>
         </div>
 
-        <TimerClockDisplay milliseconds={activeElapsed} />
+        <div
+          aria-label="Timer interval mode"
+          className="timer-mode-selector"
+          role="radiogroup"
+        >
+          {timerPresets.map((preset) => {
+            const Icon =
+              preset.id === "pomodoro"
+                ? Flame
+                : preset.id === "deep-work"
+                  ? Zap
+                  : preset.id === "short-break"
+                    ? Coffee
+                    : Clock3
+            const isSelected = mode === preset.id
+            const isDisabled =
+              isPending || (Boolean(activeSession) && !isSelected)
+
+            return (
+              <button
+                aria-checked={isSelected}
+                className="timer-mode-pill"
+                data-active={isSelected}
+                data-mode={preset.id}
+                disabled={isDisabled}
+                key={preset.id}
+                onClick={() => handleSelectMode(preset.id)}
+                role="radio"
+                title={
+                  activeSession && !isSelected
+                    ? "Mode locked during active session"
+                    : preset.label
+                }
+                type="button"
+              >
+                <Icon aria-hidden="true" className="timer-mode-pill-icon" />
+                <span>{preset.label}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <TimerClockDisplay
+          isOvertime={isOvertime}
+          milliseconds={displayMs}
+          progressPercent={progressPercent}
+        />
+
+        {activeSession && isOvertime ? (
+          <div className="timer-interval-banner">
+            <div className="timer-interval-banner__content">
+              <span aria-hidden="true" className="timer-interval-banner__icon">
+                <Sparkles />
+              </span>
+              <div>
+                <strong>Target interval reached!</strong>
+                <p>
+                  {mode === "short-break"
+                    ? "Break complete. Ready to dive back into deep focus?"
+                    : "Great job! Take a short break or keep the momentum going."}
+                </p>
+              </div>
+            </div>
+            <div className="timer-interval-banner__actions">
+              {mode !== "short-break" ? (
+                <Button
+                  className="timer-banner-break-btn"
+                  disabled={isPending}
+                  onClick={handleTakeBreak}
+                  size="sm"
+                  type="button"
+                >
+                  <Coffee aria-hidden="true" /> Take 5m break
+                </Button>
+              ) : null}
+              <Button
+                className="timer-banner-finish-btn"
+                disabled={isPending}
+                onClick={finishTimer}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Finish
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {activeSession ? (
           <div className="timer-active-panel">
@@ -397,8 +639,7 @@ export function TimerRoute({
                 id="timer-subject"
                 maxLength={160}
                 onChange={(event) => setSubject(event.target.value)}
-                placeholder="e.g. Read chapter four"
-                required
+                placeholder={activePreset.placeholder}
                 value={subject}
               />
               <Button
@@ -406,7 +647,7 @@ export function TimerRoute({
                 disabled={isPending}
                 type="submit"
               >
-                <Play aria-hidden="true" /> Start timer
+                <Play aria-hidden="true" /> Start {activePreset.label}
               </Button>
             </div>
           </form>

@@ -19,6 +19,12 @@ import {
 
 import type { DatabaseExecutor } from "@/db/client"
 import {
+  suggestClassification,
+  type TaskClassification,
+  type TaskOptionalClassification,
+  type TaskType,
+} from "@/features/quests/domain/classification"
+import {
   gates,
   labels,
   questLabels,
@@ -34,29 +40,31 @@ import type {
   QuestPriority,
   QuestStatus,
 } from "@/features/quests/domain/types"
+import { trashRetentionMilliseconds } from "@/features/quests/domain/types"
 
-export type QuestRecord = Readonly<{
-  id: string
-  title: string
-  description: string
-  status: QuestStatus
-  priority: QuestPriority
-  position: number
-  startAt: Date | null
-  dueAt: Date | null
-  recurrenceOccurrenceAt: Date | null
-  recurrenceRule: string | null
-  recurrenceSequence: number | null
-  recurrenceSeriesId: string | null
-  recurrenceTimezone: string | null
-  offlineMutationId: string | null
-  xpReward: number
-  completedAt: Date | null
-  deletedAt: Date | null
-  version: number
-  projectId: string | null
-  parentTaskId: string | null
-}>
+export type QuestRecord = Partial<TaskClassification> &
+  Readonly<{
+    id: string
+    title: string
+    description: string
+    status: QuestStatus
+    priority: QuestPriority
+    position: number
+    startAt: Date | null
+    dueAt: Date | null
+    recurrenceOccurrenceAt: Date | null
+    recurrenceRule: string | null
+    recurrenceSequence: number | null
+    recurrenceSeriesId: string | null
+    recurrenceTimezone: string | null
+    offlineMutationId: string | null
+    xpReward: number
+    completedAt: Date | null
+    deletedAt: Date | null
+    version: number
+    projectId: string | null
+    parentTaskId: string | null
+  }>
 
 export type QuestListItem = QuestRecord &
   Readonly<{
@@ -76,29 +84,41 @@ export type QuestOrderRecord = Readonly<{
   version: number
 }>
 
-export type CreateQuestRecord = Readonly<{
-  id?: string
-  title: string
-  description: string
-  priority: QuestPriority
-  startAt: Date | null
-  dueAt: Date | null
-  projectId: string | null
-  parentTaskId: string | null
-  recurrenceOccurrenceAt: Date | null
-  recurrenceRule: string | null
-  recurrenceSequence: number | null
-  recurrenceSeriesId: string | null
-  recurrenceTimezone: string | null
-  offlineMutationId?: string | null
-}>
+export type CreateQuestRecord = TaskOptionalClassification &
+  Readonly<{
+    id?: string
+    title: string
+    description: string
+    priority: QuestPriority
+    startAt: Date | null
+    dueAt: Date | null
+    projectId: string | null
+    parentTaskId: string | null
+    recurrenceOccurrenceAt: Date | null
+    recurrenceRule: string | null
+    recurrenceSequence: number | null
+    recurrenceSeriesId: string | null
+    recurrenceTimezone: string | null
+    offlineMutationId?: string | null
+  }>
 
 export type EditQuestRecord = CreateQuestRecord
 
 export type QuestListSort =
-  "manual" | "due-soonest" | "due-latest" | "priority" | "recently-updated"
+  | "manual"
+  | "due-soonest"
+  | "due-latest"
+  | "priority"
+  | "recently-updated"
+  | "recently-completed"
+  | "recently-deleted"
 
 export type QuestListOptions = Readonly<{
+  customType?: string | null
+  taskType?: TaskType
+  completedAfter?: Date
+  completedBefore?: Date
+  deletedBefore?: Date
   dayEnd?: Date
   dayStart?: Date
   deletedAfter?: Date
@@ -114,13 +134,16 @@ export type QuestListOptions = Readonly<{
   /** Instant used to derive the read-only lifecycle of elapsed open tasks. */
   now?: Date
   priority?: QuestPriority
-  search?: string
+  search?: string | undefined
   sort?: QuestListSort
   /** Narrows the active lifecycle: "open", "completed", or "all" (both). */
   status?: QuestStatus | "all"
 }>
 
 const questSelection = {
+  taskType: tasks.taskType,
+  customType: tasks.customType,
+  typeManual: tasks.typeManual,
   completedAt: tasks.completedAt,
   deletedAt: tasks.deletedAt,
   description: tasks.description,
@@ -198,7 +221,14 @@ function lifecyclePredicate(
   now: Date,
 ) {
   if (kind === "deleted") {
-    return and(isNotNull(tasks.deletedAt), isNull(tasks.purgedAt))
+    return and(
+      isNotNull(tasks.deletedAt),
+      isNull(tasks.purgedAt),
+      gte(
+        tasks.deletedAt,
+        new Date(now.getTime() - trashRetentionMilliseconds),
+      ),
+    )
   }
 
   if (kind === "cleared") {
@@ -228,6 +258,20 @@ function filterPredicates(
   now: Date,
 ): Array<SQL | undefined> {
   const predicates: Array<SQL | undefined> = []
+  if (options.taskType) predicates.push(eq(tasks.taskType, options.taskType))
+  if (options.customType !== undefined) {
+    predicates.push(
+      options.customType === null
+        ? isNull(tasks.customType)
+        : eq(tasks.customType, options.customType),
+    )
+  }
+  if (options.completedAfter)
+    predicates.push(gte(tasks.completedAt, options.completedAfter))
+  if (options.completedBefore)
+    predicates.push(lt(tasks.completedAt, options.completedBefore))
+  if (options.deletedBefore)
+    predicates.push(lt(tasks.deletedAt, options.deletedBefore))
 
   if (options.priority) {
     predicates.push(eq(tasks.priority, options.priority))
@@ -340,6 +384,10 @@ function filterPredicates(
 
 function sortClauses(sort: QuestListSort | undefined): SQL[] {
   switch (sort) {
+    case "recently-deleted":
+      return [desc(tasks.deletedAt), asc(tasks.id)]
+    case "recently-completed":
+      return [sql`${tasks.completedAt} desc nulls last`, desc(tasks.updatedAt)]
     case "due-soonest":
       return [
         sql`${tasks.dueAt} asc nulls last`,
@@ -365,6 +413,64 @@ function sortClauses(sort: QuestListSort | undefined): SQL[] {
   }
 }
 
+export async function listQuestTypeFacets(
+  database: DatabaseExecutor,
+  access: AccessContext,
+  kind: QuestListKind,
+  options: QuestListOptions,
+): Promise<readonly { customType: string | null; taskType: TaskType }[]> {
+  const now = options.now ?? new Date()
+  const rows = await database
+    .selectDistinct({ customType: tasks.customType, taskType: tasks.taskType })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.workspaceId, access.workspaceId),
+        isNull(tasks.purgedAt),
+        lifecyclePredicate(kind, options, now),
+        ...filterPredicates(
+          database,
+          access,
+          Object.fromEntries(
+            Object.entries(options).filter(
+              ([key]) => key !== "taskType" && key !== "customType",
+            ),
+          ) as QuestListOptions,
+          now,
+        ),
+      ),
+    )
+  return rows
+}
+
+export async function listQuestPriorityFacets(
+  database: DatabaseExecutor,
+  access: AccessContext,
+  kind: QuestListKind,
+  options: QuestListOptions,
+): Promise<QuestPriority[]> {
+  const now = options.now ?? new Date()
+  const rows = await database
+    .selectDistinct({ priority: tasks.priority })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.workspaceId, access.workspaceId),
+        isNull(tasks.purgedAt),
+        lifecyclePredicate(kind, options, now),
+        ...filterPredicates(
+          database,
+          access,
+          Object.fromEntries(
+            Object.entries(options).filter(([key]) => key !== "priority"),
+          ) as QuestListOptions,
+          now,
+        ),
+      ),
+    )
+  return rows.map((row) => row.priority)
+}
+
 function questIdentityPredicate(
   database: DatabaseExecutor,
   access: AccessContext,
@@ -378,6 +484,13 @@ export async function createQuestRecord(
   access: AccessContext,
   input: CreateQuestRecord,
 ): Promise<QuestRecord | null> {
+  const classification = {
+    ...suggestClassification(input.title, input.description),
+    ...input,
+    ...(input.taskType !== undefined
+      ? { typeManual: input.typeManual ?? true }
+      : {}),
+  }
   const [created] = await database
     .insert(tasks)
     .select(
@@ -400,6 +513,19 @@ export async function createQuestRecord(
           description: sql<string>`${input.description}::text`.as(
             "description",
           ),
+          taskType: sql<TaskType>`${classification.taskType}::varchar(32)`.as(
+            "task_type",
+          ),
+          customType: sql<
+            string | null
+          >`${sql.param(classification.customType ?? null, tasks.customType)}`.as(
+            "custom_type",
+          ),
+          effort: sql<string>`'unset'::varchar(16)`.as("effort"),
+          typeManual: sql<boolean>`${classification.typeManual}::boolean`.as(
+            "type_manual",
+          ),
+          effortManual: sql<boolean>`false::boolean`.as("effort_manual"),
           status: sql<QuestStatus>`'open'::varchar(16)`.as("status"),
           priority: sql<QuestPriority>`${input.priority}::varchar(16)`.as(
             "priority",
@@ -625,31 +751,32 @@ export async function findQuestByOfflineMutationId(
   return quest ?? null
 }
 
-async function updateQuestRecord(
+export async function updateQuestRecord(
   database: DatabaseExecutor,
   access: AccessContext,
   questId: string,
   expectedVersion: number,
-  changes: Readonly<{
-    completedAt?: Date | null
-    deletedAt?: Date | null
-    description?: string
-    dueAt?: Date | null
-    parentTaskId?: string | null
-    priority?: QuestPriority
-    projectId?: string | null
-    recurrenceOccurrenceAt?: Date | null
-    recurrenceRule?: string | null
-    recurrenceSequence?: number | null
-    recurrenceSeriesId?: string | null
-    recurrenceTimezone?: string | null
-    offlineMutationId?: string | null
-    purgedAt?: Date | null
-    xpReward?: number
-    startAt?: Date | null
-    status?: QuestStatus
-    title?: string
-  }>,
+  changes: Partial<TaskClassification> &
+    Readonly<{
+      completedAt?: Date | null
+      deletedAt?: Date | null
+      description?: string
+      dueAt?: Date | null
+      parentTaskId?: string | null
+      priority?: QuestPriority
+      projectId?: string | null
+      recurrenceOccurrenceAt?: Date | null
+      recurrenceRule?: string | null
+      recurrenceSequence?: number | null
+      recurrenceSeriesId?: string | null
+      recurrenceTimezone?: string | null
+      offlineMutationId?: string | null
+      purgedAt?: Date | null
+      xpReward?: number
+      startAt?: Date | null
+      status?: QuestStatus
+      title?: string
+    }>,
   lifecycle: "active" | "deleted",
   status?: QuestStatus,
 ): Promise<QuestRecord | null> {
@@ -686,6 +813,16 @@ export function editQuestRecord(
     input.questId,
     input.expectedVersion,
     {
+      ...(input.taskType !== undefined ? { taskType: input.taskType } : {}),
+      ...(input.customType !== undefined
+        ? { customType: input.customType }
+        : {}),
+      ...(input.typeManual !== undefined
+        ? { typeManual: input.typeManual }
+        : {}),
+      ...(input.offlineMutationId !== undefined
+        ? { offlineMutationId: input.offlineMutationId }
+        : {}),
       description: input.description,
       dueAt: input.dueAt,
       parentTaskId: input.parentTaskId,
@@ -726,6 +863,9 @@ export async function createNextRecurringQuestRecord(
   const [created] = await database
     .insert(tasks)
     .values({
+      taskType: current.taskType,
+      customType: current.customType,
+      typeManual: current.typeManual,
       createdByUserId: access.userId,
       description: current.description,
       dueAt: shifted(current.dueAt),
@@ -917,6 +1057,7 @@ export async function softDeleteQuestDescendants(
   questId: string,
   deletedAt: Date,
 ): Promise<number> {
+  const deletedAtIso = deletedAt.toISOString()
   const rows = await database.execute(sql`
     with recursive descendants(id) as (
       select child.id
@@ -932,7 +1073,7 @@ export async function softDeleteQuestDescendants(
         and child.deleted_at is null
     )
     update ${tasks} as task
-    set deleted_at = ${deletedAt}, updated_at = ${deletedAt}, version = task.version + 1
+    set deleted_at = ${deletedAtIso}::timestamptz, updated_at = ${deletedAtIso}::timestamptz, version = task.version + 1
     where task.id in (select id from descendants)
       and task.workspace_id = ${access.workspaceId}::uuid
     returning task.id
@@ -962,19 +1103,20 @@ export async function restoreQuestDescendants(
   questId: string,
   deletedAt: Date,
 ): Promise<number> {
+  const deletedAtIso = deletedAt.toISOString()
   const rows = await database.execute(sql`
     with recursive descendants(id) as (
       select child.id
       from ${tasks} as child
       where child.workspace_id = ${access.workspaceId}::uuid
         and child.parent_task_id = ${questId}::uuid
-        and child.deleted_at = ${deletedAt}
+        and child.deleted_at = ${deletedAtIso}::timestamptz
       union all
       select child.id
       from ${tasks} as child
       join descendants on child.parent_task_id = descendants.id
       where child.workspace_id = ${access.workspaceId}::uuid
-        and child.deleted_at = ${deletedAt}
+        and child.deleted_at = ${deletedAtIso}::timestamptz
     )
     update ${tasks} as task
     set deleted_at = null, updated_at = now(), version = task.version + 1
@@ -1041,22 +1183,24 @@ export async function purgeQuestDescendants(
   deletedAt: Date,
   purgedAt: Date,
 ): Promise<number> {
+  const deletedAtIso = deletedAt.toISOString()
+  const purgedAtIso = purgedAt.toISOString()
   const rows = await database.execute(sql`
     with recursive descendants(id) as (
       select child.id
       from ${tasks} as child
       where child.workspace_id = ${access.workspaceId}::uuid
         and child.parent_task_id = ${questId}::uuid
-        and child.deleted_at = ${deletedAt}
+        and child.deleted_at = ${deletedAtIso}::timestamptz
       union all
       select child.id
       from ${tasks} as child
       join descendants on child.parent_task_id = descendants.id
       where child.workspace_id = ${access.workspaceId}::uuid
-        and child.deleted_at = ${deletedAt}
+        and child.deleted_at = ${deletedAtIso}::timestamptz
     )
     update ${tasks} as task
-    set purged_at = ${purgedAt}, updated_at = ${purgedAt}, version = task.version + 1
+    set purged_at = ${purgedAtIso}::timestamptz, updated_at = ${purgedAtIso}::timestamptz, version = task.version + 1
     where task.id in (select id from descendants)
       and task.workspace_id = ${access.workspaceId}::uuid
       and task.purged_at is null

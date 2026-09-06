@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import "@/app/styles/notifications.css"
 import Link from "next/link"
 import { BellRing, Download, FileText, ShieldCheck } from "lucide-react"
 

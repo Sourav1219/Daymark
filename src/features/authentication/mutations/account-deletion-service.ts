@@ -22,6 +22,7 @@ import {
   workspaces,
   xpLedger,
 } from "@/db/schema"
+import { deleteVerificationsByIdentifier } from "@/features/authentication/repositories/verification-retention-repository"
 
 export type AccountPurgeSummary = Readonly<{
   attachmentKeys: readonly string[]
@@ -41,6 +42,13 @@ export async function deleteUserAndOwnedData(
   userId: string,
 ): Promise<AccountPurgeSummary> {
   return database.transaction(async (transaction) => {
+    // Fetch the email upfront so we can purge matching verification rows
+    // before the user row (and its cascade) is removed.
+    const [userRow] = await transaction
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+
     const ownedWorkspaces = await transaction
       .select({ id: workspaces.id })
       .from(workspaces)
@@ -122,6 +130,13 @@ export async function deleteUserAndOwnedData(
       await transaction
         .delete(workspaces)
         .where(inArray(workspaces.id, personalWorkspaceIds))
+    }
+
+    // OTP / email-verification tokens are keyed by email (identifier), not
+    // by user id, so they do not cascade automatically.  Remove them now so
+    // abandoned or expired verifications are not left behind after deletion.
+    if (userRow) {
+      await deleteVerificationsByIdentifier(transaction, userRow.email)
     }
 
     // Sessions, accounts, and user settings cascade from the user row.

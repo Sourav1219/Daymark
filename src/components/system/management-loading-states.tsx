@@ -137,74 +137,78 @@ export function SettingsLoadingState() {
 
 export function ContactLoadingState() {
   return (
-    <div
-      aria-label="Loading Contact us"
-      className="contact-page exact-route-loading"
-      role="status"
-    >
-      <span className="sr-only">Loading Contact us</span>
-      <header className="contact-header">
-        <BackButton aria-label="Back to profile" fallbackHref="/profile">
-          <ArrowLeft />
-        </BackButton>
-        <div>
-          <span>Help &amp; support</span>
-          <h1>Contact us</h1>
-        </div>
-        <span aria-hidden="true" />
-      </header>
-      <section className="contact-hero">
-        <span className="contact-hero__orb" />
-        <span className="contact-hero__icon">
-          <MessageCircleMore />
-        </span>
-        <div>
-          <span>We’re here to help</span>
-          <h2>What can we help with?</h2>
-          <p>
-            Choose a topic and tell us what happened. Your email app will open
-            with everything ready for you to review and send.
-          </p>
-        </div>
-      </section>
-      <div aria-hidden="true" className="contact-form">
-        <div className="contact-form__heading">
-          <div>
-            <span>Message details</span>
-            <h2>Start a conversation</h2>
+    <main className="contact-shell">
+      <div className="contact-frame">
+        <div
+          aria-label="Loading Contact us"
+          className="contact-page exact-route-loading"
+          role="status"
+        >
+          <span className="sr-only">Loading Contact us</span>
+          <header className="contact-header">
+            <BackButton aria-label="Back to profile" fallbackHref="/profile">
+              <ArrowLeft />
+            </BackButton>
+            <div>
+              <span>Help &amp; support</span>
+              <h1>Contact us</h1>
+            </div>
+            <span aria-hidden="true" />
+          </header>
+          <section className="contact-hero">
+            <span className="contact-hero__orb" />
+            <span className="contact-hero__icon">
+              <MessageCircleMore />
+            </span>
+            <div>
+              <span>We’re here to help</span>
+              <h2>What can we help with?</h2>
+              <p>
+                Choose a topic and tell us what happened. Your email app will
+                open with everything ready for you to review and send.
+              </p>
+            </div>
+          </section>
+          <div aria-hidden="true" className="contact-form">
+            <div className="contact-form__heading">
+              <div>
+                <span>Message details</span>
+                <h2>Start a conversation</h2>
+              </div>
+              <Mail />
+            </div>
+            <label className="contact-field">
+              <span>What do you need help with?</span>
+              <span className="contact-select-wrap">
+                <select disabled>
+                  <option>Account &amp; sign-in</option>
+                </select>
+                <ChevronDown />
+              </span>
+            </label>
+            <label className="contact-field">
+              <span>How can we help?</span>
+              <textarea
+                disabled
+                placeholder="Share the details, what you expected, and anything you already tried…"
+                rows={7}
+              />
+              <small>0/2000 characters</small>
+            </label>
+            <button className="contact-submit" disabled type="button">
+              <Send /> Continue in email <ArrowRight />
+            </button>
           </div>
-          <Mail />
+          <aside className="contact-note">
+            <Clock3 />
+            <p>
+              Please do not include passwords or verification codes. We’ll
+              review your message as soon as possible.
+            </p>
+          </aside>
         </div>
-        <label className="contact-field">
-          <span>What do you need help with?</span>
-          <span className="contact-select-wrap">
-            <select disabled>
-              <option>Account &amp; sign-in</option>
-            </select>
-            <ChevronDown />
-          </span>
-        </label>
-        <label className="contact-field">
-          <span>How can we help?</span>
-          <textarea
-            disabled
-            placeholder="Share the details, what you expected, and anything you already tried…"
-            rows={7}
-          />
-          <small>0/2000 characters</small>
-        </label>
-        <button className="contact-submit" disabled type="button">
-          <Send /> Continue in email <ArrowRight />
-        </button>
       </div>
-      <aside className="contact-note">
-        <Clock3 />
-        <p>
-          Please do not include passwords or verification codes. We’ll review
-          your message as soon as possible.
-        </p>
-      </aside>
-    </div>
+    </main>
   )
 }
 

@@ -1,8 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { authClient } from "@/features/authentication/client/auth-client"
+import {
+  closeAuthSession,
+  isCapacitorNative,
+  openAuthSession,
+  setupAuthDeepLinkListener,
+} from "@/lib/platform/platform-bridge"
 
 export type GoogleOAuthError = "generic" | "signup-required" | null
 
@@ -51,6 +57,28 @@ export function GoogleAuthButton({
   const [pending, setPending] = useState(false)
   const [clientError, setClientError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (!isCapacitorNative()) return
+
+    const cleanup = setupAuthDeepLinkListener(async (deepLinkUrl) => {
+      await closeAuthSession()
+      setPending(false)
+      try {
+        const parsed = new URL(deepLinkUrl)
+        const target = parsed.searchParams.get("next") || nextPath || "/today"
+        if (typeof window !== "undefined") {
+          window.location.assign(target)
+        }
+      } catch {
+        if (typeof window !== "undefined") {
+          window.location.assign(nextPath || "/today")
+        }
+      }
+    })
+
+    return cleanup
+  }, [nextPath])
+
   async function startGoogleAuth() {
     if (!configured || pending) return
 
@@ -58,18 +86,50 @@ export function GoogleAuthButton({
     setClientError(null)
 
     try {
+      const isNative = isCapacitorNative()
       const errorPath = mode === "register" ? "/sign-up" : "/sign-in"
-      const result = await authClient.signIn.social({
-        callbackURL: nextPath,
-        errorCallbackURL: `${errorPath}?authError=google&next=${encodeURIComponent(nextPath)}`,
-        newUserCallbackURL: nextPath,
-        provider: "google",
-        requestSignUp: mode === "register",
-      })
 
-      if (result.error) {
-        setClientError("Google sign-in could not start. Please try again.")
-        setPending(false)
+      if (isNative) {
+        // Native Android container: use custom scheme callback and open in Chrome Custom Tabs
+        const nativeCallbackUrl = `daymark://auth/callback?next=${encodeURIComponent(nextPath)}`
+        const nativeErrorUrl = `daymark://auth/callback?authError=google&next=${encodeURIComponent(nextPath)}`
+
+        const result = await authClient.signIn.social({
+          callbackURL: nativeCallbackUrl,
+          disableRedirect: true,
+          errorCallbackURL: nativeErrorUrl,
+          newUserCallbackURL: nativeCallbackUrl,
+          provider: "google",
+          requestSignUp: mode === "register",
+        })
+
+        if (result.error) {
+          setClientError("Google sign-in could not start. Please try again.")
+          setPending(false)
+          return
+        }
+
+        const authUrl = (result.data as { url?: string })?.url
+        if (authUrl) {
+          await openAuthSession(authUrl)
+        } else {
+          setClientError("Google sign-in could not start. Please try again.")
+          setPending(false)
+        }
+      } else {
+        // Standard Web browser: identical to existing flow
+        const result = await authClient.signIn.social({
+          callbackURL: nextPath,
+          errorCallbackURL: `${errorPath}?authError=google&next=${encodeURIComponent(nextPath)}`,
+          newUserCallbackURL: nextPath,
+          provider: "google",
+          requestSignUp: mode === "register",
+        })
+
+        if (result.error) {
+          setClientError("Google sign-in could not start. Please try again.")
+          setPending(false)
+        }
       }
     } catch {
       setClientError("Google sign-in could not start. Please try again.")

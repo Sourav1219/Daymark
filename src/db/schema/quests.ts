@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm"
 import {
   check,
+  boolean,
   foreignKey,
   index,
   integer,
@@ -17,6 +18,7 @@ import { users } from "./authentication"
 import { gates } from "./gates"
 import { workspaces } from "./workspaces"
 import type { QuestPriority, QuestStatus } from "@/features/quests/domain/types"
+import type { TaskType } from "@/features/quests/domain/classification"
 
 export const tasks = pgTable(
   "tasks",
@@ -32,6 +34,14 @@ export const tasks = pgTable(
     parentTaskId: uuid("parent_task_id"),
     title: varchar("title", { length: 160 }).notNull(),
     description: text("description").default("").notNull(),
+    taskType: varchar("task_type", { length: 32 })
+      .$type<TaskType>()
+      .default("personal")
+      .notNull(),
+    customType: varchar("custom_type", { length: 64 }),
+    effort: varchar("effort", { length: 16 }).default("unset"),
+    typeManual: boolean("type_manual").default(false).notNull(),
+    effortManual: boolean("effort_manual").default(false),
     status: varchar("status", { length: 16 })
       .$type<QuestStatus>()
       .default("open")
@@ -69,6 +79,14 @@ export const tasks = pgTable(
     purgedAt: timestamp("purged_at", { mode: "date", withTimezone: true }),
   },
   (table) => [
+    check(
+      "tasks_type_check",
+      sql`${table.taskType} in ('personal', 'work', 'study', 'custom', 'health', 'other')`,
+    ),
+    check(
+      "tasks_effort_check",
+      sql`${table.effort} in ('unset', 'light', 'moderate', 'deep')`,
+    ),
     check(
       "tasks_status_check",
       sql`${table.status} in ('open', 'completed', 'failed')`,

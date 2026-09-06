@@ -13,7 +13,9 @@ test("organises and finds Quests with Phase 5 controls", async ({ page }) => {
   await page.goto("/sign-up")
   await page.getByLabel("Name").fill("Phase Five Operator")
   await page.getByLabel("Email").fill(`phase-five-${randomUUID()}@example.com`)
-  await page.getByLabel("Password").fill("correct-horse-battery-staple")
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("correct-horse-battery-staple")
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page).toHaveURL(/\/today$/u)
 

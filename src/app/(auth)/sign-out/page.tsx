@@ -9,14 +9,20 @@ export const metadata: Metadata = {
 }
 
 type SignOutPageProps = Readonly<{
-  searchParams: Promise<{ next?: string | string[] }>
+  searchParams: Promise<{
+    next?: string | string[]
+    reason?: string | string[]
+  }>
 }>
 
 export default async function SignOutPage({ searchParams }: SignOutPageProps) {
-  const { next } = await searchParams
+  const { next, reason } = await searchParams
   const nextPath = safeRedirectPath(
     Array.isArray(next) ? (next[0] ?? null) : (next ?? null),
   )
+  const reasonParam = Array.isArray(reason)
+    ? (reason[0] ?? null)
+    : (reason ?? null)
 
-  return <SignOutPageClient nextPath={nextPath} />
+  return <SignOutPageClient nextPath={nextPath} reason={reasonParam} />
 }

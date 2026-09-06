@@ -20,7 +20,8 @@ describe("response security headers", () => {
 
     expect(globalEntry).toBeDefined()
     expect(csp).toContain("frame-ancestors 'none'")
-    expect(csp).toMatch(/script-src 'self' 'nonce-[^']+' 'strict-dynamic'/)
+    expect(csp).toMatch(/script-src 'self' 'nonce-[^']+'/)
+    expect(csp).not.toContain("strict-dynamic")
     expect(headers.get("Permissions-Policy")).toContain("camera=()")
     expect(headers.get("Referrer-Policy")).toBe(
       "strict-origin-when-cross-origin",

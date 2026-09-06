@@ -11,7 +11,6 @@ import {
 import {
   QuestFormFields,
   type QuestGateOption,
-  type QuestParentOption,
 } from "@/features/quests/components/quest-form-fields"
 import type { QuestView } from "@/features/quests/domain/types"
 import { defaultTimezone } from "@/features/reminders/domain/timezone"
@@ -21,12 +20,10 @@ const initialState: QuestActionState = null
 
 export function QuestEditForm({
   gates,
-  parentOptions,
   quest,
   timezone = defaultTimezone,
 }: Readonly<{
   gates?: readonly QuestGateOption[] | undefined
-  parentOptions?: readonly QuestParentOption[] | undefined
   quest: QuestView
   timezone?: string | undefined
 }>) {
@@ -70,8 +67,6 @@ export function QuestEditForm({
           fieldErrors={state && !state.ok ? state.error.fieldErrors : undefined}
           gates={gates}
           idPrefix={`edit-${quest.id}`}
-          parentOptions={parentOptions}
-          selfQuestId={quest.id}
           timezone={timezone}
         />
         {state && !state.ok ? (

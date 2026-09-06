@@ -1820,7 +1820,6 @@ Redesign — native mobile app shell, motion, and playful depth
   font-weight: 900;
   text-align: right;
   text-overflow: ellipsis;
-  text-transform: capitalize;
   white-space: nowrap;
 }
 

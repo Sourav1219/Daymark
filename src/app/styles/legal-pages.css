@@ -92,7 +92,7 @@
 
 .legal-header-label {
   justify-self: end;
-  color: #71809a;
+  color: #4f6080;
   font-size: 0.68rem;
   font-weight: 850;
   letter-spacing: 0.08em;
@@ -182,7 +182,7 @@
   position: relative;
   z-index: 1;
   margin: 0.85rem 0 0;
-  color: #536782;
+  color: #3d526f;
   font-size: 0.9rem;
   line-height: 1.65;
 }
@@ -204,7 +204,7 @@
   min-height: 2.45rem;
   justify-content: center;
   border-radius: 0.65rem;
-  color: #64758d;
+  color: #3d526f;
   font-size: 0.76rem;
   font-weight: 850;
   transition:
@@ -256,7 +256,7 @@
   border: 1px solid rgba(47, 107, 246, 0.14);
   border-radius: 0.65rem;
   background: #edf3ff;
-  color: #2f6bf6;
+  color: #1a4db8;
   font-size: 0.71rem;
   font-weight: 900;
 }

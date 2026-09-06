@@ -37,4 +37,12 @@ describe("CommandMenu", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(trigger).toHaveFocus()
   })
+
+  it("navigates to /today when pressing g then h", async () => {
+    const user = userEvent.setup()
+    render(<CommandMenu />)
+
+    await user.keyboard("gh")
+    expect(push).toHaveBeenCalledWith("/today")
+  })
 })

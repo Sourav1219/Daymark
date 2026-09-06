@@ -63,33 +63,15 @@ export function AutomaticPushEnrollment({
         // source of truth when browser permission or registration fails.
       })
     }
-    const requestFromGesture = () => {
-      window.removeEventListener("pointerdown", requestFromGesture, true)
-      window.removeEventListener("keydown", requestFromGesture, true)
-      void Notification.requestPermission().then((permission) => {
-        if (permission === "granted") enroll()
-      })
-    }
 
     if (Notification.permission === "granted") {
       enroll()
       retry = window.setTimeout(enroll, 2_000)
-    } else if (Notification.permission === "default") {
-      window.addEventListener("pointerdown", requestFromGesture, {
-        capture: true,
-        once: true,
-      })
-      window.addEventListener("keydown", requestFromGesture, {
-        capture: true,
-        once: true,
-      })
     }
 
     return () => {
       cancelled = true
       if (retry) window.clearTimeout(retry)
-      window.removeEventListener("pointerdown", requestFromGesture, true)
-      window.removeEventListener("keydown", requestFromGesture, true)
     }
   }, [publicKey])
 

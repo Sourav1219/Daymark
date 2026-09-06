@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 
 import { BottomTabBar } from "@/components/shell/bottom-tab-bar"
+import { CommandMenu } from "@/components/shell/command-menu"
 import { ScrollableMain } from "@/components/shell/scrollable-main"
 import { ShellKeyboardShortcuts } from "@/components/shell/shell-keyboard-shortcuts"
 import { Toaster } from "@/components/ui/sonner"
@@ -24,8 +25,9 @@ export function AppFrame({ children }: AppFrameProps) {
 
       <OfflineStatusBar />
       <ShellKeyboardShortcuts />
+      <CommandMenu trigger={false} />
 
-      <ScrollableMain id="main-content" tabIndex={-1}>
+      <ScrollableMain id="main-content" tabIndex={0}>
         {children}
       </ScrollableMain>
 

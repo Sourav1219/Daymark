@@ -1,4 +1,30 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["icn1"]
+  "regions": ["icn1"],
+  "crons": [
+    {
+      "path": "/api/cron/reminders",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/overdue-tasks",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/attachments",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/stale-rooms",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/stale-timers",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/retention",
+      "schedule": "17 3 * * *"
+    }
+  ]
 }

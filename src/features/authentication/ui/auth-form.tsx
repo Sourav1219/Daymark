@@ -271,7 +271,7 @@ export function AuthForm({
                 disabled={pending}
                 id="password"
                 maxLength={128}
-                minLength={registering ? 8 : undefined}
+                minLength={registering ? 12 : undefined}
                 name="password"
                 placeholder="Enter your password"
                 required
@@ -296,7 +296,7 @@ export function AuthForm({
             </div>
             {registering ? (
               <p className="auth__hint" id="password-hint">
-                Use at least 8 characters locally; production requires 12.
+                Must be at least 12 characters.
               </p>
             ) : null}
             <FieldError id="password-error" messages={fieldErrors?.password} />
@@ -330,6 +330,15 @@ export function AuthForm({
               <Link href="/terms">Terms of Service</Link>,{" "}
               <Link href="/privacy">Privacy Policy</Link>, and cookie usage.
             </p>
+          ) : null}
+
+          {!registering ? (
+            <div className="auth__help-footer">
+              <span>Having trouble signing in?</span>{" "}
+              <Link className="auth__help-link" href="/contact">
+                Contact us
+              </Link>
+            </div>
           ) : null}
         </form>
       </div>

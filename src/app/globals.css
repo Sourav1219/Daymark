@@ -15,3 +15,25 @@
 @import "./styles/session-expired.css";
 @import "./styles/unauthorized.css";
 @import "./styles/cookie-consent.css";
+
+/* Native Touch Ergonomics (Android / Mobile PWA) */
+*,
+*::before,
+*::after {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+nav,
+.app-tabbar,
+.device-frame header,
+[role="button"] {
+  user-select: none;
+  -webkit-user-select: none;
+}

@@ -1,6 +1,7 @@
-import type { QuestView } from "@/features/quests/domain/types"
-
-import type { QuestStatus } from "@/features/quests/domain/types"
+import type { GateView } from "@/features/gates/domain/types"
+import type { ClassifyQuestCommand } from "@/features/quests/validation/classification-validation"
+import type { LabelView } from "@/features/labels/domain/types"
+import type { QuestView, QuestStatus } from "@/features/quests/domain/types"
 
 export type OfflineScope = Readonly<{
   key: string
@@ -8,6 +9,26 @@ export type OfflineScope = Readonly<{
   userName: string
   workspaceId: string
   workspaceName: string
+}>
+
+export type UserProfileSnapshot = Readonly<{
+  avatarUrl?: string | null
+  timezone: string
+  userId: string
+  userName: string
+  workspaceId: string
+  workspaceName: string
+}>
+
+export type OfflineFullState = Readonly<{
+  conflicts: readonly OfflineMutation[]
+  gates: readonly GateView[]
+  labels: readonly LabelView[]
+  pendingCount: number
+  profile: UserProfileSnapshot | null
+  quests: readonly QuestView[]
+  scope: OfflineScope
+  updatedAt: string | null
 }>
 
 export type OfflineQuestConflict = Readonly<{
@@ -21,6 +42,7 @@ export type OfflineQuestConflict = Readonly<{
 }>
 
 export type OfflineCreatePayload = Readonly<{
+  customType?: string | undefined
   description: string
   dueAt: string
   parentTaskId: string
@@ -28,6 +50,7 @@ export type OfflineCreatePayload = Readonly<{
   projectId: string
   recurrenceRule: string
   startAt: string
+  taskType?: string | undefined
   title: string
 }>
 
@@ -44,6 +67,16 @@ export type OfflineTransitionPayload = Readonly<{
 }>
 
 export type OfflineMutation =
+  | Readonly<{
+      conflict: OfflineQuestConflict | null
+      createdAt: string
+      id: string
+      payload: ClassifyQuestCommand & { title: string }
+      scopeKey: string
+      status: "conflict" | "pending"
+      type: "classify"
+      workspaceId: string
+    }>
   | Readonly<{
       conflict: OfflineQuestConflict | null
       createdAt: string

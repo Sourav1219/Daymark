@@ -10,7 +10,9 @@ test("shows a newly created flexible task on the current Home day", async ({
   await page.goto("/sign-up")
   await page.getByLabel("Name").fill("Home Task E2E")
   await page.getByLabel("Email").fill(`home-task-${randomUUID()}@example.com`)
-  await page.getByLabel("Password").fill("correct-horse-battery-staple")
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("correct-horse-battery-staple")
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page).toHaveURL(/\/today$/u)
 

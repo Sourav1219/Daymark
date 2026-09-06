@@ -146,3 +146,18 @@ export function formatZonedDateTime(value: Date, timezone: string): string {
     year: "numeric",
   }).format(value)
 }
+
+export function isSameZonedDate(
+  left: Date,
+  right: Date,
+  timezone: string,
+): boolean {
+  const leftParts = zonedParts(left, timezone)
+  const rightParts = zonedParts(right, timezone)
+
+  return (
+    leftParts.year === rightParts.year &&
+    leftParts.month === rightParts.month &&
+    leftParts.day === rightParts.day
+  )
+}

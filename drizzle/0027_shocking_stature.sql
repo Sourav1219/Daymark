@@ -1,0 +1,2 @@
+ALTER TABLE "tasks" DROP CONSTRAINT "tasks_type_check";--> statement-breakpoint
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_type_check" CHECK ("tasks"."task_type" in ('personal', 'work', 'study', 'custom', 'health', 'other'));

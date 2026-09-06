@@ -70,4 +70,44 @@ describe("AuthForm password visibility", () => {
       expect(password).toHaveValue("correct-horse-battery-staple")
     },
   )
+
+  it("shows Contact us link only on sign in mode and hides it on sign up mode", () => {
+    const { rerender } = render(
+      <AuthForm
+        googleAuthConfigured={false}
+        mode="login"
+        nextPath="/today"
+        notice={null}
+        oauthError={null}
+      />,
+    )
+
+    const contactLink = screen.getByRole("link", { name: /Contact us/i })
+    expect(contactLink).toBeInTheDocument()
+    expect(contactLink).toHaveAttribute("href", "/contact")
+    expect(screen.getByText(/Having trouble signing in\?/i)).toBeInTheDocument()
+    expect(
+      screen.queryByText(/By creating an account, you agree to Traketo/i),
+    ).not.toBeInTheDocument()
+
+    rerender(
+      <AuthForm
+        googleAuthConfigured={false}
+        mode="register"
+        nextPath="/today"
+        notice={null}
+        oauthError={null}
+      />,
+    )
+
+    expect(
+      screen.queryByRole("link", { name: /Contact us/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Having trouble signing in\?/i),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/By creating an account, you agree to Traketo/i),
+    ).toBeInTheDocument()
+  })
 })

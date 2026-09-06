@@ -6,6 +6,11 @@ import { CalendarDays, Clock3, RotateCcw } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import type { QuestPriority } from "@/features/quests/domain/types"
+import {
+  taskTypes,
+  typeLabels,
+  type TaskType,
+} from "@/features/quests/domain/classification"
 import { QuestRecurrenceFields } from "@/features/quests/components/quest-recurrence-fields"
 import { QuestDatePicker } from "@/features/quests/components/quest-date-picker"
 import { QuestTimePicker } from "@/features/quests/components/quest-time-picker"
@@ -24,6 +29,7 @@ export type QuestParentOption = Readonly<{
 
 type QuestFormFieldsProps = Readonly<{
   defaults?: Readonly<{
+    customType?: string | null | undefined
     description: string
     dueAt: string | null
     gateName?: string | null
@@ -32,14 +38,12 @@ type QuestFormFieldsProps = Readonly<{
     projectId?: string | null
     recurrenceRule?: string | null
     startAt: string | null
+    taskType?: TaskType | undefined
     title: string
   }>
   fieldErrors?: Readonly<Record<string, readonly string[]>> | undefined
   gates?: readonly QuestGateOption[] | undefined
   idPrefix: string
-  parentOptions?: readonly QuestParentOption[] | undefined
-  /** Quest ID excluded from the parent picker (the Quest being edited). */
-  selfQuestId?: string | undefined
   timezone?: string | undefined
   variant?: "create" | "default" | undefined
 }>
@@ -81,8 +85,6 @@ export function QuestFormFields({
   fieldErrors,
   gates,
   idPrefix,
-  parentOptions,
-  selfQuestId,
   timezone = defaultTimezone,
   variant = "default",
 }: QuestFormFieldsProps) {
@@ -106,24 +108,26 @@ export function QuestFormFields({
   const titleErrorId = `${idPrefix}-title-error`
   const descriptionErrorId = `${idPrefix}-description-error`
   const priorityErrorId = `${idPrefix}-priority-error`
+  const customTypeErrorId = `${idPrefix}-custom-type-error`
   const startErrorId = `${idPrefix}-start-error`
   const dueErrorId = `${idPrefix}-due-error`
   const selectClass =
     "h-8 w-full rounded-control border border-input bg-surface-inset px-2.5 text-sm text-ink outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-  const eligibleParents =
-    parentOptions?.filter((option) => option.id !== selfQuestId) ?? []
   const currentGateMissing =
     defaults?.projectId &&
     !gates?.some((gate) => gate.id === defaults.projectId)
-  const currentParentMissing =
-    defaults?.parentTaskId &&
-    !eligibleParents.some((parent) => parent.id === defaults.parentTaskId)
   const createMode = variant === "create"
   const hasGateOptions = Boolean(gates?.length || currentGateMissing)
   const [schedule, setSchedule] = useState(() => ({
     dueAt: formatZonedLocalInput(defaults?.dueAt, timezone),
     startAt: formatZonedLocalInput(defaults?.startAt, timezone),
   }))
+  const [selectedType, setSelectedType] = useState<TaskType | undefined>(
+    () => defaults?.taskType,
+  )
+  const [customTypeValue, setCustomTypeValue] = useState(
+    () => defaults?.customType ?? "",
+  )
 
   function applySchedulePreset(preset: "clear" | "today" | "tomorrow") {
     if (preset === "clear") {
@@ -177,64 +181,41 @@ export function QuestFormFields({
     })
   }
 
-  const assignmentFields =
-    hasGateOptions || eligibleParents.length || currentParentMissing ? (
-      <div className="quest-fields__assignments">
-        {hasGateOptions ? (
-          <div className="grid gap-2">
-            <Label htmlFor={`${idPrefix}-gate`}>List</Label>
-            <select
-              className={selectClass}
-              defaultValue={defaults?.projectId ?? ""}
-              id={`${idPrefix}-gate`}
-              name="projectId"
-            >
-              <option value="">No List</option>
-              {currentGateMissing ? (
-                <option value={defaults.projectId ?? undefined}>
-                  {defaults.gateName ?? "Unavailable list"}
-                </option>
-              ) : null}
-              {gates?.map((gate) => (
-                <option key={gate.id} value={gate.id}>
-                  {gate.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
-
-        {eligibleParents?.length || currentParentMissing ? (
-          <div className="grid gap-2">
-            <Label htmlFor={`${idPrefix}-parent`}>Parent task</Label>
-            <select
-              className={selectClass}
-              defaultValue={defaults?.parentTaskId ?? ""}
-              id={`${idPrefix}-parent`}
-              name="parentTaskId"
-            >
-              <option value="">Top-level task</option>
-              {currentParentMissing ? (
-                <option value={defaults.parentTaskId ?? undefined}>
-                  Current parent (outside available options)
-                </option>
-              ) : null}
-              {eligibleParents.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.title}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-ink-muted">
-              Subtasks nest at most two levels deep.
-            </p>
-          </div>
-        ) : null}
+  const assignmentFields = hasGateOptions ? (
+    <div className="quest-fields__assignments">
+      <div className="grid gap-2">
+        <Label htmlFor={`${idPrefix}-gate`}>List</Label>
+        <select
+          className={selectClass}
+          defaultValue={defaults?.projectId ?? ""}
+          id={`${idPrefix}-gate`}
+          name="projectId"
+        >
+          <option value="">No List</option>
+          {currentGateMissing ? (
+            <option value={defaults.projectId ?? undefined}>
+              {defaults.gateName ?? "Unavailable list"}
+            </option>
+          ) : null}
+          {gates?.map((gate) => (
+            <option key={gate.id} value={gate.id}>
+              {gate.name}
+            </option>
+          ))}
+        </select>
       </div>
-    ) : null
+    </div>
+  ) : null
 
   return (
     <div className={createMode ? "quest-fields" : "grid gap-4"}>
+      {defaults?.parentTaskId ? (
+        <input
+          name="parentTaskId"
+          type="hidden"
+          value={defaults.parentTaskId}
+        />
+      ) : null}
       <div className={createMode ? "quest-fields__title" : "grid gap-2"}>
         <Label htmlFor={`${idPrefix}-title`}>Task title</Label>
         <Input
@@ -310,6 +291,48 @@ export function QuestFormFields({
           </div>
         )}
         <FieldError errors={fieldErrors?.priority} id={priorityErrorId} />
+
+        <fieldset className="quest-classification-field">
+          <legend>Task type</legend>
+          <div className="quest-classification__options quest-classification__options--type">
+            {taskTypes.map((type) => (
+              <label key={type}>
+                <input
+                  checked={selectedType === type}
+                  name="taskType"
+                  onChange={() => setSelectedType(type)}
+                  type="radio"
+                  value={type}
+                />
+                <span data-type={type}>{typeLabels[type]}</span>
+              </label>
+            ))}
+          </div>
+          {selectedType === "custom" ? (
+            <div className="quest-classification__custom-input-wrap">
+              <Input
+                aria-describedby={
+                  fieldErrors?.customType ? customTypeErrorId : undefined
+                }
+                aria-invalid={Boolean(fieldErrors?.customType)}
+                autoComplete="off"
+                className="h-8 text-xs"
+                maxLength={64}
+                name="customType"
+                onChange={(e) => setCustomTypeValue(e.target.value)}
+                placeholder="Enter custom task type…"
+                required
+                value={customTypeValue}
+              />
+              <FieldError
+                errors={fieldErrors?.customType}
+                id={customTypeErrorId}
+              />
+            </div>
+          ) : (
+            <input name="customType" type="hidden" value="" />
+          )}
+        </fieldset>
 
         <fieldset className="quest-schedule">
           <div className="quest-schedule__heading">

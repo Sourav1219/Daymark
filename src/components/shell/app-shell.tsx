@@ -44,6 +44,13 @@ export function AppShell({
           workspaceId,
           workspaceName,
         }}
+        userProfile={{
+          timezone: onboarding.timezone,
+          userId,
+          userName,
+          workspaceId,
+          workspaceName,
+        }}
       >
         <TaskCompletionCelebrationProvider>
           <AppFrame>{children}</AppFrame>

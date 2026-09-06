@@ -8,10 +8,17 @@ import {
   type QuestListFilters,
 } from "@/features/quests/domain/types"
 import {
+  taskTypes,
+  type TaskType,
+} from "@/features/quests/domain/classification"
+import {
   normalizeRecurrenceRule,
   RecurrenceRuleError,
 } from "@/features/reminders/domain/recurrence"
-import { parseZonedLocalDateTime } from "@/features/reminders/domain/timezone"
+import {
+  isSameZonedDate,
+  parseZonedLocalDateTime,
+} from "@/features/reminders/domain/timezone"
 
 const localDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u
 
@@ -71,6 +78,12 @@ const questFields = {
       z.string().max(5_000, "Description must be 5,000 characters or fewer."),
     ),
   dueAt: optionalUtcDateTimeSchema,
+  customType: z
+    .preprocess(
+      (value) => (value === "" || value === undefined ? null : value),
+      z.string().trim().max(64).nullable(),
+    )
+    .optional(),
   parentTaskId: optionalIdSchema,
   priority: z.enum(questPriorities, {
     error: "Choose a valid priority.",
@@ -78,6 +91,10 @@ const questFields = {
   projectId: optionalIdSchema,
   recurrenceRule: optionalRecurrenceRuleSchema,
   startAt: optionalUtcDateTimeSchema,
+  taskType: z.preprocess(
+    (value) => (value === "" || value === undefined ? undefined : value),
+    z.enum(taskTypes).optional(),
+  ),
   title: z
     .string()
     .trim()
@@ -114,10 +131,40 @@ function validateSchedule(
   }
 }
 
+function validateClassification(
+  value: {
+    customType?: string | null | undefined
+    taskType?: TaskType | undefined
+  },
+  context: z.RefinementCtx,
+) {
+  if (value.taskType === "custom" && !value.customType) {
+    context.addIssue({
+      code: "custom",
+      message: "Name your custom task type.",
+      path: ["customType"],
+    })
+  }
+}
+
+function validateQuest(
+  value: {
+    customType?: string | null | undefined
+    dueAt: Date | null
+    recurrenceRule: string | null
+    startAt: Date | null
+    taskType?: TaskType | undefined
+  },
+  context: z.RefinementCtx,
+) {
+  validateSchedule(value, context)
+  validateClassification(value, context)
+}
+
 export const createQuestSchema = z
   .object(questFields)
   .strict()
-  .superRefine(validateSchedule)
+  .superRefine(validateQuest)
 
 /**
  * Rejects a schedule that has already elapsed. Applied when parsing new-task
@@ -155,7 +202,7 @@ export const editQuestSchema = z
     questId: z.uuid(),
   })
   .strict()
-  .superRefine(validateSchedule)
+  .superRefine(validateQuest)
 
 export const questTransitionSchema = z
   .object({
@@ -173,10 +220,10 @@ const restoreQuestScheduleSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.dueAt.getTime() < value.startAt.getTime()) {
+    if (value.dueAt.getTime() <= value.startAt.getTime()) {
       context.addIssue({
         code: "custom",
-        message: "Due time cannot be earlier than start time.",
+        message: "Due time must be after start time.",
         path: ["dueAt"],
       })
     }
@@ -263,6 +310,7 @@ export function parseRestoreQuestSchedule(
   input: Readonly<Record<string, unknown>>,
   timezone: string,
   now: Date = new Date(),
+  options: Readonly<{ sameDayOnly?: boolean }> = {},
 ) {
   return restoreQuestScheduleSchema
     .superRefine((value, context) => {
@@ -277,6 +325,23 @@ export function parseRestoreQuestSchedule(
         context.addIssue({
           code: "custom",
           message: "Choose a due time in the future.",
+          path: ["dueAt"],
+        })
+      }
+      if (
+        options.sameDayOnly &&
+        !isSameZonedDate(value.startAt, now, timezone)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Start date must be today.",
+          path: ["startAt"],
+        })
+      }
+      if (options.sameDayOnly && !isSameZonedDate(value.dueAt, now, timezone)) {
+        context.addIssue({
+          code: "custom",
+          message: "Due date must be today.",
           path: ["dueAt"],
         })
       }

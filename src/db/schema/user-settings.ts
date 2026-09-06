@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm"
 import {
   boolean,
   check,
+  date,
   integer,
   pgTable,
   timestamp,
@@ -30,6 +31,7 @@ export const userSettings = pgTable(
       mode: "date",
       withTimezone: true,
     }),
+    todayPromoShownOn: date("today_promo_shown_on", { mode: "string" }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
       .defaultNow()
       .notNull(),

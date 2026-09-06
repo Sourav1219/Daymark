@@ -82,4 +82,56 @@ describe("SecurityDataPanel sessions", () => {
     })
     expect(mocks.listActiveSessionsAction).toHaveBeenCalledOnce()
   })
+
+  it("excludes localhost sign-in tracks from active sessions", () => {
+    const localhostSession1 = {
+      createdAt: "2026-08-27T19:00:00.000Z",
+      expiresAt: "2026-09-03T19:00:00.000Z",
+      id: "local-session-1",
+      ipAddress: "127.0.0.1",
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/140.0 Safari/537.36",
+    }
+    const localhostSession2 = {
+      createdAt: "2026-08-27T19:30:00.000Z",
+      expiresAt: "2026-09-03T19:30:00.000Z",
+      id: "local-session-2",
+      ipAddress: "0000:0000:0000:0000:0000:0000:0000:0000",
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/140.0 Safari/537.36",
+    }
+    const realSession = {
+      createdAt: "2026-08-27T20:00:00.000Z",
+      expiresAt: "2026-09-03T20:00:00.000Z",
+      id: "real-session",
+      ipAddress: "128.185.168.217",
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/140.0 Safari/537.36",
+    }
+
+    render(
+      <SecurityDataPanel
+        currentSessionId={realSession.id}
+        initialSessions={[localhostSession1, localhostSession2, realSession]}
+      />,
+    )
+
+    // Heading should only count the 1 real session
+    const sessionsHeading = screen.getByRole("heading", {
+      name: "Active sessions",
+    })
+    expect(
+      sessionsHeading.parentElement?.querySelector("span"),
+    ).toHaveTextContent("1")
+
+    // The real session is shown
+    expect(screen.getByText("Chrome on macOS")).toBeInTheDocument()
+    expect(screen.getByText("128.185.168.217")).toBeInTheDocument()
+
+    // Localhost sessions are not rendered
+    expect(screen.queryByText("127.0.0.1")).not.toBeInTheDocument()
+    expect(
+      screen.queryByText("0000:0000:0000:0000:0000:0000:0000:0000"),
+    ).not.toBeInTheDocument()
+  })
 })

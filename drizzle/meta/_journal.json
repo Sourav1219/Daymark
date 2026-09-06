@@ -176,6 +176,34 @@
       "when": 1788033184731,
       "tag": "0024_high_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788610629498,
+      "tag": "0025_strong_quasimodo",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1788615566343,
+      "tag": "0026_panoramic_star_brand",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1788615594356,
+      "tag": "0027_shocking_stature",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1788636914287,
+      "tag": "0028_small_mojo",
+      "breakpoints": true
     }
   ]
 }

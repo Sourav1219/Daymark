@@ -1,12 +1,17 @@
 "use client"
 
+import { applyOfflineClassifications } from "@/features/offline/domain/classification-overlay"
 import { deleteDB, openDB, type DBSchema, type IDBPDatabase } from "idb"
 
+import type { GateView } from "@/features/gates/domain/types"
+import type { LabelView } from "@/features/labels/domain/types"
 import type { QuestView } from "@/features/quests/domain/types"
 import type {
+  OfflineFullState,
   OfflineMutation,
   OfflineQuestConflict,
   OfflineScope,
+  UserProfileSnapshot,
 } from "@/features/offline/domain/types"
 
 // Keep the database name stable so existing encrypted offline data is retained.
@@ -16,7 +21,7 @@ const lockVerifier = "traketo-offline-lock-v1"
 const legacyLockVerifier = "daymark-offline-lock-v1"
 const keyDerivationIterations = 150_000
 export const offlineSnapshotLifetimeMilliseconds = 7 * 24 * 60 * 60 * 1_000
-export const offlineDatabaseVersion = 3
+export const offlineDatabaseVersion = 4
 
 type SealedValue = Readonly<{ ciphertext: string; iv: string }>
 type LockRecord = Readonly<{
@@ -40,6 +45,14 @@ type EncryptedMutation = Readonly<{
 }>
 
 interface OfflineDatabaseSchema extends DBSchema {
+  gatesSnapshot: {
+    key: string
+    value: EncryptedSnapshot
+  }
+  labelsSnapshot: {
+    key: string
+    value: EncryptedSnapshot
+  }
   meta: {
     key: string
     value: LockRecord | ScopeRecord
@@ -50,6 +63,10 @@ interface OfflineDatabaseSchema extends DBSchema {
     value: EncryptedMutation
   }
   snapshots: {
+    key: string
+    value: EncryptedSnapshot
+  }
+  userProfile: {
     key: string
     value: EncryptedSnapshot
   }
@@ -91,6 +108,17 @@ function database() {
           transaction.objectStore("meta").clear()
           transaction.objectStore("snapshots").clear()
           transaction.objectStore("mutations").clear()
+        }
+        if (oldVersion < 4) {
+          if (!storeNames.contains("gatesSnapshot")) {
+            current.createObjectStore("gatesSnapshot", { keyPath: "scopeKey" })
+          }
+          if (!storeNames.contains("labelsSnapshot")) {
+            current.createObjectStore("labelsSnapshot", { keyPath: "scopeKey" })
+          }
+          if (!storeNames.contains("userProfile")) {
+            current.createObjectStore("userProfile", { keyPath: "scopeKey" })
+          }
         }
       },
     },
@@ -192,13 +220,23 @@ export async function enablePrivateOfflineData(passcode: string) {
   const verifier = await seal(lockVerifier, key)
   const current = await database()
   const transaction = current.transaction(
-    ["meta", "mutations", "snapshots"],
+    [
+      "meta",
+      "mutations",
+      "snapshots",
+      "gatesSnapshot",
+      "labelsSnapshot",
+      "userProfile",
+    ],
     "readwrite",
   )
   await Promise.all([
     transaction.objectStore("meta").clear(),
     transaction.objectStore("mutations").clear(),
     transaction.objectStore("snapshots").clear(),
+    transaction.objectStore("gatesSnapshot").clear(),
+    transaction.objectStore("labelsSnapshot").clear(),
+    transaction.objectStore("userProfile").clear(),
     transaction.objectStore("meta").put(
       {
         kind: "lock",
@@ -279,6 +317,51 @@ export async function cacheOfflineQuests(
   await current.put("snapshots", {
     scopeKey: scope.key,
     sealed: await seal(quests.slice(0, 200), key),
+    updatedAt: now.toISOString(),
+  })
+}
+
+export async function cacheOfflineGates(
+  scope: OfflineScope,
+  gates: readonly GateView[],
+  now = new Date(),
+) {
+  const key = await encryptionKey(false)
+  if (!key) return
+  const current = await database()
+  await current.put("gatesSnapshot", {
+    scopeKey: scope.key,
+    sealed: await seal(gates, key),
+    updatedAt: now.toISOString(),
+  })
+}
+
+export async function cacheOfflineLabels(
+  scope: OfflineScope,
+  labels: readonly LabelView[],
+  now = new Date(),
+) {
+  const key = await encryptionKey(false)
+  if (!key) return
+  const current = await database()
+  await current.put("labelsSnapshot", {
+    scopeKey: scope.key,
+    sealed: await seal(labels, key),
+    updatedAt: now.toISOString(),
+  })
+}
+
+export async function cacheOfflineProfile(
+  scope: OfflineScope,
+  profile: UserProfileSnapshot,
+  now = new Date(),
+) {
+  const key = await encryptionKey(false)
+  if (!key) return
+  const current = await database()
+  await current.put("userProfile", {
+    scopeKey: scope.key,
+    sealed: await seal(profile, key),
     updatedAt: now.toISOString(),
   })
 }
@@ -399,25 +482,207 @@ export async function readOfflineQuestState(now = new Date()) {
   return {
     conflicts: mutations.filter(({ status }) => status === "conflict"),
     pendingCount: mutations.filter(({ status }) => status === "pending").length,
-    quests: [
-      ...quests
-        .filter(({ id }) => !completedIds.has(id))
-        .map((quest) => {
-          const edit = edits.get(quest.id)
-          return edit
-            ? {
-                ...quest,
-                description: edit.description,
-                priority: edit.priority as QuestView["priority"],
-                title: edit.title,
-              }
-            : quest
-        }),
-      ...queued,
-    ],
+    quests: applyOfflineClassifications(
+      [
+        ...quests
+          .filter(({ id }) => !completedIds.has(id))
+          .map((quest) => {
+            const edit = edits.get(quest.id)
+            return edit
+              ? {
+                  ...quest,
+                  description: edit.description,
+                  priority: edit.priority as QuestView["priority"],
+                  title: edit.title,
+                }
+              : quest
+          }),
+        ...queued,
+      ],
+      mutations,
+    ),
     scope,
     updatedAt: snapshot?.updatedAt ?? null,
   } as const
+}
+
+export async function readOfflineGates(
+  now = new Date(),
+): Promise<readonly GateView[]> {
+  const key = await encryptionKey()
+  if (!key) return []
+  const current = await database()
+  const scopeRecord = await current.get("meta", "active-scope")
+  if (!scopeRecord || scopeRecord.kind !== "scope") return []
+  const scope = await unseal<OfflineScope>(scopeRecord.sealed, key)
+  const snapshot = await current.get("gatesSnapshot", scope.key)
+  if (
+    snapshot &&
+    now.getTime() - new Date(snapshot.updatedAt).getTime() >
+      offlineSnapshotLifetimeMilliseconds
+  ) {
+    await current.delete("gatesSnapshot", scope.key)
+    return []
+  }
+  return snapshot ? unseal<readonly GateView[]>(snapshot.sealed, key) : []
+}
+
+export async function readOfflineLabels(
+  now = new Date(),
+): Promise<readonly LabelView[]> {
+  const key = await encryptionKey()
+  if (!key) return []
+  const current = await database()
+  const scopeRecord = await current.get("meta", "active-scope")
+  if (!scopeRecord || scopeRecord.kind !== "scope") return []
+  const scope = await unseal<OfflineScope>(scopeRecord.sealed, key)
+  const snapshot = await current.get("labelsSnapshot", scope.key)
+  if (
+    snapshot &&
+    now.getTime() - new Date(snapshot.updatedAt).getTime() >
+      offlineSnapshotLifetimeMilliseconds
+  ) {
+    await current.delete("labelsSnapshot", scope.key)
+    return []
+  }
+  return snapshot ? unseal<readonly LabelView[]>(snapshot.sealed, key) : []
+}
+
+export async function readOfflineProfile(
+  now = new Date(),
+): Promise<UserProfileSnapshot | null> {
+  const key = await encryptionKey()
+  if (!key) return null
+  const current = await database()
+  const scopeRecord = await current.get("meta", "active-scope")
+  if (!scopeRecord || scopeRecord.kind !== "scope") return null
+  const scope = await unseal<OfflineScope>(scopeRecord.sealed, key)
+  const snapshot = await current.get("userProfile", scope.key)
+  if (
+    snapshot &&
+    now.getTime() - new Date(snapshot.updatedAt).getTime() >
+      offlineSnapshotLifetimeMilliseconds
+  ) {
+    await current.delete("userProfile", scope.key)
+    return null
+  }
+  return snapshot ? unseal<UserProfileSnapshot>(snapshot.sealed, key) : null
+}
+
+export async function readOfflineFullState(
+  now = new Date(),
+): Promise<OfflineFullState | null> {
+  const key = await encryptionKey()
+  if (!key) return null
+  const current = await database()
+  const scopeRecord = await current.get("meta", "active-scope")
+  if (!scopeRecord || scopeRecord.kind !== "scope") return null
+  const scope = await unseal<OfflineScope>(scopeRecord.sealed, key)
+
+  let questSnapshot = await current.get("snapshots", scope.key)
+  if (
+    questSnapshot &&
+    now.getTime() - new Date(questSnapshot.updatedAt).getTime() >
+      offlineSnapshotLifetimeMilliseconds
+  ) {
+    await current.delete("snapshots", scope.key)
+    questSnapshot = undefined
+  }
+
+  let gatesSnapshot = await current.get("gatesSnapshot", scope.key)
+  if (
+    gatesSnapshot &&
+    now.getTime() - new Date(gatesSnapshot.updatedAt).getTime() >
+      offlineSnapshotLifetimeMilliseconds
+  ) {
+    await current.delete("gatesSnapshot", scope.key)
+    gatesSnapshot = undefined
+  }
+
+  let labelsSnapshot = await current.get("labelsSnapshot", scope.key)
+  if (
+    labelsSnapshot &&
+    now.getTime() - new Date(labelsSnapshot.updatedAt).getTime() >
+      offlineSnapshotLifetimeMilliseconds
+  ) {
+    await current.delete("labelsSnapshot", scope.key)
+    labelsSnapshot = undefined
+  }
+
+  let profileSnapshot = await current.get("userProfile", scope.key)
+  if (
+    profileSnapshot &&
+    now.getTime() - new Date(profileSnapshot.updatedAt).getTime() >
+      offlineSnapshotLifetimeMilliseconds
+  ) {
+    await current.delete("userProfile", scope.key)
+    profileSnapshot = undefined
+  }
+
+  const [quests, gates, labels, profile, mutations] = await Promise.all([
+    questSnapshot
+      ? unseal<readonly QuestView[]>(questSnapshot.sealed, key)
+      : Promise.resolve([]),
+    gatesSnapshot
+      ? unseal<readonly GateView[]>(gatesSnapshot.sealed, key)
+      : Promise.resolve([]),
+    labelsSnapshot
+      ? unseal<readonly LabelView[]>(labelsSnapshot.sealed, key)
+      : Promise.resolve([]),
+    profileSnapshot
+      ? unseal<UserProfileSnapshot>(profileSnapshot.sealed, key)
+      : Promise.resolve(null),
+    listOfflineMutations(scope.key),
+  ])
+
+  const completedIds = new Set(
+    mutations.flatMap((mutation) =>
+      mutation.type === "complete" || mutation.type === "delete"
+        ? [mutation.payload.questId]
+        : [],
+    ),
+  )
+  const edits = new Map(
+    mutations
+      .filter((mutation) => mutation.type === "edit")
+      .map((mutation) => [mutation.payload.questId, mutation.payload]),
+  )
+  const queued = mutations
+    .filter((mutation) => mutation.type === "create")
+    .map((mutation) => mutation.optimisticQuest)
+
+  return {
+    conflicts: mutations.filter(({ status }) => status === "conflict"),
+    gates,
+    labels,
+    pendingCount: mutations.filter(({ status }) => status === "pending").length,
+    profile,
+    quests: applyOfflineClassifications(
+      [
+        ...quests
+          .filter(({ id }) => !completedIds.has(id))
+          .map((quest) => {
+            const edit = edits.get(quest.id)
+            return edit
+              ? {
+                  ...quest,
+                  description: edit.description,
+                  priority: edit.priority as QuestView["priority"],
+                  title: edit.title,
+                }
+              : quest
+          }),
+        ...queued,
+      ],
+      mutations,
+    ),
+    scope,
+    updatedAt:
+      questSnapshot?.updatedAt ??
+      gatesSnapshot?.updatedAt ??
+      labelsSnapshot?.updatedAt ??
+      null,
+  }
 }
 
 export async function clearPrivateOfflineData() {

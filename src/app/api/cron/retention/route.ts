@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { getDatabase } from "@/db/client"
 import { authorizeCronRequest } from "@/app/api/cron/cron-auth"
 import { deleteExpiredAuthSessionsBefore } from "@/features/authentication/repositories/session-retention-repository"
+import { deleteExpiredVerificationsBefore } from "@/features/authentication/repositories/verification-retention-repository"
 import { observeCronOutcome } from "@/lib/observability/metrics"
 import { deleteActivityEventsBefore } from "@/features/progression/repositories/activity-retention-repository"
 import { deleteTerminalRemindersBefore } from "@/features/reminders/repositories/reminder-retention-repository"
@@ -22,6 +23,10 @@ const TOMBSTONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000
 const TERMINAL_REMINDER_RETENTION_MS = 90 * 24 * 60 * 60 * 1_000
 
 const EXPIRED_SESSION_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000
+
+/** Expired OTP / email-verification rows are swept after 24 h — well beyond
+ *  any reasonable token TTL — so they are never collected while still live. */
+const EXPIRED_VERIFICATION_RETENTION_MS = 24 * 60 * 60 * 1_000
 
 const ENDED_ROOM_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000
 
@@ -65,6 +70,7 @@ async function runRetentionSweep(request: Request) {
     reminders: 0,
     sessions: 0,
     tasks: 0,
+    verifications: 0,
   }
   let purgedTasks = 0
   let partial = false
@@ -109,6 +115,12 @@ async function runRetentionSweep(request: Request) {
       deleted.tasks += await deletePurgedTaskTombstones(
         database,
         new Date(now.getTime() - TOMBSTONE_RETENTION_MS),
+      )
+    },
+    async () => {
+      deleted.verifications = await deleteExpiredVerificationsBefore(
+        database,
+        new Date(now.getTime() - EXPIRED_VERIFICATION_RETENTION_MS),
       )
     },
   ]

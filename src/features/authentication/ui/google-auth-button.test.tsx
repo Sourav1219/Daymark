@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { GoogleAuthButton } from "./google-auth-button"
 
@@ -17,6 +17,10 @@ vi.mock("@/features/authentication/client/auth-client", () => ({
 describe("GoogleAuthButton", () => {
   beforeEach(() => {
     authClient.signIn.social.mockReset()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it("explains why Google auth is unavailable before setup", () => {
@@ -120,5 +124,58 @@ describe("GoogleAuthButton", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "No Traketo account exists for that Google email yet. Select Register, then use Sign up with Google first.",
     )
+  })
+
+  it("uses Chrome Custom Tabs and deep link callback when running in native Android container", async () => {
+    const openMock = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal("Capacitor", {
+      isNativePlatform: () => true,
+      Plugins: {
+        App: {
+          addListener: vi.fn().mockReturnValue({ remove: vi.fn() }),
+        },
+        Browser: {
+          close: vi.fn().mockResolvedValue(undefined),
+          open: openMock,
+        },
+      },
+    })
+
+    authClient.signIn.social.mockResolvedValue({
+      data: {
+        url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=123",
+      },
+      error: null,
+    })
+
+    const user = userEvent.setup()
+
+    render(
+      <GoogleAuthButton
+        configured
+        mode="login"
+        nextPath="/today"
+        oauthError={null}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole("button", { name: "Sign in with Google" }),
+    )
+
+    expect(authClient.signIn.social).toHaveBeenCalledWith({
+      callbackURL: "daymark://auth/callback?next=%2Ftoday",
+      disableRedirect: true,
+      errorCallbackURL:
+        "daymark://auth/callback?authError=google&next=%2Ftoday",
+      newUserCallbackURL: "daymark://auth/callback?next=%2Ftoday",
+      provider: "google",
+      requestSignUp: false,
+    })
+
+    expect(openMock).toHaveBeenCalledWith({
+      url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=123",
+      windowName: "_system",
+    })
   })
 })

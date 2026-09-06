@@ -20,5 +20,7 @@ export default async function SessionExpiredPage({
     Array.isArray(next) ? (next[0] ?? null) : (next ?? null),
   )
 
-  redirect(`/sign-out?next=${encodeURIComponent(nextPath)}` as Route)
+  redirect(
+    `/sign-out?reason=expired&next=${encodeURIComponent(nextPath)}` as Route,
+  )
 }

@@ -7,10 +7,18 @@ import { useRouter } from "next/navigation"
 import { ArrowRight, CheckCircle2, Lock, Shield, Sparkles } from "lucide-react"
 
 type SessionExpiredCardProps = Readonly<{
+  actionHref?: Route | string
+  actionLabel?: string
+  badgeLabel?: string
+  chipLabel?: string
+  description?: string
   eyebrow?: string
   heading?: string
-  description?: string
   nextPath?: string
+  securityNote?: string
+  switchAccountHref?: Route | string
+  switchAccountLabel?: string
+  switchAccountText?: string
 }>
 
 function reauthenticationPath(destination: string): Route {
@@ -18,14 +26,27 @@ function reauthenticationPath(destination: string): Route {
 }
 
 export function SessionExpiredCard({
+  actionHref,
+  actionLabel = "Sign in again",
+  badgeLabel = "Session Ended",
+  chipLabel = "Quick Re-auth",
+  description = "You were signed out, or your previous session has ended for your security. Sign in again to get straight back to your quests and workspace.",
   eyebrow = "401 · Authentication Required",
   heading = "Your session is missing or expired.",
-  description = "You were signed out, or your previous session has ended for your security. Sign in again to get straight back to your quests and workspace.",
   nextPath,
+  securityNote = "Sessions end automatically when signed out on another device or after inactivity.",
+  switchAccountHref,
+  switchAccountLabel = "Switch account",
+  switchAccountText = "Using a different account?",
 }: SessionExpiredCardProps) {
   const router = useRouter()
+  const resolvedActionHref =
+    (actionHref as Route) ?? reauthenticationPath(nextPath ?? "/today")
+  const resolvedSwitchHref =
+    (switchAccountHref as Route) ?? reauthenticationPath(nextPath ?? "/today")
 
-  function handleSignIn(event: MouseEvent<HTMLAnchorElement>) {
+  function handleAction(event: MouseEvent<HTMLAnchorElement>) {
+    if (actionHref) return
     event.preventDefault()
     const destination =
       nextPath ??
@@ -34,7 +55,7 @@ export function SessionExpiredCard({
   }
 
   return (
-    <main className="session-expired" role="main">
+    <div className="session-expired">
       <div className="session-expired__backdrop-grid" aria-hidden="true" />
 
       <section
@@ -55,7 +76,7 @@ export function SessionExpiredCard({
 
             <span className="session-expired__badge" role="status">
               <span className="session-expired__dot" aria-hidden="true" />
-              <span>Session Ended</span>
+              <span>{badgeLabel}</span>
             </span>
           </header>
 
@@ -76,7 +97,7 @@ export function SessionExpiredCard({
 
             <div className="session-expired__chip session-expired__chip--bottom">
               <Sparkles aria-hidden="true" />
-              <span>Quick Re-auth</span>
+              <span>{chipLabel}</span>
             </div>
           </div>
 
@@ -103,12 +124,12 @@ export function SessionExpiredCard({
           <div className="session-expired__actions">
             <Link
               className="session-expired__btn-primary"
-              href={reauthenticationPath(nextPath ?? "/today")}
+              href={resolvedActionHref}
               id="session-reauth-btn"
-              onClick={handleSignIn}
+              onClick={handleAction}
               prefetch
             >
-              <span>Sign in again</span>
+              <span>{actionLabel}</span>
               <ArrowRight aria-hidden="true" />
             </Link>
           </div>
@@ -116,22 +137,21 @@ export function SessionExpiredCard({
           {/* Footer Note */}
           <footer className="session-expired__footer">
             <p className="session-expired__switch">
-              Using a different account?{" "}
+              {switchAccountText}{" "}
               <Link
                 className="session-expired__link"
-                href={reauthenticationPath(nextPath ?? "/today")}
+                href={resolvedSwitchHref}
                 prefetch
               >
-                Switch account
+                {switchAccountLabel}
               </Link>
             </p>
-            <p className="session-expired__security-note">
-              Sessions end automatically when signed out on another device or
-              after inactivity.
-            </p>
+            {securityNote ? (
+              <p className="session-expired__security-note">{securityNote}</p>
+            ) : null}
           </footer>
         </div>
       </section>
-    </main>
+    </div>
   )
 }

@@ -10,6 +10,7 @@ const deleteTerminalRemindersBefore = vi.hoisted(() => vi.fn())
 const deleteExpiredAuthSessionsBefore = vi.hoisted(() => vi.fn())
 const deleteJoinRequestsForSessionsEndedBefore = vi.hoisted(() => vi.fn())
 const deleteActivityEventsBefore = vi.hoisted(() => vi.fn())
+const deleteExpiredVerificationsBefore = vi.hoisted(() => vi.fn())
 
 vi.mock("@/app/api/cron/cron-auth", () => ({ authorizeCronRequest }))
 vi.mock("@/db/client", () => ({ getDatabase }))
@@ -17,6 +18,12 @@ vi.mock(
   "@/features/authentication/repositories/session-retention-repository",
   () => ({
     deleteExpiredAuthSessionsBefore,
+  }),
+)
+vi.mock(
+  "@/features/authentication/repositories/verification-retention-repository",
+  () => ({
+    deleteExpiredVerificationsBefore,
   }),
 )
 vi.mock(
@@ -61,6 +68,7 @@ describe("retention sweep Route Handler", () => {
     deleteExpiredAuthSessionsBefore.mockResolvedValue(0)
     deleteJoinRequestsForSessionsEndedBefore.mockResolvedValue(0)
     deleteActivityEventsBefore.mockResolvedValue(0)
+    deleteExpiredVerificationsBefore.mockResolvedValue(0)
   })
 
   afterEach(() => {
@@ -95,6 +103,7 @@ describe("retention sweep Route Handler", () => {
     deleteJoinRequestsForSessionsEndedBefore.mockResolvedValue(4)
     deleteActivityEventsBefore.mockResolvedValue(11)
     deletePurgedTaskTombstones.mockResolvedValue(1)
+    deleteExpiredVerificationsBefore.mockResolvedValue(6)
 
     const response = await GET(
       new Request("https://traketo.example.test/api/cron/retention"),
@@ -110,6 +119,7 @@ describe("retention sweep Route Handler", () => {
         reminders: 5,
         sessions: 2,
         tasks: 1,
+        verifications: 6,
       },
       partial: false,
       purgedTasks: 3,
@@ -126,6 +136,10 @@ describe("retention sweep Route Handler", () => {
     expect(deleteActivityEventsBefore).toHaveBeenCalledWith(
       expect.anything(),
       new Date("2025-08-20T03:17:00.000Z"),
+    )
+    expect(deleteExpiredVerificationsBefore).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Date),
     )
   })
 
@@ -152,6 +166,7 @@ describe("retention sweep Route Handler", () => {
         reminders: 0,
         sessions: 0,
         tasks: 0,
+        verifications: 0,
       },
       partial: true,
       purgedTasks: 0,

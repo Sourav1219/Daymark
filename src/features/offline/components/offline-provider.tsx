@@ -1,6 +1,8 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { suggestClassification } from "@/features/quests/domain/classification"
+import type { ClassifyQuestCommand } from "@/features/quests/validation/classification-validation"
 import {
   createContext,
   useCallback,
@@ -19,14 +21,20 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { logger } from "@/lib/observability/logger"
+import type { GateView } from "@/features/gates/domain/types"
+import type { LabelView } from "@/features/labels/domain/types"
 import type { QuestView } from "@/features/quests/domain/types"
 import type {
   OfflineCreatePayload,
   OfflineMutation,
   OfflineMutationResult,
   OfflineScope,
+  UserProfileSnapshot,
 } from "@/features/offline/domain/types"
 import {
+  cacheOfflineGates,
+  cacheOfflineLabels,
+  cacheOfflineProfile,
   cacheOfflineQuests,
   clearPrivateOfflineData,
   listOfflineMutations,
@@ -42,6 +50,9 @@ type OfflineContextValue = Readonly<{
   isOffline: boolean
   pendingCount: number
   queueCompletion: (quest: QuestView) => Promise<void>
+  queueClassification: (
+    input: ClassifyQuestCommand & { title: string },
+  ) => Promise<void>
   queueCreate: (formData: FormData) => Promise<QuestView>
   queueEdit: (quest: QuestView, formData: FormData) => Promise<void>
   queueTransition: (
@@ -50,6 +61,9 @@ type OfflineContextValue = Readonly<{
   ) => Promise<void>
   refreshQueue: () => Promise<void>
   scope: OfflineScope
+  snapshotGates: (gates: readonly GateView[]) => Promise<void>
+  snapshotLabels: (labels: readonly LabelView[]) => Promise<void>
+  snapshotProfile: (profile: UserProfileSnapshot) => Promise<void>
   snapshotQuests: (quests: readonly QuestView[]) => Promise<void>
 }>
 
@@ -75,6 +89,7 @@ function serverOnlineSnapshot() {
 function createPayload(formData: FormData): OfflineCreatePayload {
   const value = (name: string) => String(formData.get(name) ?? "")
   return {
+    customType: value("customType") || undefined,
     description: value("description"),
     dueAt: value("dueAt"),
     parentTaskId: value("parentTaskId"),
@@ -82,12 +97,24 @@ function createPayload(formData: FormData): OfflineCreatePayload {
     projectId: value("projectId"),
     recurrenceRule: value("recurrenceRule"),
     startAt: value("startAt"),
+    taskType: value("taskType") || undefined,
     title: value("title").trim(),
   }
 }
 
 function optimisticQuest(id: string, payload: OfflineCreatePayload): QuestView {
+  const suggested = suggestClassification(payload.title, payload.description)
   return {
+    ...suggested,
+    ...(payload.taskType
+      ? {
+          taskType: payload.taskType as QuestView["taskType"],
+          typeManual: true,
+        }
+      : {}),
+    ...(payload.customType
+      ? { customType: payload.customType, typeManual: true }
+      : {}),
     completedAt: null,
     deletedAt: null,
     description: payload.description.trim(),
@@ -215,13 +242,25 @@ function withExpectedVersion(
 export function OfflineProvider({
   children,
   scope,
-}: Readonly<{ children: ReactNode; scope: OfflineScope }>) {
+  userProfile,
+}: Readonly<{
+  children: ReactNode
+  scope: OfflineScope
+  userProfile?: UserProfileSnapshot
+}>) {
   const router = useRouter()
   const online = useSyncExternalStore(
     subscribeConnectivity,
     onlineSnapshot,
     serverOnlineSnapshot,
   )
+
+  useEffect(() => {
+    if (userProfile) {
+      void cacheOfflineProfile(scope, userProfile)
+    }
+  }, [scope, userProfile])
+
   const [mutations, setMutations] = useState<readonly OfflineMutation[]>([])
   const replaying = useRef(false)
   const replayAttempts = useRef(0)
@@ -451,7 +490,24 @@ export function OfflineProvider({
         await requestBackgroundSync()
       },
       refreshQueue,
+      queueClassification: async (payload) => {
+        await queueOfflineMutation({
+          conflict: null,
+          createdAt: new Date().toISOString(),
+          id: crypto.randomUUID(),
+          payload,
+          scopeKey: scope.key,
+          status: "pending",
+          type: "classify",
+          workspaceId: scope.workspaceId,
+        })
+        await refreshQueue()
+        await requestBackgroundSync()
+      },
       scope,
+      snapshotGates: (gates) => cacheOfflineGates(scope, gates),
+      snapshotLabels: (labels) => cacheOfflineLabels(scope, labels),
+      snapshotProfile: (profile) => cacheOfflineProfile(scope, profile),
       snapshotQuests: (quests) => cacheOfflineQuests(scope, quests),
     }),
     [mutations, online, refreshQueue, scope],
@@ -469,6 +525,10 @@ export function useOffline() {
   const value = useContext(OfflineContext)
   if (!value) throw new Error("useOffline must be used inside OfflineProvider")
   return value
+}
+
+export function useOptionalOffline() {
+  return useContext(OfflineContext)
 }
 
 export function OfflineStatusBar() {

@@ -423,6 +423,57 @@ Today page — bright, card-led home. Header + streak, week
   font-weight: 900;
 }
 
+button.today-section__heading--collapsible {
+  width: 100%;
+  margin: 0;
+  padding: 0.4rem 0.3rem;
+  border: 0;
+  border-top: 1px solid rgba(64, 101, 205, 0.08);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+button.today-section__heading--collapsible:hover {
+  background: rgba(64, 101, 205, 0.04);
+  border-top-color: rgba(64, 101, 205, 0.12);
+}
+
+button.today-section__heading--collapsible:focus-visible {
+  outline: 2px solid #5365bd;
+  outline-offset: 2px;
+}
+
+.today-section__count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.58rem;
+  border: 1px solid rgba(47, 107, 246, 0.1);
+  border-radius: 999px;
+  background: rgba(235, 241, 255, 0.8);
+  color: #57709f;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.today-section__chevron {
+  width: 0.85rem;
+  height: 0.85rem;
+  color: #57709f;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.today-section__chevron--collapsed {
+  transform: rotate(-90deg);
+}
+
 .today-section__cards {
   display: grid;
   gap: 0.85rem;
@@ -569,6 +620,44 @@ Today page — bright, card-led home. Header + streak, week
     0 17px 30px -27px rgba(126, 45, 57, 0.52);
 }
 
+.today-card-shell[data-discarding="true"] {
+  pointer-events: none !important;
+  overflow: hidden !important;
+  block-size: 0 !important;
+  min-block-size: 0 !important;
+  margin-bottom: -0.85rem !important;
+  opacity: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  will-change: block-size, min-block-size, margin-bottom, opacity;
+  transition:
+    block-size 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    min-block-size 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    margin-bottom 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.16s ease !important;
+}
+
+.today-card-shell[data-discarding="true"] .today-card,
+.today-card[data-discarding="true"] {
+  opacity: 0 !important;
+  translate: -105% 0 !important;
+  transform: scale(0.96) !important;
+  pointer-events: none !important;
+  box-shadow: none !important;
+  will-change: translate, transform, opacity;
+  transition:
+    translate 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.15s ease !important;
+}
+
+.today-card-shell[data-discarding="true"] .today-card__swipe-delete {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .today-card {
   position: relative;
   display: block;
@@ -698,7 +787,8 @@ Today page — bright, card-led home. Header + streak, week
   transform: scale(0.985);
 }
 
-.today-card[data-done="true"] .today-card__title {
+.today-card[data-done="true"] .today-card__title,
+.today-card[data-status="completed"] .today-card__title {
   text-decoration: line-through;
   text-decoration-thickness: 2px;
 }
@@ -1121,6 +1211,10 @@ Today page — bright, card-led home. Header + streak, week
   transform: scale(1.08);
 }
 
+.today-card__discard:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
 .today-card__discard:disabled {
   cursor: wait;
   opacity: 0.6;
@@ -1267,6 +1361,15 @@ Today page — bright, card-led home. Header + streak, week
   --tone-orb: rgba(82, 108, 211, 0.08);
   --tone-ring: rgba(82, 108, 211, 0.12);
   --tone-shadow: rgba(65, 91, 180, 0.42);
+  opacity: 0.82;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.today-card[data-status="completed"]:hover {
+  opacity: 1;
 }
 
 .today-section[data-primary="true"] {
@@ -1410,6 +1513,25 @@ Today page — bright, card-led home. Header + streak, week
 
 .today-section .today-card[data-glowing="true"]::after {
   animation: today-task-sheen 1s var(--ease-emphasized) both;
+}
+
+.today-section .today-card[data-reopening="true"] {
+  animation: today-task-reopened 0.62s var(--ease-emphasized) both;
+}
+
+@keyframes today-task-reopened {
+  0% {
+    opacity: 0;
+    transform: translateY(-0.7rem) scale(0.97);
+  }
+  64% {
+    opacity: 1;
+    transform: translateY(0.12rem) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes today-task-sheen {

@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "today_promo_shown_on" date;

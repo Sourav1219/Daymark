@@ -5,5 +5,12 @@ allowBuilds:
 overrides:
   "@esbuild-kit/core-utils>esbuild": 0.25.12
   nanoid: ">=3.3.18"
+  # Security: fast-uri host-confusion/SSRF (4× high) via shadcn→@dotenvx/dotenvx→conf→ajv
+  # and shadcn→@modelcontextprotocol/sdk→ajv. Patched in >=3.1.6.
+  fast-uri: ">=3.1.6"
+  # Security: qs array-limit bypass + DoS (2× moderate) via shadcn→@modelcontextprotocol/sdk→express.
+  # Patched in >=6.16.0.
+  qs: ">=6.16.0"
 minimumReleaseAgeExclude:
   - lucide-react@1.30.0
+  - shadcn@4.21.0

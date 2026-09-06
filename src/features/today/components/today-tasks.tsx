@@ -1,6 +1,9 @@
 "use client"
 
 import {
+  createContext,
+  useContext,
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -13,10 +16,12 @@ import {
 import type { Route } from "next"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { flushSync } from "react-dom"
 import {
   CalendarDays,
   CalendarCheck2,
   Check,
+  ChevronDown,
   Circle,
   CircleCheckBig,
   CircleX,
@@ -46,9 +51,12 @@ import { useTaskCompletionCelebration } from "@/features/quests/components/task-
 import type { QuestPriority } from "@/features/quests/domain/types"
 import {
   focusTodayTaskEvent,
+  taskCompletionUndoEvent,
+  type TaskCompletionUndoEventDetail,
   todayTaskElementId,
 } from "@/features/quests/domain/quest-links"
 import type { TodayCard, TodaySection } from "@/features/today/types"
+import { triggerHaptic } from "@/lib/platform/platform-bridge"
 
 const priorityIcon: Record<QuestPriority, LucideIcon> = {
   critical: Flame,
@@ -56,10 +64,28 @@ const priorityIcon: Record<QuestPriority, LucideIcon> = {
   low: Circle,
   medium: Star,
 }
+import { TaskClassificationControl } from "./task-classification-control"
+import { HomeDeletedRows } from "./home-deleted-rows"
+import { RestoreQuestScheduleDialog } from "@/features/quests/components/restore-quest-schedule-dialog"
+import type { TaskClassification } from "@/features/quests/domain/classification"
+
+type ClassificationHandler = (
+  id: string,
+  value: TaskClassification,
+  version: number,
+  priority?: QuestPriority,
+) => void
+const TodayTaskContext = createContext<{
+  timezone: string
+  onClassified?: ClassificationHandler | undefined
+}>({ timezone: "UTC" })
+
 const swipeRevealWidth = 70
 const detailSwipeThreshold = 52
 
 type TodayTasksProps = Readonly<{
+  timezone?: string
+  onClassified?: ClassificationHandler | undefined
   empty: boolean
   focusedQuestId?: string | undefined
   historical?: boolean
@@ -69,6 +95,8 @@ type TodayTasksProps = Readonly<{
 }>
 
 export function TodayTasks({
+  timezone = "UTC",
+  onClassified,
   empty,
   focusedQuestId,
   historical = false,
@@ -81,19 +109,78 @@ export function TodayTasks({
   const lastFocusedQuestId = useRef<string | null>(null)
   const glowTimer = useRef<number | null>(null)
   const [deletedTask, setDeletedTask] = useState<DeletedTaskNotice | null>(null)
+  const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set())
+  const [optimisticallyReopened, setOptimisticallyReopened] = useState<
+    ReadonlyMap<string, number | null>
+  >(() => new Map())
   const [glowingQuestId, setGlowingQuestId] = useState<string | null>(null)
   const [now, setNow] = useState(() =>
     referenceNow ? new Date(referenceNow).getTime() : Date.now(),
   )
+  const visibleSections = useMemo(() => {
+    const reopenedCards = sections.flatMap((section) =>
+      section.cards
+        .filter(
+          (card) =>
+            card.status === "completed" && optimisticallyReopened.has(card.id),
+        )
+        .map((card) => ({
+          ...card,
+          completedAt: null,
+          status: "open" as const,
+          version: optimisticallyReopened.get(card.id) ?? card.version + 1,
+        })),
+    )
+    const hasActiveSection = sections.some(
+      (section) => section.title === "My tasks",
+    )
+    const preparedSections = sections.map((section) => {
+      const completedSection =
+        section.title === "Completed today" || section.title === "Completed"
+      const cards = section.cards
+        .filter(
+          (card) =>
+            !optimisticallyDeletedIds.has(card.id) &&
+            !(completedSection && optimisticallyReopened.has(card.id)),
+        )
+        .map((card) =>
+          optimisticallyReopened.has(card.id)
+            ? {
+                ...card,
+                completedAt: null,
+                status: "open" as const,
+                version:
+                  optimisticallyReopened.get(card.id) ?? card.version + 1,
+              }
+            : card,
+        )
+
+      return {
+        ...section,
+        cards: [
+          ...cards,
+          ...(section.title === "My tasks" ? reopenedCards : []),
+        ],
+      }
+    })
+
+    if (!hasActiveSection && reopenedCards.length > 0) {
+      preparedSections.unshift({ cards: reopenedCards, title: "My tasks" })
+    }
+
+    return preparedSections.filter((section) => section.cards.length > 0)
+  }, [optimisticallyDeletedIds, optimisticallyReopened, sections])
   const nextDeadline = useMemo(() => {
-    const upcoming = sections
+    const upcoming = visibleSections
       .flatMap(({ cards }) => cards)
       .filter(({ status }) => status === "open")
       .map(({ dueAt }) => (dueAt ? new Date(dueAt).getTime() : Number.NaN))
       .filter((deadline) => Number.isFinite(deadline) && deadline >= now)
 
     return upcoming.length > 0 ? Math.min(...upcoming) : null
-  }, [now, sections])
+  }, [now, visibleSections])
   const selectedDateLabel = selectedDate
     ? new Intl.DateTimeFormat("en-GB", {
         day: "numeric",
@@ -110,6 +197,30 @@ export function TodayTasks({
       glowTimer.current = null
     }, 1_000)
   }, [])
+
+  useEffect(() => {
+    function handleCompletionUndo(event: Event) {
+      const detail = (event as CustomEvent<TaskCompletionUndoEventDetail>)
+        .detail
+      if (!detail?.questId) return
+
+      setOptimisticallyReopened((current) => {
+        const next = new Map(current)
+        if (detail.phase === "failed") {
+          next.delete(detail.questId)
+        } else {
+          next.set(detail.questId, detail.version ?? null)
+        }
+        return next
+      })
+
+      if (detail.phase === "started") beginTaskGlow(detail.questId)
+    }
+
+    window.addEventListener(taskCompletionUndoEvent, handleCompletionUndo)
+    return () =>
+      window.removeEventListener(taskCompletionUndoEvent, handleCompletionUndo)
+  }, [beginTaskGlow])
 
   useEffect(() => {
     function handleFocusRequest(event: Event) {
@@ -142,17 +253,25 @@ export function TodayTasks({
       lastFocusedQuestId.current = null
       return
     }
-    const task = document.getElementById(todayTaskElementId(focusedQuestId))
-    if (!task) return
-    if (
-      lastFocusedQuestId.current === focusedQuestId &&
-      document.activeElement === task
-    ) {
+    if (lastFocusedQuestId.current === focusedQuestId) {
       return
     }
-    beginTaskGlow(focusedQuestId)
+    const isEditing =
+      document.activeElement instanceof HTMLInputElement ||
+      document.activeElement instanceof HTMLTextAreaElement ||
+      (document.activeElement instanceof HTMLElement &&
+        document.activeElement.isContentEditable)
+    if (isEditing) {
+      return
+    }
+
+    const task = document.getElementById(todayTaskElementId(focusedQuestId))
+    if (!task) return
+
+    lastFocusedQuestId.current = focusedQuestId
 
     const frame = window.requestAnimationFrame(() => {
+      beginTaskGlow(focusedQuestId)
       const reducedMotion =
         window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
       task.scrollIntoView?.({
@@ -160,14 +279,31 @@ export function TodayTasks({
         block: "center",
       })
       task.focus({ preventScroll: true })
-      lastFocusedQuestId.current = focusedQuestId
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [beginTaskGlow, focusedQuestId, sections])
+  }, [beginTaskGlow, focusedQuestId, visibleSections])
+
+  const deleteStarted = useCallback((task: DeletedTaskNotice) => {
+    setOptimisticallyDeletedIds((current) => {
+      const next = new Set(current)
+      next.add(task.id)
+      return next
+    })
+    setDeletedTask(task)
+  }, [])
+
+  const deleteFailed = useCallback((questId: string) => {
+    setOptimisticallyDeletedIds((current) => {
+      const next = new Set(current)
+      next.delete(questId)
+      return next
+    })
+    setDeletedTask((current) => (current?.id === questId ? null : current))
+  }, [])
 
   return (
-    <>
+    <TodayTaskContext.Provider value={{ timezone, onClassified }}>
       {deletedTask ? (
         <TaskDeletedPopup
           onDismiss={() => setDeletedTask(null)}
@@ -206,31 +342,155 @@ export function TodayTasks({
           {!historical ? (
             <div className="today-empty__history">
               <History aria-hidden="true" />
-              <p>Finished tasks stay safely in Cleared and Progress.</p>
+              <p>
+                Completed tasks and recent history stay just below your active
+                work.
+              </p>
             </div>
           ) : null}
         </section>
       ) : null}
-      {sections.map((section) => (
-        <section
-          className="today-section"
-          data-primary={section.title === "My tasks"}
-          key={section.title}
-        >
-          <div className="today-section__heading">
-            <div>
-              {section.title === "My tasks" ? (
-                <small>Personal schedule</small>
-              ) : null}
-              <h2 className="today-section__title">{section.title}</h2>
+      {visibleSections.map((section) => {
+        if (section.title === "Recently deleted")
+          return (
+            <HomeDeletedRows
+              key={section.title}
+              cards={section.cards}
+              timezone={timezone}
+              referenceNow={referenceNow ?? new Date(now).toISOString()}
+            />
+          )
+        const isCompletedSection =
+          section.title === "Completed today" || section.title === "Completed"
+
+        return isCompletedSection ? (
+          <TodayCompletedSection
+            focusedQuestId={focusedQuestId}
+            glowingQuestId={glowingQuestId}
+            historical={historical}
+            key={section.title}
+            now={now}
+            onCompleted={showCompletion}
+            onDeleteFailed={deleteFailed}
+            onDeleteStarted={deleteStarted}
+            section={section}
+          />
+        ) : (
+          <section
+            className="today-section"
+            data-primary={section.title === "My tasks"}
+            key={section.title}
+          >
+            <div className="today-section__heading">
+              <div>
+                {section.title === "My tasks" ? (
+                  <small>Personal schedule</small>
+                ) : null}
+                <h2 className="today-section__title">{section.title}</h2>
+              </div>
+              <span>
+                {section.cards.length}{" "}
+                {section.cards.length === 1 ? "task" : "tasks"}
+              </span>
             </div>
-            <span>
-              {section.cards.length}{" "}
-              {section.cards.length === 1 ? "task" : "tasks"}
-            </span>
-          </div>
-          <div className="today-section__cards">
-            {section.cards.map((card) => (
+            <div className="today-section__cards">
+              {section.cards.map((card) => (
+                <TodayTaskCard
+                  card={card}
+                  focused={card.id === focusedQuestId}
+                  glowing={card.id === glowingQuestId}
+                  historical={historical}
+                  key={`${card.id}:${card.version}:${
+                    optimisticallyReopened.get(card.id) === null
+                      ? "reopening"
+                      : "ready"
+                  }`}
+                  now={now}
+                  onCompleted={showCompletion}
+                  onDeleteFailed={deleteFailed}
+                  onDeleteStarted={deleteStarted}
+                  reopening={optimisticallyReopened.get(card.id) === null}
+                />
+              ))}
+            </div>
+          </section>
+        )
+      })}
+    </TodayTaskContext.Provider>
+  )
+}
+
+function TodayCompletedSection({
+  focusedQuestId,
+  glowingQuestId,
+  historical,
+  now,
+  onCompleted,
+  onDeleteFailed,
+  onDeleteStarted,
+  section,
+}: Readonly<{
+  focusedQuestId?: string | undefined
+  glowingQuestId: string | null
+  historical: boolean
+  now: number
+  onCompleted: (task: CompletedTaskNotice) => void
+  onDeleteFailed: (questId: string) => void
+  onDeleteStarted: (task: DeletedTaskNotice) => void
+  section: TodaySection
+}>) {
+  const [collapsed, setCollapsed] = useState(false)
+  const { timezone } = useContext(TodayTaskContext)
+  const completionDate = (card: TodayCard) =>
+    card.completedAt
+      ? new Intl.DateTimeFormat("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          timeZone: timezone,
+        }).format(new Date(card.completedAt))
+      : null
+
+  return (
+    <section
+      className="today-section today-section--completed"
+      data-collapsed={collapsed}
+    >
+      <button
+        aria-expanded={!collapsed}
+        aria-label={`${section.title}, ${section.cards.length} ${
+          section.cards.length === 1 ? "task" : "tasks"
+        }`}
+        className="today-section__heading today-section__heading--collapsible"
+        onClick={() => setCollapsed((prev) => !prev)}
+        type="button"
+      >
+        <div className="today-section__heading-title-group">
+          <h2 className="today-section__title">{section.title}</h2>
+        </div>
+        <span className="today-section__count-badge">
+          <span>
+            {section.cards.length}{" "}
+            {section.cards.length === 1 ? "task" : "tasks"}
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className={`today-section__chevron ${
+              collapsed ? "today-section__chevron--collapsed" : ""
+            }`}
+          />
+        </span>
+      </button>
+      {!collapsed ? (
+        <div className="today-section__cards">
+          {section.cards.map((card, index) => (
+            <Fragment key={card.id}>
+              {completionDate(card) &&
+              (index === 0 ||
+                completionDate(section.cards[index - 1]!) !==
+                  completionDate(card)) ? (
+                <h3 className="home-history-date">{completionDate(card)}</h3>
+              ) : null}
               <TodayTaskCard
                 card={card}
                 focused={card.id === focusedQuestId}
@@ -238,14 +498,15 @@ export function TodayTasks({
                 historical={historical}
                 key={`${card.id}:${card.version}`}
                 now={now}
-                onCompleted={showCompletion}
-                onDeleted={setDeletedTask}
+                onCompleted={onCompleted}
+                onDeleteFailed={onDeleteFailed}
+                onDeleteStarted={onDeleteStarted}
               />
-            ))}
-          </div>
-        </section>
-      ))}
-    </>
+            </Fragment>
+          ))}
+        </div>
+      ) : null}
+    </section>
   )
 }
 
@@ -256,7 +517,9 @@ function TodayTaskCard({
   historical,
   now,
   onCompleted,
-  onDeleted,
+  onDeleteFailed,
+  onDeleteStarted,
+  reopening = false,
 }: Readonly<{
   card: TodayCard
   focused: boolean
@@ -264,16 +527,18 @@ function TodayTaskCard({
   historical: boolean
   now: number
   onCompleted: (task: CompletedTaskNotice) => void
-  onDeleted: (task: DeletedTaskNotice) => void
+  onDeleteFailed: (questId: string) => void
+  onDeleteStarted: (task: DeletedTaskNotice) => void
+  reopening?: boolean | undefined
 }>) {
+  const { timezone, onClassified } = useContext(TodayTaskContext)
   const [pending, startTransition] = useTransition()
-  const [discardPending, startDiscard] = useTransition()
   const [actionsOpen, setActionsOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailSwipeOffset, setDetailSwipeOffset] = useState(0)
   const [done, setDone] = useState(false)
   const [dragging, setDragging] = useState(false)
-  const [removed, setRemoved] = useState(false)
+  const [isDiscarding, setIsDiscarding] = useState(false)
   const [swipeOffset, setSwipeOffset] = useState(0)
   const swipeOffsetRef = useRef(0)
   const swipeStart = useRef<{
@@ -291,11 +556,14 @@ function TodayTaskCard({
   const missed =
     card.status === "failed" ||
     (card.status === "open" && dueTime !== null && dueTime < now)
-  const cancellable = !historical && card.status === "open" && !missed
+  const cancellable = !historical && !completed && !reopening
   const hasDescription = Boolean(card.description?.trim())
 
   function settleSwipe(open: boolean) {
     const offset = open ? -swipeRevealWidth : 0
+    if (open && !actionsOpen) {
+      triggerHaptic("selection")
+    }
     swipeOffsetRef.current = offset
     setSwipeOffset(offset)
     setActionsOpen(open)
@@ -303,7 +571,7 @@ function TodayTaskCard({
   }
 
   function beginSwipe(event: ReactPointerEvent<HTMLElement>) {
-    if ((!cancellable && !hasDescription) || discardPending || pending) return
+    if ((!cancellable && !hasDescription) || isDiscarding || pending) return
     if ((event.target as Element).closest("button")) return
 
     swipeStart.current = {
@@ -324,49 +592,47 @@ function TodayTaskCard({
 
     const deltaX = event.clientX - start.x
     const deltaY = event.clientY - start.y
-    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
-      swipeStart.current = null
-      setDetailSwipeOffset(0)
-      settleSwipe(actionsOpen)
-      return
-    }
-    if (Math.abs(deltaX) < 4) return
 
-    if (!start.gesture) {
-      if (
-        hasDescription &&
-        ((start.detailsOpen && deltaX < 0) ||
-          (!start.detailsOpen && deltaX > 0))
-      ) {
-        start.gesture = "details"
-      } else if (!start.detailsOpen && cancellable && deltaX < 0) {
+    if (start.gesture === null) {
+      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
+        swipeStart.current = null
+        setDragging(false)
+        return
+      }
+
+      if (deltaX < -10 && cancellable) {
         start.gesture = "delete"
+      } else if (Math.abs(deltaX) > 10 && hasDescription) {
+        start.gesture = "details"
       } else {
         return
       }
     }
 
-    event.preventDefault()
     if (start.gesture === "details") {
-      const direction = start.detailsOpen ? -1 : 1
-      const distance = Math.max(direction * deltaX, 0)
-      setDetailSwipeOffset(direction * Math.min(distance * 0.28, 22))
+      const clampedOffset = Math.max(Math.min(deltaX * 0.4, 40), -40)
+      setDetailSwipeOffset(clampedOffset)
       return
     }
 
-    const offset = Math.max(
-      -swipeRevealWidth,
-      Math.min(0, start.offset + deltaX),
-    )
-    swipeOffsetRef.current = offset
-    setSwipeOffset(offset)
+    if (start.gesture === "delete") {
+      const rawOffset = start.offset + deltaX
+      const clampedOffset = Math.max(
+        Math.min(rawOffset, 0),
+        -swipeRevealWidth - 16,
+      )
+      swipeOffsetRef.current = clampedOffset
+      setSwipeOffset(clampedOffset)
+    }
   }
 
   function finishSwipe(event: ReactPointerEvent<HTMLElement>) {
     const start = swipeStart.current
     if (!start || start.pointerId !== event.pointerId) return
 
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
     swipeStart.current = null
+
     if (start.gesture === "details") {
       const deltaX = event.clientX - start.x
       const direction = start.detailsOpen ? -1 : 1
@@ -385,6 +651,7 @@ function TodayTaskCard({
       return
     }
 
+    triggerHaptic("success")
     setDone(true)
     startTransition(async () => {
       const result = await completeQuestAction({
@@ -411,6 +678,8 @@ function TodayTaskCard({
             `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}` as Route,
             { scroll: false },
           )
+        } else {
+          router.refresh()
         }
       } else {
         setDone(false)
@@ -420,9 +689,17 @@ function TodayTaskCard({
   }
 
   function moveTaskToTrash(kind: DeletedTaskNotice["kind"]) {
-    if (discardPending || removed) return
+    if (isDiscarding) return
+    triggerHaptic("heavy")
 
-    startDiscard(async () => {
+    // Remove the card/empty section and open the trash confirmation in the
+    // click frame. The network mutation then confirms or rolls this back.
+    flushSync(() => {
+      setIsDiscarding(true)
+      onDeleteStarted({ id: card.id, kind, title: card.title })
+    })
+
+    void (async () => {
       try {
         const result = await softDeleteQuestAction({
           expectedVersion: card.version,
@@ -430,26 +707,23 @@ function TodayTaskCard({
         })
 
         if (!result.ok) {
+          onDeleteFailed(card.id)
           toast.error(result.error.message)
           return
         }
-
-        setRemoved(true)
-        onDeleted({ id: result.data.id, kind, title: card.title })
-        router.refresh()
       } catch {
+        onDeleteFailed(card.id)
         toast.error("The task could not be moved to Trash. Refresh and retry.")
       }
-    })
+    })()
   }
-
-  if (removed) return null
 
   return (
     <div
       className="today-card-shell"
-      data-actions-open={actionsOpen}
+      data-actions-open={actionsOpen && !isDiscarding}
       data-details-open={detailsOpen}
+      data-discarding={isDiscarding}
       data-dragging={dragging}
       data-flippable={hasDescription}
       data-swipeable={cancellable}
@@ -462,12 +736,14 @@ function TodayTaskCard({
     >
       <article
         aria-label={detailsOpen ? `${card.title} description` : card.title}
-        aria-busy={pending || discardPending}
+        aria-busy={pending || isDiscarding || reopening}
         className="today-card"
+        data-discarding={isDiscarding}
         data-done={done}
         data-glowing={glowing}
         data-pending={pending}
         data-priority={card.priority}
+        data-reopening={reopening}
         data-status={missed ? "failed" : card.status}
         id={todayTaskElementId(card.id)}
         onPointerCancel={finishSwipe}
@@ -517,6 +793,12 @@ function TodayTaskCard({
                   </span>
                 </div>
               </div>
+              {!completed && !missed && !reopening ? (
+                <TaskClassificationControl
+                  card={card}
+                  onClassified={onClassified}
+                />
+              ) : null}
               <p className="today-card__meta">
                 <span className="today-card__schedule">
                   <span className="today-card__date">
@@ -536,6 +818,16 @@ function TodayTaskCard({
                   </span>
                 ) : null}
               </p>
+              {missed ? (
+                <RestoreQuestScheduleDialog
+                  input={{ questId: card.id, expectedVersion: card.version }}
+                  mode="reschedule"
+                  onRestored={() => toast.success("Task rescheduled")}
+                  referenceNow={new Date(now).toISOString()}
+                  timezone={timezone}
+                  title={card.title}
+                />
+              ) : null}
             </div>
             {completed ? (
               <span
@@ -556,7 +848,8 @@ function TodayTaskCard({
                 <button
                   aria-label={`Move missed task ${card.title} to Trash`}
                   className="today-card__discard"
-                  disabled={discardPending}
+                  data-discarding={isDiscarding}
+                  disabled={isDiscarding}
                   onClick={() => moveTaskToTrash("missed")}
                   title="Move to Trash"
                   type="button"
@@ -569,7 +862,7 @@ function TodayTaskCard({
                 aria-label={`Clear ${card.title}`}
                 className="today-card__check"
                 data-done={done}
-                disabled={pending || done}
+                disabled={pending || done || reopening}
                 onClick={complete}
                 type="button"
               >
@@ -609,11 +902,11 @@ function TodayTaskCard({
           ) : null}
         </div>
       </article>
-      {cancellable ? (
+      {cancellable && !isDiscarding ? (
         <button
           aria-label={`Move ${card.title} to Trash`}
           className="today-card__swipe-delete"
-          disabled={discardPending}
+          disabled={isDiscarding}
           onClick={() => moveTaskToTrash("cancelled")}
           onFocus={() => settleSwipe(true)}
           type="button"
@@ -621,7 +914,7 @@ function TodayTaskCard({
           <span aria-hidden="true" className="today-card__swipe-delete-icon">
             <Trash2 />
           </span>
-          <span>{discardPending ? "Moving…" : "Remove"}</span>
+          <span>Remove</span>
         </button>
       ) : null}
     </div>

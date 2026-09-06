@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
   restoreQuestWithScheduleAction,
+  rescheduleMissedQuestAction,
   type QuestTransitionInput,
 } from "@/features/quests/application/actions"
 import type { RestoredTaskNotice } from "@/features/quests/components/task-restored-popup"
@@ -37,18 +38,40 @@ import {
   timezoneAbbreviation,
 } from "@/features/reminders/domain/timezone"
 
-function initialTimeline(referenceNow: string, timezone: string) {
+function initialTimeline(
+  referenceNow: string,
+  timezone: string,
+  sameDayOnly: boolean,
+) {
   const reference = new Date(referenceNow)
+  const referenceLocal = formatZonedLocalInput(reference, timezone)
+  const fixedDate = timelineParts(referenceLocal).date
+  const minimum = formatZonedLocalInput(
+    new Date((Math.floor(reference.getTime() / 60_000) + 1) * 60_000),
+    timezone,
+  )
+  const dayEnd = `${fixedDate}T23:59`
+
+  if (sameDayOnly && minimum >= dayEnd) {
+    return { dueAt: "", startAt: "" }
+  }
+
   const start = new Date(
     Math.ceil((reference.getTime() + 1) / 900_000) * 900_000,
   )
+  const roundedStart = formatZonedLocalInput(start, timezone)
+  const startAt = sameDayOnly && roundedStart >= dayEnd ? minimum : roundedStart
+  const suggestedDue = formatZonedLocalInput(
+    new Date(
+      (parseZonedLocalDateTime(startAt, timezone) ?? start).getTime() +
+        60 * 60_000,
+    ),
+    timezone,
+  )
 
   return {
-    dueAt: formatZonedLocalInput(
-      new Date(start.getTime() + 60 * 60_000),
-      timezone,
-    ),
-    startAt: formatZonedLocalInput(start, timezone),
+    dueAt: sameDayOnly && suggestedDue > dayEnd ? dayEnd : suggestedDue,
+    startAt,
   }
 }
 
@@ -58,12 +81,14 @@ function timelineParts(value: string) {
 }
 
 export function RestoreQuestScheduleDialog({
+  mode = "restore",
   input,
   onRestored,
   referenceNow,
   timezone,
   title,
 }: Readonly<{
+  mode?: "restore" | "reschedule"
   input: QuestTransitionInput
   onRestored: (task: RestoredTaskNotice) => void
   referenceNow: string
@@ -71,21 +96,43 @@ export function RestoreQuestScheduleDialog({
   title: string
 }>) {
   const router = useRouter()
+  const sameDayOnly = mode === "restore"
   const [open, setOpen] = useState(false)
   const [timeline, setTimeline] = useState(() =>
-    initialTimeline(referenceNow, timezone),
+    initialTimeline(referenceNow, timezone, sameDayOnly),
   )
+  const [pickerPortal, setPickerPortal] = useState<HTMLElement | null>(null)
   const [isPending, startTransition] = useTransition()
+  const mobileViewport =
+    typeof document !== "undefined"
+      ? document.getElementById("app-device-viewport")
+      : null
   const zoneLabel = timezoneAbbreviation(timezone)
   const referenceTime = new Date(referenceNow).getTime()
   const minimum = formatZonedLocalInput(
     new Date((Math.floor(referenceTime / 60_000) + 1) * 60_000),
     timezone,
   )
-  const invalidOrder = timeline.dueAt < timeline.startAt
+  const fixedDate = timelineParts(
+    formatZonedLocalInput(new Date(referenceNow), timezone),
+  ).date
+  const dayEnd = `${fixedDate}T23:59`
+  const scheduleClosed = sameDayOnly && minimum >= dayEnd
+  const outsideRestoreDay =
+    sameDayOnly &&
+    (timelineParts(timeline.startAt).date !== fixedDate ||
+      timelineParts(timeline.dueAt).date !== fixedDate)
+  const invalidOrder = Boolean(
+    timeline.startAt && timeline.dueAt && timeline.dueAt <= timeline.startAt,
+  )
   const elapsed = timeline.startAt < minimum || timeline.dueAt < minimum
   const invalid =
-    !timeline.startAt || !timeline.dueAt || invalidOrder || elapsed
+    !timeline.startAt ||
+    !timeline.dueAt ||
+    invalidOrder ||
+    elapsed ||
+    outsideRestoreDay ||
+    scheduleClosed
   const minimumParts = timelineParts(minimum)
   const startParts = timelineParts(timeline.startAt)
   const dueParts = timelineParts(timeline.dueAt)
@@ -102,13 +149,15 @@ export function RestoreQuestScheduleDialog({
       const nextValue = date && time ? `${date}T${time}` : ""
       const next = { ...current, [key]: nextValue }
 
-      if (key === "startAt" && nextValue && current.dueAt < nextValue) {
+      if (key === "startAt" && nextValue && current.dueAt <= nextValue) {
         const shiftedDue = parseZonedLocalDateTime(nextValue, timezone)
         if (shiftedDue) {
-          next.dueAt = formatZonedLocalInput(
+          const suggestedDue = formatZonedLocalInput(
             new Date(shiftedDue.getTime() + 60 * 60_000),
             timezone,
           )
+          next.dueAt =
+            sameDayOnly && suggestedDue > dayEnd ? dayEnd : suggestedDue
         }
       }
 
@@ -120,14 +169,44 @@ export function RestoreQuestScheduleDialog({
     if (invalid || isPending) return
 
     startTransition(async () => {
+      let restoringToast: number | string | undefined
+
+      function showRestoreError(message: string) {
+        if (restoringToast === undefined) {
+          toast.error(message)
+          return
+        }
+        toast.error(message, { id: restoringToast })
+      }
+
       try {
-        const result = await restoreQuestWithScheduleAction({
+        const restoreRequest = (
+          mode === "reschedule"
+            ? rescheduleMissedQuestAction
+            : restoreQuestWithScheduleAction
+        )({
           ...input,
           ...timeline,
         })
 
+        if (mode === "restore") {
+          restoringToast = toast.loading("Restoring task…")
+          setOpen(false)
+          router.replace("/today")
+        }
+
+        const result = await restoreRequest
+
         if (!result.ok) {
-          toast.error(result.error.message)
+          showRestoreError(result.error.message)
+          return
+        }
+
+        if (mode === "restore") {
+          if (restoringToast !== undefined) {
+            toast.success("Task restored", { id: restoringToast })
+          }
+          router.refresh()
           return
         }
 
@@ -135,7 +214,9 @@ export function RestoreQuestScheduleDialog({
         onRestored({ id: result.data.id, title })
         router.refresh()
       } catch {
-        toast.error("The task could not be restored. Refresh and retry.")
+        showRestoreError(
+          "The task could not be restored. It is still in Trash.",
+        )
       }
     })
   }
@@ -143,7 +224,10 @@ export function RestoreQuestScheduleDialog({
   return (
     <AlertDialog
       onOpenChange={(nextOpen) => {
-        if (nextOpen) setTimeline(initialTimeline(referenceNow, timezone))
+        if (nextOpen) {
+          if (sameDayOnly) router.prefetch("/today")
+          setTimeline(initialTimeline(referenceNow, timezone, sameDayOnly))
+        }
         setOpen(nextOpen)
       }}
       open={open}
@@ -151,10 +235,17 @@ export function RestoreQuestScheduleDialog({
       <AlertDialogTrigger asChild>
         <Button variant="outline">
           <ArchiveRestore aria-hidden="true" />
-          Restore Task
+          {mode === "reschedule" ? "Reschedule" : "Restore Task"}
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent className="restore-schedule-dialog">
+      <AlertDialogContent
+        className="restore-schedule-dialog"
+        disableDefaultOverlayBlur
+        overlayClassName="restore-schedule-dialog__overlay"
+        placement="viewport"
+        portalContainer={mobileViewport}
+        ref={setPickerPortal}
+      >
         <span aria-hidden="true" className="restore-schedule-dialog__orb" />
         <AlertDialogHeader className="restore-schedule-dialog__header">
           <AlertDialogMedia className="restore-schedule-dialog__media">
@@ -163,12 +254,16 @@ export function RestoreQuestScheduleDialog({
           </AlertDialogMedia>
           <div className="restore-schedule-dialog__heading-copy">
             <div className="restore-schedule-dialog__eyebrow">
-              <span>Recovery plan</span>
+              <span>{sameDayOnly ? "Recovery · Today" : "Recovery plan"}</span>
               <span>{zoneLabel}</span>
             </div>
-            <AlertDialogTitle>Set a new timeline</AlertDialogTitle>
+            <AlertDialogTitle>
+              {sameDayOnly ? "Restore for today" : "Set a new timeline"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Choose a fresh future window before returning this task to Home.
+              {sameDayOnly
+                ? "Choose exact start and finish times. Both must stay before midnight."
+                : "Choose a fresh future window before returning this task to Home."}
             </AlertDialogDescription>
           </div>
           <strong className="restore-schedule-dialog__task">{title}</strong>
@@ -184,21 +279,28 @@ export function RestoreQuestScheduleDialog({
             </span>
             <div className="restore-schedule-dialog__field">
               <div className="restore-schedule-dialog__field-heading">
-                <strong>New start</strong>
-                <span>When you will begin</span>
+                <div className="restore-schedule-dialog__field-title">
+                  <span aria-hidden="true">01</span>
+                  <strong>New start</strong>
+                </div>
+                <span>
+                  {sameDayOnly ? "Today · exact time" : "When you will begin"}
+                </span>
               </div>
               <div className="restore-schedule-dialog__controls">
                 <div>
                   <Label htmlFor={`restore-${input.questId}-start-date`}>
-                    Date
+                    {sameDayOnly ? "Date · fixed" : "Date"}
                   </Label>
                   <QuestDatePicker
                     ariaLabel={`Start date · ${zoneLabel}`}
+                    disabled={sameDayOnly}
                     id={`restore-${input.questId}-start-date`}
                     minDate={minimumParts.date}
                     onChange={(value) =>
                       updateTimeline("startAt", "date", value)
                     }
+                    portalContainer={pickerPortal}
                     value={startParts.date}
                   />
                 </div>
@@ -210,6 +312,7 @@ export function RestoreQuestScheduleDialog({
                     ariaLabel={`Start time · ${zoneLabel}`}
                     disabled={!startParts.date}
                     id={`restore-${input.questId}-start-time`}
+                    maxTime={sameDayOnly ? "23:59" : undefined}
                     minTime={
                       startParts.date === minimumParts.date
                         ? minimumParts.time
@@ -218,6 +321,8 @@ export function RestoreQuestScheduleDialog({
                     onChange={(value) =>
                       updateTimeline("startAt", "time", value)
                     }
+                    portalContainer={pickerPortal}
+                    showShortcuts={!sameDayOnly}
                     value={startParts.time}
                   />
                 </div>
@@ -236,19 +341,28 @@ export function RestoreQuestScheduleDialog({
             </span>
             <div className="restore-schedule-dialog__field">
               <div className="restore-schedule-dialog__field-heading">
-                <strong>New due time</strong>
-                <span>When it should be finished</span>
+                <div className="restore-schedule-dialog__field-title">
+                  <span aria-hidden="true">02</span>
+                  <strong>New due time</strong>
+                </div>
+                <span>
+                  {sameDayOnly
+                    ? "Today · before midnight"
+                    : "When it should be finished"}
+                </span>
               </div>
               <div className="restore-schedule-dialog__controls">
                 <div>
                   <Label htmlFor={`restore-${input.questId}-due-date`}>
-                    Date
+                    {sameDayOnly ? "Date · fixed" : "Date"}
                   </Label>
                   <QuestDatePicker
                     ariaLabel={`Due date · ${zoneLabel}`}
+                    disabled={sameDayOnly}
                     id={`restore-${input.questId}-due-date`}
                     minDate={startParts.date || minimumParts.date}
                     onChange={(value) => updateTimeline("dueAt", "date", value)}
+                    portalContainer={pickerPortal}
                     value={dueParts.date}
                   />
                 </div>
@@ -260,6 +374,7 @@ export function RestoreQuestScheduleDialog({
                     ariaLabel={`Due time · ${zoneLabel}`}
                     disabled={!dueParts.date}
                     id={`restore-${input.questId}-due-time`}
+                    maxTime={sameDayOnly ? "23:59" : undefined}
                     minTime={
                       dueParts.date === startParts.date
                         ? startParts.time
@@ -268,6 +383,8 @@ export function RestoreQuestScheduleDialog({
                           : undefined
                     }
                     onChange={(value) => updateTimeline("dueAt", "time", value)}
+                    portalContainer={pickerPortal}
+                    showShortcuts={!sameDayOnly}
                     value={dueParts.time}
                   />
                 </div>
@@ -278,15 +395,23 @@ export function RestoreQuestScheduleDialog({
           <p
             aria-live="polite"
             className="restore-schedule-dialog__note"
-            data-error={invalidOrder || elapsed}
+            data-error={
+              invalidOrder || elapsed || outsideRestoreDay || scheduleClosed
+            }
           >
             <History aria-hidden="true" />
             <span>
-              {invalidOrder
-                ? "Due time must be after the new start."
-                : elapsed
-                  ? "Both times must be in the future."
-                  : `Scheduled in ${zoneLabel}. The previous missed record stays safely in Progress.`}
+              {scheduleClosed
+                ? "Today's restoration scheduling window has ended."
+                : outsideRestoreDay
+                  ? "The restored task must start and finish today."
+                  : invalidOrder
+                    ? "Due time must be after the new start."
+                    : elapsed
+                      ? "Both times must be in the future."
+                      : sameDayOnly
+                        ? `Times are limited to today before midnight in ${zoneLabel}.`
+                        : `Scheduled in ${zoneLabel}. The previous missed record stays safely in Progress.`}
             </span>
           </p>
         </div>
@@ -304,7 +429,11 @@ export function RestoreQuestScheduleDialog({
             onClick={restoreWithTimeline}
           >
             <ArchiveRestore aria-hidden="true" />
-            {isPending ? "Restoring" : "Restore with new time"}
+            {isPending
+              ? "Saving…"
+              : mode === "reschedule"
+                ? "Reschedule task"
+                : "Restore to Home"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -15,7 +15,7 @@ test("registers, enters Today, logs out, and logs in", async ({
   await page.getByRole("button", { name: "Get started" }).click()
   await page.getByLabel("Name").fill("E2E Operator")
   await page.getByLabel("Email").fill(email)
-  await page.getByLabel("Password").fill(password)
+  await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Create" }).click()
 
   await expect(page).toHaveURL(/\/today$/u)
@@ -63,7 +63,7 @@ test("registers, enters Today, logs out, and logs in", async ({
   await expect(page).toHaveURL(/\/sign-in\?next=%2Fapp$/u)
   await page.getByRole("button", { name: "I already have an account" }).click()
   await page.getByLabel("Email").fill(email)
-  await page.getByLabel("Password").fill(password)
+  await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Enter" }).click()
 
   await expect(page).toHaveURL(/\/today$/u)
@@ -81,7 +81,7 @@ test("keeps sign-up and sign-in states separate and reports duplicate accounts",
   await page.goto("/sign-in")
   await page.getByRole("button", { name: "I already have an account" }).click()
   await page.getByLabel("Email").fill(email)
-  await page.getByLabel("Password").fill(password)
+  await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Enter" }).click()
   await expect(page.locator(".auth__error")).toHaveText(
     "Email or password is incorrect. Check your details and try again.",
@@ -91,7 +91,7 @@ test("keeps sign-up and sign-in states separate and reports duplicate accounts",
   await expect(page.locator(".auth__error")).toHaveCount(0)
   await page.getByLabel("Name").fill("Auth State E2E")
   await page.getByLabel("Email").fill(email)
-  await page.getByLabel("Password").fill(password)
+  await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page).toHaveURL(/\/today$/u)
 
@@ -102,7 +102,7 @@ test("keeps sign-up and sign-in states separate and reports duplicate accounts",
   await page.goto("/sign-up")
   await page.getByLabel("Name").fill("Duplicate Auth E2E")
   await page.getByLabel("Email").fill(email)
-  await page.getByLabel("Password").fill(password)
+  await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page.locator(".auth__error")).toHaveText(
     "An account with this email already exists. Sign in instead.",
@@ -111,13 +111,15 @@ test("keeps sign-up and sign-in states separate and reports duplicate accounts",
   await page.getByRole("button", { name: "Sign in" }).click()
   await expect(page.locator(".auth__error")).toHaveCount(0)
   await page.getByLabel("Email").fill(email)
-  await page.getByLabel("Password").fill("definitely-the-wrong-password")
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("definitely-the-wrong-password")
   await page.getByRole("button", { name: "Enter" }).click()
   await expect(page.locator(".auth__error")).toHaveText(
     "Email or password is incorrect. Check your details and try again.",
   )
 
-  await page.getByLabel("Password").fill(password)
+  await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Enter" }).click()
   await expect(page).toHaveURL(/\/today$/u)
 })

@@ -298,13 +298,52 @@ integrationDescribe("Quest repository and application services", () => {
       }),
     ).resolves.toMatchObject([{ id: deleted.id }])
     await expect(
+      restoreQuestWithSchedule(
+        database,
+        fixture.first,
+        {
+          dueAt: new Date("2026-08-09T11:30:00.000Z"),
+          expectedVersion: deleted.version,
+          questId: deleted.id,
+          startAt: new Date("2026-08-09T03:30:00.000Z"),
+        },
+        new Date("2026-08-08T17:40:00.000Z"),
+      ),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message:
+        "Restored task times must be later today and finish before midnight.",
+    })
+    await expect(
       restoreQuest(
         database,
         fixture.first,
         { expectedVersion: deleted.version, questId: deleted.id },
         new Date("2026-08-09T01:00:00.000Z"),
       ),
-    ).rejects.toMatchObject({ code: "CONFLICT" })
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message:
+        "This task can only be restored on the day it was moved to Trash.",
+    })
+
+    await expect(
+      restoreQuestWithSchedule(
+        database,
+        fixture.first,
+        {
+          dueAt: new Date("2026-08-09T11:30:00.000Z"),
+          expectedVersion: deleted.version,
+          questId: deleted.id,
+          startAt: new Date("2026-08-09T03:30:00.000Z"),
+        },
+        new Date("2026-08-09T01:00:00.000Z"),
+      ),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message:
+        "This task can only be restored on the day it was moved to Trash.",
+    })
 
     await expect(
       database

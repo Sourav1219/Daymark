@@ -54,6 +54,7 @@ import {
   resetPasswordAction,
   verifyEmailCodeAction,
 } from "@/features/authentication/application/actions"
+import { deliverAuthenticationEmail } from "@/features/authentication/server/authentication-email-delivery"
 
 const authenticationDatabase = {
   select: () => ({
@@ -143,6 +144,25 @@ describe("registerAction", () => {
     await vi.advanceTimersByTimeAsync(1)
     await result
     expect(settled).toBe(true)
+  })
+
+  it("reports a swallowed verification-email delivery failure", async () => {
+    signUpEmail.mockImplementationOnce(async () => {
+      await deliverAuthenticationEmail(() =>
+        Promise.reject(new Error("provider rejected message")),
+      ).catch(() => undefined)
+      return { user: { id: "new-user" } }
+    })
+
+    await expect(register()).resolves.toEqual({
+      error: {
+        code: "INTERNAL_ERROR",
+        message:
+          "Email delivery is temporarily unavailable. Please try again shortly.",
+      },
+      ok: false,
+    })
+    expect(cookieStore.set).not.toHaveBeenCalled()
   })
 })
 

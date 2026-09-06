@@ -4,7 +4,14 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { flushSync } from "react-dom"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Bell, Check, Clock3, Inbox } from "lucide-react"
+import {
+  ArrowUpRight,
+  Bell,
+  Check,
+  CheckCheck,
+  Clock3,
+  Inbox,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -36,7 +43,6 @@ const deadlineWindowMs = 30 * 60_000
 
 type InboxController = Readonly<{
   dueSoonQuests: readonly DueSoonQuestView[]
-  locallyReadDeadlineIds: ReadonlySet<string>
   markAllRead: () => void
   markDeadlineRead: (id: string) => void
   now: number
@@ -96,12 +102,15 @@ function useReminderInbox({
 }: Pick<ReminderInboxProps, "inbox" | "referenceNow">): InboxController {
   const router = useRouter()
   const [now, setNow] = useState(() => new Date(referenceNow).getTime())
+  const [sessionReadDeadlineIds, setSessionReadDeadlineIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set())
   const storedDeadlineSnapshot = useSyncExternalStore(
     subscribeToReadDeadlines,
     readStoredDeadlineSnapshot,
     () => "[]",
   )
-  const locallyReadDeadlineIds = useMemo<ReadonlySet<string>>(() => {
+  const storedReadDeadlineIds = useMemo<ReadonlySet<string>>(() => {
     try {
       const ids: unknown = JSON.parse(storedDeadlineSnapshot)
       return new Set(
@@ -111,6 +120,10 @@ function useReminderInbox({
       return new Set()
     }
   }, [storedDeadlineSnapshot])
+  const readDeadlineIds = useMemo(
+    () => new Set([...storedReadDeadlineIds, ...sessionReadDeadlineIds]),
+    [sessionReadDeadlineIds, storedReadDeadlineIds],
+  )
 
   useEffect(() => {
     // Local tick only. This keeps countdown copy live and costs nothing — it
@@ -133,32 +146,32 @@ function useReminderInbox({
     }
   }, [router])
 
-  const dueSoonQuests = inbox.dueSoonQuests.filter((quest) => {
+  const activeDueSoonQuests = inbox.dueSoonQuests.filter((quest) => {
     const remaining = new Date(quest.dueAt).getTime() - now
     return remaining > 0 && remaining < deadlineWindowMs
   })
-  const unreadDeadlines = dueSoonQuests.filter(
-    (quest) => !locallyReadDeadlineIds.has(deadlineAlertId(quest)),
+  const dueSoonQuests = activeDueSoonQuests.filter(
+    (quest) => !readDeadlineIds.has(deadlineAlertId(quest)),
   )
 
   function rememberDeadlineIds(ids: readonly string[]) {
-    const next = new Set(locallyReadDeadlineIds)
+    const next = new Set(readDeadlineIds)
     for (const id of ids) next.add(id)
+    setSessionReadDeadlineIds(next)
     storeReadDeadlineIds(next)
   }
 
   function markAllRead() {
-    const deadlineIds = unreadDeadlines.map(deadlineAlertId)
+    const deadlineIds = dueSoonQuests.map(deadlineAlertId)
     if (deadlineIds.length) rememberDeadlineIds(deadlineIds)
   }
 
   return {
     dueSoonQuests,
-    locallyReadDeadlineIds,
     markAllRead,
     markDeadlineRead: (id) => rememberDeadlineIds([id]),
     now,
-    unreadCount: unreadDeadlines.length,
+    unreadCount: dueSoonQuests.length,
   }
 }
 
@@ -173,31 +186,30 @@ function InboxList({
   onOpenTask?: ((questId: string) => void) | undefined
   timezone: string
 }>) {
-  const { dueSoonQuests, locallyReadDeadlineIds, markDeadlineRead, now } =
-    controller
+  const { dueSoonQuests, markDeadlineRead, now } = controller
 
   if (!dueSoonQuests.length) {
     if (compact) {
       return (
-        <div className="grid justify-items-center gap-1 py-4 text-center text-ink-muted">
-          <Inbox aria-hidden="true" className="size-5 text-system-blue/70" />
-          <p className="text-sm font-bold text-ink">
-            You&apos;re all caught up
-          </p>
-          <p className="text-xs">Nothing needs your attention right now.</p>
+        <div className="notification-empty notification-empty--compact">
+          <span className="notification-empty__icon">
+            <Inbox aria-hidden="true" />
+          </span>
+          <p>You&apos;re all caught up</p>
+          <small>Nothing needs your attention right now.</small>
         </div>
       )
     }
 
     return (
-      <div className="grid justify-items-center gap-2 py-8 text-center text-ink-muted">
-        <Inbox aria-hidden="true" className="size-7" />
-        <p className="text-sm font-medium text-ink">
-          You&apos;re all caught up
-        </p>
-        <p className="max-w-sm text-xs leading-relaxed">
+      <div className="notification-empty">
+        <span className="notification-empty__icon">
+          <Inbox aria-hidden="true" />
+        </span>
+        <p>You&apos;re all caught up</p>
+        <small>
           Open tasks with less than 30 minutes remaining will appear here.
-        </p>
+        </small>
       </div>
     )
   }
@@ -206,44 +218,37 @@ function InboxList({
     <ul
       aria-label="Reminder inbox"
       className={cn(
-        "grid gap-2",
-        compact && "max-h-72 gap-1.5 overflow-y-auto pr-1",
+        "notification-list",
+        compact && "notification-list--compact",
       )}
     >
       {dueSoonQuests.map((quest) => {
         const alertId = deadlineAlertId(quest)
-        const isRead = locallyReadDeadlineIds.has(alertId)
 
         return (
           <li
             className={cn(
-              "rounded-control border bg-surface-inset p-3",
-              isRead ? "border-border-soft" : "border-system-blue/25",
-              compact && "p-2.5",
+              "notification-item notification-item--unread",
+              compact && "notification-item--compact",
             )}
             key={alertId}
           >
             <article aria-label={`${quest.title} deadline alert`}>
-              <div className="flex items-start gap-3">
-                <span
-                  aria-hidden="true"
-                  className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-system-blue/10 text-system-blue"
-                >
-                  <Clock3 className="size-4" />
+              <div className="notification-item__body">
+                <span aria-hidden="true" className="notification-item__clock">
+                  <Clock3 />
                 </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-ink">{quest.title}</p>
-                    {!isRead ? (
-                      <span className="mt-1 size-2 shrink-0 rounded-full bg-system-blue">
-                        <span className="sr-only">Unread</span>
-                      </span>
-                    ) : null}
+                <div className="notification-item__content">
+                  <div className="notification-item__title-row">
+                    <p>{quest.title}</p>
+                    <span className="notification-item__unread-dot">
+                      <span className="sr-only">Unread</span>
+                    </span>
                   </div>
-                  <p className="mt-0.5 text-sm font-medium text-system-blue">
+                  <p className="notification-item__deadline">
                     {deadlineMessage(quest.dueAt, now)}
                   </p>
-                  <p className="mt-1 text-xs text-ink-muted">
+                  <p className="notification-item__due">
                     Due{" "}
                     <time dateTime={quest.dueAt}>
                       {formatZonedDateTime(new Date(quest.dueAt), timezone)}
@@ -253,11 +258,16 @@ function InboxList({
               </div>
               <div
                 className={cn(
-                  "mt-3 flex flex-wrap gap-2 pl-11",
-                  compact && "mt-2 pl-10",
+                  "notification-item__actions",
+                  compact && "notification-item__actions--compact",
                 )}
               >
-                <Button asChild size="sm" variant="outline">
+                <Button
+                  asChild
+                  className="notification-action notification-action--primary"
+                  size="sm"
+                  variant="outline"
+                >
                   <Link
                     href={questHomeHref(
                       quest.id,
@@ -265,19 +275,18 @@ function InboxList({
                     )}
                     onClick={() => onOpenTask?.(quest.id)}
                   >
-                    Open task
+                    Open task <ArrowUpRight aria-hidden="true" />
                   </Link>
                 </Button>
-                {!isRead ? (
-                  <Button
-                    onClick={() => markDeadlineRead(alertId)}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Check aria-hidden="true" /> Mark read
-                  </Button>
-                ) : null}
+                <Button
+                  className="notification-action notification-action--quiet"
+                  onClick={() => markDeadlineRead(alertId)}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Check aria-hidden="true" /> Mark read
+                </Button>
               </div>
             </article>
           </li>
@@ -296,12 +305,12 @@ function InboxToolbar({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3",
-        compact && "justify-end",
+        "notification-toolbar",
+        compact && "notification-toolbar--compact",
       )}
     >
       {!compact ? (
-        <p aria-live="polite" className="text-xs font-medium text-ink-muted">
+        <p aria-live="polite">
           {controller.unreadCount
             ? `${controller.unreadCount} unread ${controller.unreadCount === 1 ? "alert" : "alerts"}`
             : "No unread alerts"}
@@ -309,12 +318,13 @@ function InboxToolbar({
       ) : null}
       {controller.unreadCount ? (
         <Button
+          className="notification-action notification-action--quiet"
           onClick={controller.markAllRead}
           size="sm"
           type="button"
           variant="ghost"
         >
-          <Check aria-hidden="true" /> Mark all read
+          <CheckCheck aria-hidden="true" /> Mark all read
         </Button>
       ) : null}
     </div>
@@ -325,7 +335,7 @@ export function ReminderInboxPanel(props: ReminderInboxProps) {
   const controller = useReminderInbox(props)
 
   return (
-    <div className="grid gap-3">
+    <div className="notification-inbox-panel">
       <InboxToolbar controller={controller} />
       <InboxList controller={controller} timezone={props.timezone} />
     </div>
@@ -360,7 +370,7 @@ export function NotificationMenu(props: ReminderInboxProps) {
       <PopoverTrigger asChild>
         <Button
           aria-label={`Open notifications${controller.unreadCount ? `, ${controller.unreadCount} unread` : ""}`}
-          className="today-notification-button relative size-10"
+          className="today-notification-button"
           size="icon-lg"
           type="button"
           variant="outline"
@@ -378,37 +388,38 @@ export function NotificationMenu(props: ReminderInboxProps) {
         align="end"
         aria-describedby="notification-popover-description"
         aria-labelledby="notification-popover-title"
-        className="w-[min(19.5rem,calc(100vw-1.5rem))] gap-3 rounded-[18px] border border-white bg-white p-3 shadow-[0_18px_45px_-18px_rgba(34,62,128,0.42)]"
+        className="notification-popover"
+        collisionPadding={10}
         sideOffset={10}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-border-soft pb-2.5">
-          <div>
-            <h2
-              className="text-sm font-extrabold text-ink"
-              id="notification-popover-title"
-            >
-              Notifications
-            </h2>
-            <p
-              className="mt-0.5 text-xs text-ink-muted"
-              id="notification-popover-description"
-            >
-              Tasks ending soon
-            </p>
-          </div>
-          <span className="rounded-full bg-system-blue/10 px-2 py-1 text-[0.68rem] font-bold text-system-blue">
-            {controller.unreadCount
-              ? `${controller.unreadCount} new`
-              : "All read"}
+        <div className="notification-popover__header">
+          <span
+            className="notification-popover__header-icon"
+            aria-hidden="true"
+          >
+            <Bell />
           </span>
+          <div className="notification-popover__heading">
+            <div>
+              <h2 id="notification-popover-title">Notifications</h2>
+              <p id="notification-popover-description">Tasks ending soon</p>
+            </div>
+            <span className="notification-popover__status">
+              {controller.unreadCount
+                ? `${controller.unreadCount} new`
+                : "All clear"}
+            </span>
+          </div>
         </div>
-        <InboxToolbar compact controller={controller} />
-        <InboxList
-          compact
-          controller={controller}
-          onOpenTask={closeAndFocusTask}
-          timezone={props.timezone}
-        />
+        <div className="notification-popover__content">
+          <InboxToolbar compact controller={controller} />
+          <InboxList
+            compact
+            controller={controller}
+            onOpenTask={closeAndFocusTask}
+            timezone={props.timezone}
+          />
+        </div>
       </PopoverContent>
     </Popover>
   )

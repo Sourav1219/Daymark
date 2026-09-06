@@ -196,7 +196,7 @@
 
 .about-hero p {
   margin: 0.8rem 0 0;
-  color: #586a84;
+  color: #3e5270;
   font-size: 0.82rem;
   line-height: 1.62;
 }
@@ -262,7 +262,7 @@
 .about-purpose > p,
 .about-privacy p {
   margin: 0.45rem 0 0;
-  color: #63738c;
+  color: #4a5f7a;
   font-size: 0.76rem;
   line-height: 1.55;
 }
@@ -310,7 +310,7 @@
 
 .about-principles p {
   margin: 0.16rem 0 0;
-  color: #697990;
+  color: #4d6278;
   font-size: 0.67rem;
   line-height: 1.45;
 }
@@ -556,11 +556,41 @@
   color: #8b98ab;
 }
 
-/* Authenticated Contact page. */
+/* Contact — constrained to product mobile viewport. */
+.contact-shell {
+  min-height: 100dvh;
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(75, 125, 238, 0.16),
+      transparent 26rem
+    ),
+    #e8eef8;
+  color: #142642;
+  font-family: var(--font-nunito), var(--font-sans);
+}
+
+.contact-frame {
+  width: min(100%, 26rem);
+  min-height: 100dvh;
+  margin-inline: auto;
+  overflow-x: hidden;
+  border-inline: 1px solid rgba(46, 74, 126, 0.09);
+  background:
+    radial-gradient(
+      circle at 100% 8%,
+      rgba(105, 87, 227, 0.08),
+      transparent 13rem
+    ),
+    #f7f9fd;
+  box-shadow: 0 1.5rem 5rem rgba(28, 51, 93, 0.16);
+}
+
 .contact-page {
   display: grid;
   gap: 0.9rem;
-  padding-bottom: 0.75rem;
+  padding: max(0.85rem, env(safe-area-inset-top, 0px)) 1rem
+    calc(1.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .contact-header {
@@ -741,6 +771,7 @@
 }
 
 .contact-select-wrap select,
+.contact-field input,
 .contact-field textarea {
   width: 100%;
   border: 1px solid rgba(45, 76, 139, 0.14);
@@ -755,6 +786,12 @@
     border-color 160ms var(--ease-system),
     box-shadow 160ms var(--ease-system),
     background 160ms var(--ease-system);
+}
+
+.contact-field input {
+  min-height: 3rem;
+  padding: 0 0.85rem;
+  font-weight: 650;
 }
 
 .contact-select-wrap select {
@@ -783,12 +820,14 @@
 }
 
 .contact-select-wrap select:focus-visible,
+.contact-field input:focus-visible,
 .contact-field textarea:focus-visible {
   border-color: rgba(47, 107, 246, 0.48);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(47, 107, 246, 0.1);
 }
 
+.contact-field input::placeholder,
 .contact-field textarea::placeholder {
   color: #94a0b3;
 }
@@ -845,6 +884,62 @@
   font-weight: 900;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.contact-direct {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px dashed rgba(67, 96, 174, 0.2);
+  border-radius: 0.95rem;
+  background: rgba(246, 249, 255, 0.75);
+}
+
+.contact-direct > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.contact-direct small {
+  color: #63779e;
+  font-size: 0.52rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.contact-direct strong {
+  color: #293f5e;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.contact-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid rgba(47, 83, 154, 0.16);
+  border-radius: 0.65rem;
+  background: #fff;
+  color: #3f5575;
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 150ms var(--ease-system);
+}
+
+.contact-copy-btn:hover {
+  border-color: #3d7af1;
+  background: #edf4ff;
+  color: #255ecc;
+}
+
+.contact-copy-btn svg {
+  width: 0.8rem;
+  height: 0.8rem;
 }
 
 .contact-submit {
@@ -935,7 +1030,8 @@
 }
 
 @media (max-width: 28rem) {
-  .about-frame {
+  .about-frame,
+  .contact-frame {
     border-inline: 0;
     box-shadow: none;
   }

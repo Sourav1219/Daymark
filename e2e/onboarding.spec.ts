@@ -10,7 +10,9 @@ test("sends a new account directly home without an onboarding overlay", async ({
   await page.goto("/sign-up?next=%2Fprofile")
   await page.getByLabel("Name").fill("First Run Student")
   await page.getByLabel("Email").fill(`onboarding-${randomUUID()}@example.com`)
-  await page.getByLabel("Password").fill("correct-horse-battery-staple")
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("correct-horse-battery-staple")
   await page.getByRole("button", { name: "Create" }).click()
 
   await expect(page).toHaveURL(/\/today$/u)

@@ -16,7 +16,10 @@ import { QuestFilterBar } from "@/features/quests/components/quest-filter-bar"
 import { QuestActiveBoard } from "@/features/quests/components/quest-active-board"
 import { QuestList } from "@/features/quests/components/quest-list"
 import { TaskCreatedPopup } from "@/features/quests/components/task-created-popup"
-import { TaskCompletedPopup } from "@/features/quests/components/task-completed-popup"
+import {
+  TaskCompletedPopup,
+  taskCompletedResultDurationMs,
+} from "@/features/quests/components/task-completed-popup"
 import { StreakButton } from "@/features/progression/components/streak-button"
 import {
   TaskCompletionCelebrationProvider,
@@ -48,6 +51,7 @@ const navigation = vi.hoisted(() => ({
 vi.mock("@/features/quests/application/actions", () => questActions)
 
 vi.mock("@/features/offline/components/offline-provider", () => ({
+  useOptionalOffline: () => null,
   useOffline: () => ({
     queueCompletion: vi.fn(),
     snapshotQuests: vi.fn().mockResolvedValue(undefined),
@@ -343,6 +347,7 @@ describe("Quest organisation controls", () => {
 
     await user.tab()
     await user.tab()
+    await user.tab()
     expect(deleteTask).toHaveFocus()
     expect(task.parentElement).toHaveAttribute("data-actions-open", "true")
 
@@ -358,19 +363,33 @@ describe("Quest organisation controls", () => {
   })
 
   it("reopens a task when completion is undone", async () => {
-    questActions.reopenQuestAction.mockResolvedValue({
+    expect(taskCompletedResultDurationMs).toBe(8_000)
+    let confirmUndo: (() => void) | undefined
+    const undoRequest = new Promise<{
       data: {
-        id: "completed-task",
-        progression: { totalXp: 0, xpDelta: -35 },
-        version: 3,
-      },
-      ok: true,
+        id: string
+        progression: { totalXp: number; xpDelta: number }
+        version: number
+      }
+      ok: true
+    }>((resolve) => {
+      confirmUndo = () =>
+        resolve({
+          data: {
+            id: "completed-task",
+            progression: { totalXp: 0, xpDelta: -35 },
+            version: 3,
+          },
+          ok: true,
+        })
     })
+    questActions.reopenQuestAction.mockReturnValue(undoRequest)
+    const onDismiss = vi.fn()
     const user = userEvent.setup()
 
     render(
       <TaskCompletedPopup
-        onDismiss={vi.fn()}
+        onDismiss={onDismiss}
         task={{
           id: "completed-task",
           title: "Morning workout",
@@ -381,15 +400,28 @@ describe("Quest organisation controls", () => {
     )
 
     expect(screen.getByText("+35 XP")).toBeVisible()
+    const refreshCallsBeforeUndo = navigation.refresh.mock.calls.length
     await user.click(screen.getByRole("button", { name: "Undo completion" }))
+    expect(screen.getByText("Completion undone")).toBeVisible()
+    expect(navigation.refresh).toHaveBeenCalledTimes(refreshCallsBeforeUndo)
+    expect(navigation.prefetch).toHaveBeenCalledWith("/today")
 
+    const continueButton = screen.getByRole("button", { name: "Continue" })
+    expect(continueButton).toBeEnabled()
+    await user.click(continueButton)
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(navigation.replace).toHaveBeenCalledWith("/today")
+
+    expect(questActions.reopenQuestAction).toHaveBeenCalledWith({
+      expectedVersion: 2,
+      questId: "completed-task",
+    })
+    confirmUndo?.()
     await waitFor(() =>
-      expect(questActions.reopenQuestAction).toHaveBeenCalledWith({
-        expectedVersion: 2,
-        questId: "completed-task",
-      }),
+      expect(navigation.refresh).toHaveBeenCalledTimes(
+        refreshCallsBeforeUndo + 1,
+      ),
     )
-    expect(await screen.findByText("Completion undone")).toBeVisible()
   })
 
   it("undoes a newly created task from the centered confirmation", async () => {
@@ -469,15 +501,7 @@ describe("Quest organisation controls", () => {
     ).toHaveAttribute("href", "/today?task=created-task")
   })
 
-  it("keeps Search empty until a query is entered and then shows only matches", async () => {
-    questActions.permanentlyDeleteQuestAction.mockResolvedValue({
-      data: { id: "recoverable", version: 2 },
-      ok: true,
-    })
-    questActions.restoreQuestWithScheduleAction.mockResolvedValue({
-      data: { id: "recoverable", version: 2 },
-      ok: true,
-    })
+  it("renders Create and Trash tabs on QuestActiveBoard and does not display active tasks", async () => {
     const user = userEvent.setup()
 
     render(
@@ -496,35 +520,75 @@ describe("Quest organisation controls", () => {
         isFiltered={false}
         labels={[]}
         parentOptions={[]}
-        quests={[quest("hidden-until-search"), quest("unrelated-task")]}
+        quests={[quest("visible-task"), quest("another-task")]}
         referenceNow="2026-08-13T12:00:00.000Z"
         storageAvailable
         timezone="UTC"
       />,
     )
 
-    await user.click(screen.getByRole("tab", { name: /Search/i }))
+    // Create tab should be selected by default with task creation form rendered
+    expect(screen.getByRole("tab", { name: /Create/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    )
+    expect(screen.getByLabelText("Task title")).toBeVisible()
+    expect(screen.getByRole("button", { name: "Create Task" })).toBeVisible()
 
-    expect(screen.getByText("Search for a task")).toBeVisible()
-    expect(
-      screen.queryByText("Quest hidden-until-search"),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByText("Quest unrelated-task")).not.toBeInTheDocument()
+    // No active tasks tab or active task cards should exist
+    expect(screen.queryByRole("tab", { name: /^Tasks$/i })).toBeNull()
+    expect(screen.queryByText("Quest visible-task")).not.toBeInTheDocument()
+    expect(screen.queryByText("Quest another-task")).not.toBeInTheDocument()
 
-    await user.type(screen.getByRole("searchbox", { name: "Search" }), "hidden")
-    expect(screen.getByText("Quest hidden-until-search")).toBeVisible()
-    expect(screen.queryByText("Quest unrelated-task")).not.toBeInTheDocument()
-    expect(screen.getByText("Search result")).toBeVisible()
-    expect(
-      screen.getByRole("button", {
-        name: "Complete Quest hidden-until-search",
-      }),
-    ).toBeVisible()
+    // Trash tab should exist and show deleted tasks when clicked
+    const trashTab = screen.getByRole("tab", { name: /Trash/i })
+    expect(trashTab).toBeVisible()
+    expect(screen.getByText("Quest recoverable")).not.toBeVisible()
 
-    await user.click(screen.getByRole("tab", { name: /Trash/i }))
+    await user.click(trashTab)
+    expect(trashTab).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByText("Quest recoverable")).toBeVisible()
+  })
+
+  it("provides Trash access and restoration in QuestList deleted mode", async () => {
+    let confirmRestore: (() => void) | undefined
+    const restoreRequest = new Promise<{
+      data: { id: string; version: number }
+      ok: true
+    }>((resolve) => {
+      confirmRestore = () =>
+        resolve({ data: { id: "recoverable", version: 2 }, ok: true })
+    })
+
+    questActions.permanentlyDeleteQuestAction.mockResolvedValue({
+      data: { id: "recoverable", version: 2 },
+      ok: true,
+    })
+    questActions.restoreQuestWithScheduleAction.mockReturnValue(restoreRequest)
+    const user = userEvent.setup()
+
+    render(
+      <QuestList
+        emptyDescription="Trash is empty"
+        emptyTitle="Trash is empty"
+        gates={[]}
+        mode="deleted"
+        parentOptions={[]}
+        quests={[
+          {
+            ...quest("recoverable"),
+            deletedAt: "2026-08-13T09:00:00.000Z",
+          },
+        ]}
+        referenceNow="2026-08-13T12:00:00.000Z"
+        storageAvailable
+        timezone="UTC"
+      />,
+    )
+
     expect(screen.getByText("Quest recoverable")).toBeVisible()
     expect(screen.getByText("Ready to recover")).toBeVisible()
-    expect(screen.getByText("Restorable for 30 days")).toBeVisible()
+    expect(screen.getByText("Restorable today")).toBeVisible()
     expect(screen.getByText(/Moved to Trash/u)).toBeVisible()
     expect(screen.getByRole("button", { name: "Restore Task" })).toBeVisible()
     expect(screen.getByRole("button", { name: "Delete Task" })).toBeVisible()
@@ -535,7 +599,7 @@ describe("Quest organisation controls", () => {
     expect(trashCard).toHaveClass("trash-task-card")
     expect(
       within(trashCard).getByText(
-        "Restore with a new timeline or remove this task permanently.",
+        "Restore with a new timeline before today ends, or remove this task permanently.",
       ),
     ).toBeVisible()
 
@@ -565,7 +629,7 @@ describe("Quest organisation controls", () => {
 
     await user.click(screen.getByRole("button", { name: "Restore Task" }))
     const restoreTimeline = screen.getByRole("alertdialog", {
-      name: "Set a new timeline",
+      name: "Restore for today",
     })
     const restoreForm = within(restoreTimeline)
     expect(restoreTimeline).toBeVisible()
@@ -581,24 +645,43 @@ describe("Quest organisation controls", () => {
     expect(restoreForm.getByLabelText("Due time · UTC")).toHaveTextContent(
       "13:15",
     )
-    await user.click(restoreForm.getByLabelText("Start date · UTC"))
-    expect(screen.getByText("Select a date")).toBeVisible()
+    expect(restoreForm.getByLabelText("Start date · UTC")).toBeDisabled()
+    expect(restoreForm.getByLabelText("Due date · UTC")).toBeDisabled()
+    expect(
+      screen.queryByRole("dialog", { name: "Select a date" }),
+    ).not.toBeInTheDocument()
+    await user.click(restoreForm.getByLabelText("Start time · UTC"))
+    const timePicker = screen.getByRole("dialog", {
+      name: "Choose an exact time",
+    })
+    expect(timePicker).toBeVisible()
+    expect(restoreTimeline).toContainElement(timePicker)
+    expect(screen.queryByLabelText("Time shortcuts")).not.toBeInTheDocument()
+    expect(
+      screen.getByLabelText("Start time · UTC exact value"),
+    ).toHaveAttribute("max", "23:59")
     await user.keyboard("{Escape}")
-    await user.click(
-      screen.getByRole("button", { name: "Restore with new time" }),
-    )
+    const refreshCallsBeforeRestore = navigation.refresh.mock.calls.length
+    await user.click(screen.getByRole("button", { name: "Restore to Home" }))
+    expect(navigation.prefetch).toHaveBeenCalledWith("/today")
+    expect(navigation.replace).toHaveBeenCalledWith("/today")
+    expect(navigation.refresh).toHaveBeenCalledTimes(refreshCallsBeforeRestore)
     expect(questActions.restoreQuestWithScheduleAction).toHaveBeenCalledWith({
       dueAt: "2026-08-13T13:15",
       expectedVersion: 1,
       questId: "recoverable",
       startAt: "2026-08-13T12:15",
     })
-    expect(await screen.findByText("Task restored!")).toBeVisible()
-    expect(screen.getByText("Back in motion")).toBeVisible()
-    expect(screen.getByRole("dialog")).toHaveTextContent("Quest recoverable")
+    confirmRestore?.()
+    await waitFor(() =>
+      expect(navigation.refresh).toHaveBeenCalledTimes(
+        refreshCallsBeforeRestore + 1,
+      ),
+    )
+    expect(screen.queryByText("Task restored!")).not.toBeInTheDocument()
   })
 
-  it("keeps an expired task deletable after its restore window closes", async () => {
+  it("keeps a task deletable after its local restore day ends", async () => {
     render(
       <QuestList
         emptyDescription="Trash is empty"
@@ -607,7 +690,7 @@ describe("Quest organisation controls", () => {
         quests={[
           {
             ...quest("expired-copy"),
-            deletedAt: "2026-07-12T09:00:00.000Z",
+            deletedAt: "2026-08-12T23:30:00.000Z",
           },
         ]}
         referenceNow="2026-08-13T12:00:00.000Z"
@@ -615,8 +698,8 @@ describe("Quest organisation controls", () => {
       />,
     )
 
-    expect(screen.getByText("Recovery expired")).toBeVisible()
-    expect(screen.getByText("Restore window expired")).toBeVisible()
+    expect(screen.getByText("Restore unavailable")).toBeVisible()
+    expect(screen.getByText("Restore day ended")).toBeVisible()
     expect(
       screen.getByText(
         "This task can still be permanently removed from Trash.",
@@ -847,7 +930,7 @@ describe("Quest organisation controls", () => {
     ).not.toBeInTheDocument()
   })
 
-  it("preserves archived Gate and unavailable parent selections", () => {
+  it("preserves an existing parent without showing a parent selector", () => {
     render(
       <QuestFormFields
         defaults={{
@@ -862,7 +945,6 @@ describe("Quest organisation controls", () => {
         }}
         gates={[]}
         idPrefix="preserve"
-        parentOptions={[]}
       />,
     )
 
@@ -870,9 +952,32 @@ describe("Quest organisation controls", () => {
       "00000000-0000-4000-8000-000000000002",
     )
     expect(screen.getByRole("option", { name: "Archived Gate" })).toBeVisible()
-    expect(screen.getByLabelText("Parent task")).toHaveValue(
+    expect(screen.queryByLabelText("Parent task")).not.toBeInTheDocument()
+    expect(document.querySelector('input[name="parentTaskId"]')).toHaveValue(
       "00000000-0000-4000-8000-000000000001",
     )
+  })
+
+  it("renders classification options and sets taskType in form with custom support", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <QuestFormFields
+        idPrefix="classification"
+        timezone="UTC"
+        variant="create"
+      />,
+    )
+
+    expect(screen.getByRole("group", { name: "Task type" })).toBeVisible()
+    expect(screen.queryByRole("group", { name: "Effort" })).toBeNull()
+
+    await user.click(screen.getByLabelText("Work"))
+    expect(screen.getByLabelText("Work")).toBeChecked()
+
+    await user.click(screen.getByLabelText("Custom"))
+    expect(screen.getByLabelText("Custom")).toBeChecked()
+    expect(screen.getByPlaceholderText("Enter custom task type…")).toBeVisible()
   })
 
   it("applies schedule presets and keeps priority selection explicit", async () => {
@@ -950,6 +1055,37 @@ describe("Quest organisation controls", () => {
     expect(screen.getByRole("button", { name: "Use time" })).toBeDisabled()
     fireEvent.change(exactTime, { target: { value: "12:08" } })
     expect(onChange).toHaveBeenCalledWith("12:08")
+    expect(screen.getByRole("button", { name: "Use time" })).toBeEnabled()
+  })
+
+  it("supports a manual-only time picker bounded by midnight", async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <QuestTimePicker
+        ariaLabel="Restore time · UTC"
+        disabled={false}
+        id="restore-time"
+        maxTime="23:59"
+        minTime="21:00"
+        onChange={onChange}
+        showShortcuts={false}
+        value="22:00"
+      />,
+    )
+
+    await user.click(screen.getByLabelText("Restore time · UTC"))
+
+    expect(screen.queryByLabelText("Time shortcuts")).not.toBeInTheDocument()
+    const exactTime = screen.getByLabelText("Restore time · UTC exact value")
+    expect(exactTime).toHaveAttribute("max", "23:59")
+    expect(exactTime).toHaveAttribute("min", "21:00")
+    fireEvent.change(exactTime, { target: { value: "20:59" } })
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByRole("button", { name: "Use time" })).toBeDisabled()
+    fireEvent.change(exactTime, { target: { value: "22:07" } })
+    expect(onChange).toHaveBeenCalledWith("22:07")
     expect(screen.getByRole("button", { name: "Use time" })).toBeEnabled()
   })
 

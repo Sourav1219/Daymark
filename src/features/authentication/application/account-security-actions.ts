@@ -20,6 +20,8 @@ import { getAuth } from "@/features/authentication/server/auth"
 import type { ActionResult } from "@/lib/actions/action-result"
 import { validationFailure } from "@/lib/actions/action-helpers"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
+import { and, eq, isNotNull } from "drizzle-orm"
+import { accounts } from "@/db/schema"
 import { z } from "zod"
 import {
   publishRealtimeEvent,
@@ -41,7 +43,17 @@ export type ExportDataState = ActionResult<{
 export type DeleteAccountState = ActionResult<{ deleted: true }> | null
 
 const revokeSessionSchema = z.object({ sessionId: z.uuid() })
-const deleteAccountSchema = z.object({ password: z.string().min(1).max(128) })
+const deleteAccountPasswordSchema = z.object({
+  password: z.string().min(1).max(128),
+})
+const deleteAccountConfirmationSchema = z.object({
+  confirmation: z
+    .string()
+    .trim()
+    .refine((val) => val.toUpperCase() === "DELETE", {
+      message: 'Type "DELETE" to confirm account deletion.',
+    }),
+})
 
 async function accountRateLimitFailure(userId: string) {
   const limit = await enforceRateLimit({
@@ -158,37 +170,57 @@ export async function deleteAccountAction(
   const limited = await accountRateLimitFailure(user.id)
   if (limited) return limited
 
-  const parsed = deleteAccountSchema.safeParse({
-    password: formData.get("password"),
-  })
-  if (!parsed.success) {
-    return validationFailure(
-      "Enter your password to confirm account deletion.",
-      { password: ["Your password is required."] },
-    )
-  }
+  const database = getDatabase()
+  const [credentialAccount] = await database
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(and(eq(accounts.userId, user.id), isNotNull(accounts.password)))
+    .limit(1)
 
-  // The password check runs against the live auth provider before any purge;
-  // a failed verification leaves every record untouched.
-  const verification = await getAuth()
-    .api.verifyPassword({
-      body: { password: parsed.data.password },
-      headers: await headers(),
+  const hasPassword = Boolean(credentialAccount)
+
+  if (hasPassword) {
+    const parsed = deleteAccountPasswordSchema.safeParse({
+      password: formData.get("password"),
     })
-    .catch(() => null)
+    if (!parsed.success) {
+      return validationFailure(
+        "Enter your password to confirm account deletion.",
+        { password: ["Your password is required."] },
+      )
+    }
 
-  if (!verification?.status) {
-    return {
-      error: {
-        code: "VALIDATION_ERROR",
-        fieldErrors: { password: ["That password is not correct."] },
-        message: "Review the deletion confirmation and try again.",
-      },
-      ok: false,
+    // The password check runs against the live auth provider before any purge;
+    // a failed verification leaves every record untouched.
+    const verification = await getAuth()
+      .api.verifyPassword({
+        body: { password: parsed.data.password },
+        headers: await headers(),
+      })
+      .catch(() => null)
+
+    if (!verification?.status) {
+      return {
+        error: {
+          code: "VALIDATION_ERROR",
+          fieldErrors: { password: ["That password is not correct."] },
+          message: "Review the deletion confirmation and try again.",
+        },
+        ok: false,
+      }
+    }
+  } else {
+    const parsed = deleteAccountConfirmationSchema.safeParse({
+      confirmation: formData.get("confirmation"),
+    })
+    if (!parsed.success) {
+      return validationFailure('Type "DELETE" to confirm account deletion.', {
+        confirmation: ['Type "DELETE" exactly to confirm.'],
+      })
     }
   }
 
-  const summary = await deleteUserAndOwnedData(getDatabase(), user.id)
+  const summary = await deleteUserAndOwnedData(database, user.id)
 
   if (summary.attachmentKeys.length > 0) {
     await removeAttachmentObjects(summary.attachmentKeys)

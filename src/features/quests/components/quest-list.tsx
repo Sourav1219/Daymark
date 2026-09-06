@@ -59,8 +59,8 @@ import {
   type RestoredTaskNotice,
 } from "@/features/quests/components/task-restored-popup"
 import { maxSubquestDepth } from "@/features/quests/domain/subquest-depth"
+import { canRestoreTrashedTask } from "@/features/quests/domain/trash-recovery"
 import {
-  trashRetentionMilliseconds,
   type QuestPriority,
   type QuestView,
 } from "@/features/quests/domain/types"
@@ -406,7 +406,6 @@ type QuestCardProps = Readonly<{
   onOrderPointerDown: () => void
   onPermanentlyDeleted: (task: DeletedTaskNotice) => void
   onRestored: (task: RestoredTaskNotice) => void
-  parentOptions?: readonly QuestParentOption[] | undefined
   quest: QuestListEntry
   reorderable: boolean
   attachments: readonly AttachmentView[]
@@ -431,7 +430,6 @@ function QuestCard({
   onOrderPointerDown,
   onPermanentlyDeleted,
   onRestored,
-  parentOptions,
   quest,
   referenceNow,
   reorderable,
@@ -444,12 +442,11 @@ function QuestCard({
   const canAddSubquest =
     (mode === "active" || mode === "search" || mode === "today") &&
     depth < maxSubquestDepth
-  const restorable =
-    quest.deletedAt !== null &&
-    new Date(referenceNow).getTime() - new Date(quest.deletedAt).getTime() >=
-      0 &&
-    new Date(referenceNow).getTime() - new Date(quest.deletedAt).getTime() <=
-      trashRetentionMilliseconds
+  const restorable = canRestoreTrashedTask(
+    quest.deletedAt,
+    referenceNow,
+    timezone,
+  )
 
   if (mode === "deleted") {
     return (
@@ -469,7 +466,7 @@ function QuestCard({
               <div>
                 <span className="trash-task-card__eyebrow">Trash</span>
                 <strong>
-                  {restorable ? "Ready to recover" : "Recovery expired"}
+                  {restorable ? "Ready to recover" : "Restore unavailable"}
                 </strong>
               </div>
             </div>
@@ -513,13 +510,11 @@ function QuestCard({
               <span aria-hidden="true" className="trash-task-card__status" />
               <div>
                 <strong>
-                  {restorable
-                    ? "Restorable for 30 days"
-                    : "Restore window expired"}
+                  {restorable ? "Restorable today" : "Restore day ended"}
                 </strong>
                 <span>
                   {restorable
-                    ? "Restore with a new timeline or remove this task permanently."
+                    ? "Restore with a new timeline before today ends, or remove this task permanently."
                     : "This task can still be permanently removed from Trash."}
                 </span>
               </div>
@@ -644,7 +639,6 @@ function QuestCard({
                   <div className="quest-search-card__manage-panel">
                     <QuestEditForm
                       gates={gates}
-                      parentOptions={parentOptions}
                       quest={quest}
                       timezone={timezone}
                     />
@@ -785,12 +779,7 @@ function QuestCard({
         ) : null}
 
         {!quest.optimistic ? (
-          <QuestEditForm
-            gates={gates}
-            parentOptions={parentOptions}
-            quest={quest}
-            timezone={timezone}
-          />
+          <QuestEditForm gates={gates} quest={quest} timezone={timezone} />
         ) : null}
 
         {labels && !quest.optimistic ? (
@@ -1149,7 +1138,6 @@ export function QuestList({
             }}
             onPermanentlyDeleted={setPermanentlyDeletedTask}
             onRestored={setRestoredTask}
-            parentOptions={parentOptions}
             quest={quest}
             referenceNow={referenceNow}
             reorderable={reorderable}

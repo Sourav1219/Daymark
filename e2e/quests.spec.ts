@@ -12,7 +12,9 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
   await page.goto("/sign-up")
   await page.getByLabel("Name").fill("Quest Operator")
   await page.getByLabel("Email").fill(`quest-${randomUUID()}@example.com`)
-  await page.getByLabel("Password").fill("correct-horse-battery-staple")
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("correct-horse-battery-staple")
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page).toHaveURL(/\/today$/u)
 
@@ -68,6 +70,7 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
   await page.getByRole("link", { name: "Continue" }).click()
 
   await page.goto("/quests")
+  await expect(page.getByLabel("Parent task")).toHaveCount(0)
   await page.getByRole("tab", { name: /Search/u }).click()
   await page.getByRole("searchbox", { name: "Search" }).fill(originalTitle)
 
@@ -77,6 +80,7 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
   await quest.getByText("Manage", { exact: true }).click()
   await quest.getByText("Edit Task", { exact: true }).click()
   const editPanel = quest.locator("form").filter({ hasText: "Save changes" })
+  await expect(editPanel.getByLabel("Parent task")).toHaveCount(0)
   await editPanel.getByLabel("Task title").fill(editedTitle)
   await editPanel.getByLabel("Priority").selectOption("critical")
   await editPanel.getByRole("button", { name: "Save changes" }).click()
@@ -170,27 +174,20 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
   await expect(trashed).toBeVisible()
   await trashed.getByRole("button", { name: "Restore Task" }).click()
   const restoreTimeline = page.getByRole("alertdialog", {
-    name: "Set a new timeline",
+    name: "Restore for today",
   })
   await expect(restoreTimeline).toBeVisible()
-  await expect(restoreTimeline.getByLabel("Start date · IST")).toBeVisible()
+  await expect(restoreTimeline.getByLabel("Start date · IST")).toBeDisabled()
   await expect(restoreTimeline.getByLabel("Start time · IST")).toBeVisible()
-  await expect(restoreTimeline.getByLabel("Due date · IST")).toBeVisible()
+  await expect(restoreTimeline.getByLabel("Due date · IST")).toBeDisabled()
   await expect(restoreTimeline.getByLabel("Due time · IST")).toBeVisible()
-  await restoreTimeline.getByLabel("Start date · IST").click()
-  await expect(page.getByText("Select a date", { exact: true })).toBeVisible()
-  await page.keyboard.press("Escape")
   await restoreTimeline.getByLabel("Start time · IST").click()
   await expect(page.getByLabel("Start time · IST exact value")).toBeVisible()
+  await expect(page.getByLabel("Time shortcuts")).toHaveCount(0)
   await page.keyboard.press("Escape")
-  await restoreTimeline
-    .getByRole("button", { name: "Restore with new time" })
-    .click()
-  await expect(trashed).toBeHidden()
-  const restoredDialog = page.getByRole("dialog", { name: "Task restored!" })
-  await expect(restoredDialog).toBeVisible()
-  await expect(restoredDialog.getByText(editedTitle)).toBeVisible()
-  await restoredDialog.getByRole("button", { name: "Continue" }).click()
+  await restoreTimeline.getByRole("button", { name: "Restore to Home" }).click()
+  await expect(page).toHaveURL(/\/today$/u)
+  await expect(page.getByText(editedTitle, { exact: true })).toBeVisible()
 
   await page.getByRole("tab", { name: /Search/u }).click()
   await expect(page.getByRole("article", { name: editedTitle })).toBeVisible()

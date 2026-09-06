@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import { GateCard } from "@/features/gates/components/gate-card"
 import { GateCreateForm } from "@/features/gates/components/gate-create-form"
+import { GateOfflineSync } from "@/features/gates/components/gate-offline-sync"
 import type { GateView } from "@/features/gates/domain/types"
 import { getGateList } from "@/features/gates/queries/gate-query-service"
 import { cn } from "@/lib/utils"
@@ -96,6 +97,7 @@ export async function GateRoute({
         headingId="archived-gate-heading"
         title="Archived Lists"
       />
+      <GateOfflineSync gates={[...active, ...archived]} />
     </div>
   )
 }

@@ -36,9 +36,9 @@ function TasksLoadingState() {
           <div className="quest-overview__heading">
             <div>
               <span>Workspace</span>
-              <h1>Tasks</h1>
+              <h1>Create Task</h1>
             </div>
-            <p>Create a task or search everything you have.</p>
+            <p>Create and schedule a new task or manage trash.</p>
           </div>
         </header>
 
@@ -51,15 +51,6 @@ function TasksLoadingState() {
             type="button"
           >
             <Plus /> Create <span>Build a new task</span>
-          </button>
-          <button
-            aria-selected="false"
-            className="quest-studio__tab"
-            disabled
-            role="tab"
-            type="button"
-          >
-            <Search /> Search <span>Find and refine</span>
           </button>
           <button
             aria-selected="false"

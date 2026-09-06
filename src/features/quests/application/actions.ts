@@ -1,6 +1,14 @@
 "use server"
 
 import { getDatabase } from "@/db/client"
+import {
+  classifyQuest,
+  rescheduleMissedQuest,
+} from "@/features/quests/mutations/quest-mutation-service"
+import {
+  classifyQuestSchema,
+  type ClassifyQuestCommand,
+} from "@/features/quests/validation/classification-validation"
 import { requireWorkspaceAccess } from "@/features/authentication/server/authorization"
 import { QuestServiceError } from "@/features/quests/domain/errors"
 import {
@@ -89,6 +97,7 @@ export async function createQuestAction(
   const settings = await getUserSettings(access)
   const parsed = parseCreateQuestForm(
     {
+      customType: formData.get("customType") || undefined,
       description: formData.get("description"),
       dueAt: formData.get("dueAt"),
       parentTaskId: formData.get("parentTaskId"),
@@ -96,6 +105,7 @@ export async function createQuestAction(
       projectId: formData.get("projectId"),
       recurrenceRule: formData.get("recurrenceRule"),
       startAt: formData.get("startAt"),
+      taskType: formData.get("taskType") || undefined,
       title: formData.get("title"),
     },
     settings.timezone,
@@ -113,6 +123,29 @@ export async function createQuestAction(
   )
 }
 
+export async function classifyQuestAction(input: ClassifyQuestCommand) {
+  const access = await requireWorkspaceAccess()
+  const parsed = classifyQuestSchema.safeParse(input)
+  if (!parsed.success)
+    return validationFailure("Choose a valid task type or priority.", {})
+  return runQuestMutation(access.userId, [], () =>
+    classifyQuest(getDatabase(), access, parsed.data),
+  )
+}
+
+export async function rescheduleMissedQuestAction(
+  input: RestoreQuestScheduleInput,
+) {
+  const access = await requireWorkspaceAccess()
+  const settings = await getUserSettings(access)
+  const parsed = parseRestoreQuestSchedule(input, settings.timezone)
+  if (!parsed.success)
+    return validationFailure("Choose a future start and deadline.", {})
+  return runQuestMutation(access.userId, lifecyclePaths, () =>
+    rescheduleMissedQuest(getDatabase(), access, parsed.data),
+  )
+}
+
 export async function editQuestAction(
   _previousState: QuestActionState,
   formData: FormData,
@@ -121,6 +154,7 @@ export async function editQuestAction(
   const settings = await getUserSettings(access)
   const parsed = parseEditQuestForm(
     {
+      customType: formData.get("customType") || undefined,
       description: formData.get("description"),
       dueAt: formData.get("dueAt"),
       expectedVersion: formData.get("expectedVersion"),
@@ -130,6 +164,7 @@ export async function editQuestAction(
       questId: formData.get("questId"),
       recurrenceRule: formData.get("recurrenceRule"),
       startAt: formData.get("startAt"),
+      taskType: formData.get("taskType") || undefined,
       title: formData.get("title"),
     },
     settings.timezone,
@@ -260,11 +295,16 @@ export async function restoreQuestWithScheduleAction(
 ): Promise<ActionResult<QuestMutationSummary>> {
   const access = await requireWorkspaceAccess()
   const settings = await getUserSettings(access)
-  const parsed = parseRestoreQuestSchedule(input, settings.timezone)
+  const parsed = parseRestoreQuestSchedule(
+    input,
+    settings.timezone,
+    new Date(),
+    { sameDayOnly: true },
+  )
 
   if (!parsed.success) {
     return validationFailure(
-      "Choose a new future timeline before restoring this task.",
+      "Choose future start and due times later today.",
       parsed.error.flatten().fieldErrors,
     )
   }

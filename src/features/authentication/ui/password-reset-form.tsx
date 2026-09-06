@@ -40,7 +40,7 @@ export function PasswordResetForm({ token }: Readonly<{ token: string }>) {
               disabled={pending}
               id="new-password"
               maxLength={128}
-              minLength={8}
+              minLength={12}
               name="newPassword"
               required
               type="password"

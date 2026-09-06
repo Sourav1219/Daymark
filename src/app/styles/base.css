@@ -192,6 +192,7 @@ html {
   min-width: 20rem;
   background: var(--surface-void);
   overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
@@ -201,11 +202,22 @@ body {
   font-family: var(--font-sans);
   overscroll-behavior-y: none;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  -webkit-tap-highlight-color: transparent;
 }
 
 button,
-a {
-  -webkit-tap-highlight-color: transparent;
+nav,
+.app-tabbar,
+.device-frame header,
+[role="button"] {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 :focus-visible {
@@ -866,7 +878,7 @@ a {
   --app-border: rgba(30, 64, 140, 0.1);
   --app-text: #10233f;
   --app-text-sub: #45597a;
-  --app-text-muted: #93a4be;
+  --app-text-muted: #6b7fa0;
   --accent-blue: #2f6bf6;
   --accent-blue-strong: #1f52d4;
   --accent-blue-dim: rgba(47, 107, 246, 0.1);
@@ -920,7 +932,7 @@ a {
   --app-border: rgba(30, 64, 140, 0.1);
   --app-text: #10233f;
   --app-text-sub: #45597a;
-  --app-text-muted: #93a4be;
+  --app-text-muted: #6b7fa0;
   --accent-blue: #2f6bf6;
   --accent-blue-strong: #1f52d4;
   --accent-blue-dim: rgba(47, 107, 246, 0.1);

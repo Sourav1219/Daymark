@@ -1,40 +1,39 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { Sparkles, X } from "lucide-react"
 
-import { todayPromoStorageKey } from "@/features/privacy/client/optional-browser-storage"
-import { useCookieConsent } from "@/features/privacy/ui/cookie-consent-provider"
+import { claimTodayPromoAction } from "@/features/today/application/today-promo-actions"
 
 /**
- * Dismissible promo banner. Content is static for now; dismissal persists in
- * localStorage so it stays hidden across reloads.
+ * Dismissible promo banner. Its once-daily display is atomically claimed from
+ * the server after mount; local state only handles the current view.
  */
 export function TodayPromo() {
-  const { preferenceStorageAllowed } = useCookieConsent()
-  // "pending" until mounted so the server + first client render match, then
-  // resolve to shown/hidden from localStorage.
-  const [state, setState] = useState<"hidden" | "pending" | "shown">("pending")
+  const [shown, setShown] = useState(false)
+  const [, startTransition] = useTransition()
+  const claimRef = useRef<Promise<boolean> | null>(null)
 
   useEffect(() => {
-    let nextState: "hidden" | "shown" = "shown"
-    if (preferenceStorageAllowed) {
+    let active = true
+    const claim = claimRef.current ?? claimTodayPromoAction()
+    claimRef.current = claim
+    startTransition(async () => {
       try {
-        nextState =
-          window.localStorage.getItem(todayPromoStorageKey) === "1"
-            ? "hidden"
-            : "shown"
+        const claimed = await claim
+        if (active) setShown(claimed)
       } catch {
-        // The promo stays usable when storage is blocked or unavailable.
+        // A failed claim stays hidden and can safely retry on the next visit.
       }
+    })
+
+    return () => {
+      active = false
     }
+  }, [])
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only read of persisted dismissal
-    setState(nextState)
-  }, [preferenceStorageAllowed])
-
-  if (state !== "shown") {
+  if (!shown) {
     return null
   }
 
@@ -54,12 +53,7 @@ export function TodayPromo() {
       <button
         aria-label="Dismiss"
         className="today-banner__close"
-        onClick={() => {
-          if (preferenceStorageAllowed) {
-            window.localStorage.setItem(todayPromoStorageKey, "1")
-          }
-          setState("hidden")
-        }}
+        onClick={() => setShown(false)}
         type="button"
       >
         <X aria-hidden="true" />

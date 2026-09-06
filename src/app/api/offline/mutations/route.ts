@@ -6,6 +6,7 @@ import { QuestServiceError } from "@/features/quests/domain/errors"
 import { isTrustedOriginRequest } from "@/lib/http/same-origin"
 import {
   completeQuest,
+  classifyQuest,
   createQuest,
   editQuest,
   reopenQuest,
@@ -161,6 +162,15 @@ export async function POST(request: Request) {
   const database = getDatabase()
 
   try {
+    if (parsed.data.type === "classify") {
+      const quest = await classifyQuest(
+        database,
+        access,
+        parsed.data.payload,
+        parsed.data.id,
+      )
+      return json({ mutationId: parsed.data.id, quest, status: "applied" })
+    }
     if (parsed.data.type === "create") {
       const settings = await getUserSettings(access)
       // A task queued while offline may sync after its window closed. Accept it

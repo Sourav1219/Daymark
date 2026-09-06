@@ -86,4 +86,38 @@ describe("SessionExpiredCard", () => {
     expect(screen.getByText("403 · Access Denied")).toBeInTheDocument()
     expect(screen.getByText("Custom boundary description")).toBeInTheDocument()
   })
+
+  it("supports custom actionHref, actionLabel, and badgeLabel for forbidden states", () => {
+    render(
+      <SessionExpiredCard
+        actionHref="/today"
+        actionLabel="Return to your tasks"
+        badgeLabel="Access Denied"
+        chipLabel="Boundary Guard"
+        eyebrow="403 · Access Denied"
+        heading="This workspace is outside your access boundary."
+        securityNote="Ask the workspace owner to invite your account."
+        switchAccountHref="/sign-out"
+        switchAccountLabel="Sign in with another account"
+        switchAccountText="Looking for a different account?"
+      />,
+    )
+
+    expect(screen.getByText("Access Denied")).toBeInTheDocument()
+    expect(screen.getByText("Boundary Guard")).toBeInTheDocument()
+    const returnLink = screen.getByRole("link", {
+      name: /Return to your tasks/iu,
+    })
+    expect(returnLink).toBeInTheDocument()
+    expect(returnLink).toHaveAttribute("href", "/today")
+
+    const switchLink = screen.getByRole("link", {
+      name: /Sign in with another account/iu,
+    })
+    expect(switchLink).toBeInTheDocument()
+    expect(switchLink).toHaveAttribute("href", "/sign-out")
+    expect(
+      screen.getByText("Ask the workspace owner to invite your account."),
+    ).toBeInTheDocument()
+  })
 })

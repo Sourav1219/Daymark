@@ -50,15 +50,13 @@ describe("protected route proxy", () => {
     )
   })
 
-  it("protects the profile contact page", () => {
+  it("allows unauthenticated visitors to reach the contact support page", () => {
     const response = proxy(
       new NextRequest("https://questly.test/contact?topic=account"),
     )
 
-    expect(response.status).toBe(307)
-    expect(response.headers.get("location")).toBe(
-      "https://questly.test/sign-in?next=%2Fcontact%3Ftopic%3Daccount",
-    )
+    expect(response.status).toBe(200)
+    expect(response.headers.get("x-middleware-next")).toBe("1")
   })
 
   it("allows a cookie-bearing request through to authoritative server auth", () => {
@@ -87,12 +85,22 @@ describe("protected route proxy", () => {
     expect(response.headers.get("location")).toBe("https://questly.test/today")
   })
 
+  it("redirects an unauthenticated root request directly to /sign-in", () => {
+    const response = proxy(new NextRequest("https://questly.test/"))
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "https://questly.test/sign-in",
+    )
+  })
+
   it("adds a strict nonce-based CSP to rendered pages", () => {
     const response = proxy(new NextRequest("https://questly.test/sign-in"))
     const csp = response.headers.get("content-security-policy")
 
-    expect(csp).toMatch(/script-src 'self' 'nonce-[^']+' 'strict-dynamic'/)
-    expect(csp).toMatch(/style-src 'self' 'nonce-[^']+'/)
+    expect(csp).toMatch(/script-src 'self' 'nonce-[^']+' 'unsafe-eval'/)
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'")
+    expect(csp).not.toContain("strict-dynamic")
   })
 
   it("allows only the configured R2 account for direct browser uploads", () => {
@@ -104,11 +112,9 @@ describe("protected route proxy", () => {
     expect(csp).toContain(
       "https://*.1234567890abcdef1234567890abcdef.r2.cloudflarestorage.com",
     )
-    expect(csp).toContain("'unsafe-hashes'")
-    expect(csp).toContain(
-      "'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='",
-    )
-    expect(csp).not.toContain("'unsafe-inline'")
+    expect(csp).toContain("style-src 'self' 'nonce-nonce-value'")
+    expect(csp).toContain("style-src-attr 'unsafe-inline'")
+    expect(csp).not.toContain("strict-dynamic")
     expect(csp).not.toContain("'unsafe-eval'")
   })
 })

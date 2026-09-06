@@ -23,7 +23,7 @@ function deletionCopy(kind: DeletedTaskNotice["kind"]) {
   if (kind === "missed") {
     return {
       description:
-        "The missed-task penalty stays in Progress. You can restore this task for 30 days after choosing a new timeline.",
+        "The missed-task penalty stays in Progress. You can restore this task today after choosing a new timeline.",
       eyebrow: "Miss acknowledged",
       title: "Moved to Trash",
     }
@@ -31,7 +31,7 @@ function deletionCopy(kind: DeletedTaskNotice["kind"]) {
 
   return {
     description:
-      "No points were deducted, and its value was removed from your planned total. You can restore it for 30 days.",
+      "No points were deducted, and its value was removed from your planned total. You can restore it until today ends.",
     eyebrow: "Schedule updated",
     title: "Moved to Trash",
   }

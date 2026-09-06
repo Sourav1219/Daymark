@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { ListOrdered, Plus, Search, Trash2 } from "lucide-react"
+import { useState } from "react"
+import { Plus, Trash2 } from "lucide-react"
 
 import { QuestCreateForm } from "@/features/quests/components/quest-create-form"
-import { QuestFilterBar } from "@/features/quests/components/quest-filter-bar"
 import { QuestPagination } from "@/features/quests/components/quest-pagination"
 import type { AttachmentView } from "@/features/attachments/domain/types"
 import type {
@@ -19,96 +18,41 @@ import type {
   QuestListFilters,
   QuestView,
 } from "@/features/quests/domain/types"
-import { useOffline } from "@/features/offline/components/offline-provider"
 
 type QuestActiveBoardProps = Readonly<{
-  attachmentsByQuest: Readonly<Record<string, readonly AttachmentView[]>>
-  activePage?: number
-  activeHasNextPage?: boolean
-  deletedQuests: readonly QuestView[]
-  emptyDescription: string
-  emptyTitle: string
-  filters: QuestListFilters
-  gates: readonly QuestGateOption[]
-  isFiltered: boolean
-  labels: readonly QuestLabelOption[]
-  parentOptions: readonly QuestParentOption[]
-  quests: readonly QuestView[]
-  referenceNow?: string
-  storageAvailable: boolean
-  timezone: string
-  trashPage?: number
-  trashHasNextPage?: boolean
+  attachmentsByQuest?:
+    Readonly<Record<string, readonly AttachmentView[]>> | undefined
+  activePage?: number | undefined
+  activeHasNextPage?: boolean | undefined
+  deletedQuests?: readonly QuestView[] | undefined
+  emptyDescription?: string | undefined
+  emptyTitle?: string | undefined
+  filters?: QuestListFilters | undefined
+  gates?: readonly QuestGateOption[] | undefined
+  isFiltered?: boolean | undefined
+  labels?: readonly QuestLabelOption[] | undefined
+  parentOptions?: readonly QuestParentOption[] | undefined
+  quests?: readonly QuestView[] | undefined
+  referenceNow?: string | undefined
+  storageAvailable?: boolean | undefined
+  timezone?: string | undefined
+  trashPage?: number | undefined
+  trashHasNextPage?: boolean | undefined
 }>
 
 export function QuestActiveBoard({
-  attachmentsByQuest,
-  activeHasNextPage = false,
-  activePage = 1,
-  deletedQuests,
-  emptyDescription,
-  emptyTitle,
-  filters,
-  gates,
-  isFiltered,
-  labels,
-  parentOptions,
-  quests,
+  attachmentsByQuest = {},
+  deletedQuests = [],
+  gates = [],
+  labels = [],
+  parentOptions = [],
   referenceNow = new Date().toISOString(),
-  storageAvailable,
-  timezone,
+  storageAvailable = false,
+  timezone = "UTC",
   trashHasNextPage = false,
   trashPage = 1,
 }: QuestActiveBoardProps) {
-  const [activeTab, setActiveTab] = useState<"create" | "search" | "trash">(
-    isFiltered ? "search" : "create",
-  )
-  const [offlineQueuedQuests, setOfflineQueuedQuests] = useState<
-    readonly QuestView[]
-  >([])
-  const [searchState, setSearchState] = useState(() => ({
-    draft: filters.search,
-    synced: filters.search,
-  }))
-  const [showAllForOrdering, setShowAllForOrdering] = useState(false)
-  const { isOffline, pendingCount, snapshotQuests } = useOffline()
-
-  useEffect(() => {
-    let cancelled = false
-
-    void snapshotQuests(quests).then(() => {
-      if (!cancelled && !isOffline && pendingCount === 0) {
-        setOfflineQueuedQuests([])
-      }
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [isOffline, pendingCount, quests, snapshotQuests])
-
-  const hasSearchCriteria =
-    searchState.draft.trim().length > 0 ||
-    filters.due !== "any" ||
-    filters.gateId !== "any" ||
-    filters.labelId !== "any" ||
-    filters.priority !== "any" ||
-    filters.status !== "open"
-  if (filters.search !== searchState.synced) {
-    setSearchState((current) => ({
-      draft: current.draft === current.synced ? filters.search : current.draft,
-      synced: filters.search,
-    }))
-  }
-
-  const searchTerm = searchState.draft.trim().toLocaleLowerCase()
-  const visibleQuests = [...offlineQueuedQuests, ...quests].filter((quest) =>
-    searchTerm
-      ? `${quest.title}\n${quest.description}`
-          .toLocaleLowerCase()
-          .includes(searchTerm)
-      : true,
-  )
+  const [activeTab, setActiveTab] = useState<"create" | "trash">("create")
 
   return (
     <div className="quest-studio">
@@ -116,9 +60,9 @@ export function QuestActiveBoard({
         <div className="quest-overview__heading">
           <div>
             <span>Workspace</span>
-            <h1>Tasks</h1>
+            <h1>Create Task</h1>
           </div>
-          <p>Create a task or search everything you have.</p>
+          <p>Create and schedule a new task or manage trash.</p>
         </div>
       </header>
 
@@ -139,19 +83,6 @@ export function QuestActiveBoard({
           <Plus aria-hidden="true" />
           Create
           <span>Build a new task</span>
-        </button>
-        <button
-          aria-controls="quest-search-panel"
-          aria-selected={activeTab === "search"}
-          className="quest-studio__tab"
-          id="quest-search-tab"
-          onClick={() => setActiveTab("search")}
-          role="tab"
-          type="button"
-        >
-          <Search aria-hidden="true" />
-          Search
-          <span>Find and refine</span>
         </button>
         <button
           aria-controls="quest-trash-panel"
@@ -175,88 +106,7 @@ export function QuestActiveBoard({
         id="quest-create-panel"
         role="tabpanel"
       >
-        <QuestCreateForm
-          gates={gates}
-          onOfflineQueued={(quest) =>
-            setOfflineQueuedQuests((current) => [...current, quest])
-          }
-          parentOptions={parentOptions}
-          timezone={timezone}
-        />
-      </section>
-
-      <section
-        aria-labelledby="quest-search-tab"
-        className="quest-studio__panel"
-        hidden={activeTab !== "search"}
-        id="quest-search-panel"
-        role="tabpanel"
-      >
-        <QuestFilterBar
-          filters={filters}
-          gates={gates}
-          isFiltered={isFiltered}
-          labels={labels}
-          onSearchInputChange={(draft) => {
-            setShowAllForOrdering(false)
-            setSearchState((current) => ({ ...current, draft }))
-          }}
-          searchInputValue={searchState.draft}
-          showList={false}
-          showStatus={false}
-        />
-        {!hasSearchCriteria && !showAllForOrdering ? (
-          <div className="quest-search-empty quest-search-empty--idle">
-            <span aria-hidden="true">
-              <Search />
-            </span>
-            <div>
-              <h3>Search for a task</h3>
-              <p>
-                Enter a title or description above. Results only appear after
-                you search or choose a filter.
-              </p>
-              <button
-                className="quest-search-empty__arrange"
-                onClick={() => setShowAllForOrdering(true)}
-                type="button"
-              >
-                <ListOrdered aria-hidden="true" />
-                Arrange all tasks
-              </button>
-            </div>
-          </div>
-        ) : visibleQuests.length > 0 ? (
-          <div className="quest-studio__results">
-            <QuestList
-              attachmentsByQuest={attachmentsByQuest}
-              emptyDescription={emptyDescription}
-              emptyTitle={emptyTitle}
-              gates={gates}
-              labels={labels}
-              mode={showAllForOrdering ? "active" : "search"}
-              parentOptions={parentOptions}
-              quests={visibleQuests}
-              reorderable={showAllForOrdering}
-              storageAvailable={storageAvailable}
-              timezone={timezone}
-            />
-            <QuestPagination
-              hasNextPage={activeHasNextPage}
-              page={activePage}
-            />
-          </div>
-        ) : (
-          <div className="quest-search-empty quest-search-empty--no-results">
-            <span aria-hidden="true">
-              <Search />
-            </span>
-            <div>
-              <h3>{emptyTitle}</h3>
-              <p>{emptyDescription}</p>
-            </div>
-          </div>
-        )}
+        <QuestCreateForm gates={gates} timezone={timezone} />
       </section>
 
       <section
@@ -267,9 +117,11 @@ export function QuestActiveBoard({
         role="tabpanel"
       >
         <QuestList
-          emptyDescription="Tasks moved to Trash appear here. Deletions can be restored for 30 days."
+          attachmentsByQuest={attachmentsByQuest}
+          emptyDescription="Tasks moved to Trash appear here. A task can only be restored on the day it was deleted."
           emptyTitle="Trash is empty"
           gates={gates}
+          labels={labels}
           mode="deleted"
           parentOptions={parentOptions}
           quests={deletedQuests}

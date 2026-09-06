@@ -89,20 +89,70 @@ self.addEventListener("activate", (event) => {
   )
 })
 
-self.addEventListener("message", (event) => {
-  if (event.data !== "QUESTLY_CLEAR_PRIVATE_DATA") return
+let scheduledTimerTimeout: ReturnType<typeof setTimeout> | null = null
 
-  event.waitUntil(
-    caches
-      .keys()
-      .then((names) =>
-        Promise.all(
-          names
-            .filter((name) => name.startsWith("questly-private-"))
-            .map((name) => caches.delete(name)),
+self.addEventListener("message", (event) => {
+  if (event.data === "QUESTLY_CLEAR_PRIVATE_DATA") {
+    event.waitUntil(
+      caches
+        .keys()
+        .then((names) =>
+          Promise.all(
+            names
+              .filter((name) => name.startsWith("questly-private-"))
+              .map((name) => caches.delete(name)),
+          ),
         ),
-      ),
-  )
+    )
+    return
+  }
+
+  if (event.data?.type === "SCHEDULE_TIMER_NOTIFICATION") {
+    const { targetTimestamp, title, body, tag } = event.data as {
+      targetTimestamp: number
+      title?: string
+      body?: string
+      tag?: string
+    }
+
+    if (scheduledTimerTimeout) {
+      clearTimeout(scheduledTimerTimeout)
+      scheduledTimerTimeout = null
+    }
+
+    const delay = Math.max(0, targetTimestamp - Date.now())
+    scheduledTimerTimeout = setTimeout(() => {
+      scheduledTimerTimeout = null
+      void self.registration.showNotification(
+        title || "Focus block complete! 🎯",
+        {
+          badge: "/icons/traketo-icon-192.png",
+          body: body || "Great work! Time for a short break or stretch.",
+          data: { url: "/timer" },
+          icon: "/icons/traketo-icon-192.png",
+          tag: tag || "timer-completion",
+          vibrate: [200, 100, 200, 100, 200],
+        } as NotificationOptions,
+      )
+    }, delay)
+    return
+  }
+
+  if (event.data?.type === "CANCEL_TIMER_NOTIFICATION") {
+    if (scheduledTimerTimeout) {
+      clearTimeout(scheduledTimerTimeout)
+      scheduledTimerTimeout = null
+    }
+    const targetTag =
+      (event.data?.tag as string | undefined) || "timer-completion"
+    event.waitUntil(
+      self.registration
+        .getNotifications({ tag: targetTag })
+        .then((notifications) => {
+          notifications.forEach((n) => n.close())
+        }),
+    )
+  }
 })
 
 self.addEventListener("push", (event) => {

@@ -82,6 +82,26 @@ describe("Quest validation", () => {
     ).toBe(false)
   })
 
+  it("requires a name when custom task type is selected", () => {
+    const unnamed = createQuestSchema.safeParse({
+      ...validQuest,
+      customType: "",
+      taskType: "custom",
+    })
+    expect(unnamed.success).toBe(false)
+    expect(
+      unnamed.success ? [] : unnamed.error.flatten().fieldErrors.customType,
+    ).toContain("Name your custom task type.")
+
+    expect(
+      createQuestSchema.safeParse({
+        ...validQuest,
+        customType: "Fitness",
+        taskType: "custom",
+      }).success,
+    ).toBe(true)
+  })
+
   it("requires valid identifiers and positive optimistic versions", () => {
     const questId = randomUUID()
     expect(
@@ -231,9 +251,32 @@ describe("new task schedules must stay in the future", () => {
       timezone,
       now,
     )
+    const nextDay = parseRestoreQuestSchedule(
+      {
+        dueAt: "2026-08-12T10:00",
+        expectedVersion: 3,
+        questId,
+        startAt: "2026-08-12T09:00",
+      },
+      timezone,
+      now,
+      { sameDayOnly: true },
+    )
+    const nextDayForOrdinaryReschedule = parseRestoreQuestSchedule(
+      {
+        dueAt: "2026-08-12T10:00",
+        expectedVersion: 3,
+        questId,
+        startAt: "2026-08-12T09:00",
+      },
+      timezone,
+      now,
+    )
 
     expect(valid.success).toBe(true)
     expect(elapsed.success).toBe(false)
     expect(reversed.success).toBe(false)
+    expect(nextDay.success).toBe(false)
+    expect(nextDayForOrdinaryReschedule.success).toBe(true)
   })
 })

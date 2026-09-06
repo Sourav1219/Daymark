@@ -35,6 +35,7 @@ import { OfflineLogoutButton } from "@/features/offline/components/offline-logou
 type ProfileExperienceProps = Readonly<{
   currentSessionId: string | null
   email: string
+  hasPassword?: boolean
   initialSessions: readonly SessionView[]
   joined: string
   name: string
@@ -57,6 +58,7 @@ function initials(name: string): string {
 export function ProfileExperience({
   currentSessionId,
   email,
+  hasPassword = true,
   initialSessions,
   joined,
   name,
@@ -219,6 +221,7 @@ export function ProfileExperience({
         <div className="profile-security-settings__content">
           <SecurityDataPanel
             currentSessionId={currentSessionId}
+            hasPassword={hasPassword}
             initialSessions={initialSessions}
           />
         </div>

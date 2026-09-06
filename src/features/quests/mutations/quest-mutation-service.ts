@@ -1,6 +1,9 @@
 import "server-only"
 
 import { randomUUID } from "node:crypto"
+import { classificationAfterEdit } from "@/features/quests/domain/classification"
+import type { ClassifyQuestCommand } from "@/features/quests/validation/classification-validation"
+import { updateQuestRecord } from "@/features/quests/repositories/quest-repository"
 
 import { sql } from "drizzle-orm"
 
@@ -9,6 +12,10 @@ import type { AccessContext } from "@/features/authentication/authorization/acce
 import { findGateRecord } from "@/features/gates/repositories/gate-repository"
 import { authorizeQuestAccess } from "@/features/quests/authorization/quest-authorization"
 import { QuestServiceError } from "@/features/quests/domain/errors"
+import {
+  canRestoreTrashedTask,
+  canUseRestorationTimeline,
+} from "@/features/quests/domain/trash-recovery"
 import {
   canNestUnder,
   maxSubquestDepth,
@@ -34,7 +41,6 @@ import {
   softDeleteQuestDescendants,
   softDeleteQuestRecord,
 } from "@/features/quests/repositories/quest-repository"
-import { trashRetentionMilliseconds } from "@/features/quests/domain/types"
 import { calculateNextOccurrence } from "@/features/reminders/domain/recurrence"
 import { findUserSettingsRecord } from "@/features/reminders/repositories/user-settings-repository"
 import { clonePendingRemindersForOccurrence } from "@/features/reminders/repositories/reminder-repository"
@@ -308,6 +314,13 @@ export async function editQuest(
     })
     const updated = await editQuestRecord(transaction, access, {
       ...command,
+      ...classificationAfterEdit(current, command.title, command.description),
+      ...(command.taskType !== undefined
+        ? { taskType: command.taskType, typeManual: true }
+        : {}),
+      ...(command.customType !== undefined
+        ? { customType: command.customType, typeManual: true }
+        : {}),
       ...(offlineMutationId ? { offlineMutationId } : {}),
       ...(await recurrenceFields(transaction, access, command, current)),
     })
@@ -315,6 +328,121 @@ export async function editQuest(
     return updated
       ? summary(updated)
       : mutationFailure(transaction, access, command)
+  })
+}
+
+export async function classifyQuest(
+  database: Database,
+  access: AccessContext,
+  command: ClassifyQuestCommand,
+  offlineMutationId?: string,
+): Promise<QuestMutationSummary> {
+  authorizeQuestAccess(access)
+  return withWorkspaceMutation(database, access, async (transaction) => {
+    const current = await findQuestRecord(transaction, access, command.questId)
+    if (!current) throw new QuestServiceError("NOT_FOUND", "Task not found.")
+    if (offlineMutationId && current.offlineMutationId === offlineMutationId)
+      return summary(current)
+    const updated = await updateQuestRecord(
+      transaction,
+      access,
+      command.questId,
+      command.expectedVersion,
+      {
+        ...(command.taskType !== undefined
+          ? { taskType: command.taskType, typeManual: true }
+          : {}),
+        ...(command.customType !== undefined
+          ? { customType: command.customType, typeManual: true }
+          : {}),
+        ...(command.priority !== undefined
+          ? { priority: command.priority }
+          : {}),
+        ...(offlineMutationId ? { offlineMutationId } : {}),
+      },
+      "active",
+    )
+    return updated
+      ? summary(updated)
+      : mutationFailure(transaction, access, command)
+  })
+}
+
+export async function rescheduleMissedQuest(
+  database: Database,
+  access: AccessContext,
+  command: RestoreQuestScheduleCommand,
+): Promise<QuestMutationSummary> {
+  authorizeQuestAccess(access)
+  return withWorkspaceMutation(database, access, async (transaction) => {
+    const current = await findQuestRecord(transaction, access, command.questId)
+    if (!current) throw new QuestServiceError("NOT_FOUND", "Task not found.")
+    if (
+      current.status === "completed" ||
+      !current.dueAt ||
+      current.dueAt >= new Date()
+    ) {
+      throw new QuestServiceError(
+        "CONFLICT",
+        "Only missed tasks can be rescheduled here.",
+      )
+    }
+    if (current.version !== command.expectedVersion)
+      return mutationFailure(transaction, access, command)
+    const now = new Date()
+    const settings = await findUserSettingsRecord(transaction, access)
+    if (!settings)
+      throw new QuestServiceError(
+        "FORBIDDEN",
+        "Timezone settings are unavailable.",
+      )
+    // Preserve an elapsed task's missed activity even if the periodic sweep
+    // hasn't settled it yet. A reschedule must not bypass the failure policy.
+    if (current.status === "open") {
+      const failuresToday = await countFailurePenalties(
+        transaction,
+        access,
+        localDateForInstant(now, settings.timezone),
+      )
+      await recordQuestProgression(transaction, access, {
+        eventType: "quest_failed",
+        idempotencyKey: `quest:${current.id}:failed:v${current.version}`,
+        occurredAt: now,
+        penalty: calculateFailurePenalty(current.priority, failuresToday),
+        quest: current,
+        reason: "quest_failure_penalty",
+        timezone: settings.timezone,
+        type: "penalty",
+      })
+    }
+    const updated = await updateQuestRecord(
+      transaction,
+      access,
+      command.questId,
+      command.expectedVersion,
+      {
+        startAt: command.startAt,
+        dueAt: command.dueAt,
+        status: "open",
+        ...(await recurrenceFields(
+          transaction,
+          access,
+          { ...command, recurrenceRule: current.recurrenceRule },
+          current,
+        )),
+      },
+      "active",
+    )
+    if (!updated) return mutationFailure(transaction, access, command)
+    const progression = await recordQuestProgression(transaction, access, {
+      eventType: "quest_reopened",
+      idempotencyKey: `quest:${updated.id}:rescheduled:v${updated.version}`,
+      occurredAt: now,
+      quest: updated,
+      timezone: settings.timezone,
+      type: "activity",
+    })
+    return summary(updated, progression)
   })
 }
 
@@ -711,15 +839,22 @@ export async function restoreQuest(
     if (!current) {
       throw new QuestServiceError("NOT_FOUND", "Task not found.")
     }
+
+    const settings = await findUserSettingsRecord(transaction, access)
+    if (!settings) {
+      throw new QuestServiceError(
+        "FORBIDDEN",
+        "Timezone settings are unavailable for this workspace.",
+      )
+    }
+
     if (
       !current.deletedAt ||
-      restoredAt.getTime() - current.deletedAt.getTime() < 0 ||
-      restoredAt.getTime() - current.deletedAt.getTime() >
-        trashRetentionMilliseconds
+      !canRestoreTrashedTask(current.deletedAt, restoredAt, settings.timezone)
     ) {
       throw new QuestServiceError(
         "CONFLICT",
-        "This task's 30-day recovery window has ended.",
+        "This task can only be restored on the day it was moved to Trash.",
       )
     }
     const updated = await restoreQuestRecord(
@@ -739,14 +874,6 @@ export async function restoreQuest(
       command.questId,
       current.deletedAt,
     )
-
-    const settings = await findUserSettingsRecord(transaction, access)
-    if (!settings) {
-      throw new QuestServiceError(
-        "FORBIDDEN",
-        "Timezone settings are unavailable for this workspace.",
-      )
-    }
 
     const restoreXp = current.status === "completed" && current.xpReward > 0
     const progression = await recordQuestProgression(transaction, access, {
@@ -826,15 +953,35 @@ export async function restoreQuestWithSchedule(
       throw new QuestServiceError("NOT_FOUND", "Task not found.")
     }
 
+    const settings = await findUserSettingsRecord(transaction, access)
+    if (!settings) {
+      throw new QuestServiceError(
+        "FORBIDDEN",
+        "Timezone settings are unavailable for this workspace.",
+      )
+    }
+
     if (
       !current.deletedAt ||
-      restoredAt.getTime() - current.deletedAt.getTime() < 0 ||
-      restoredAt.getTime() - current.deletedAt.getTime() >
-        trashRetentionMilliseconds
+      !canRestoreTrashedTask(current.deletedAt, restoredAt, settings.timezone)
     ) {
       throw new QuestServiceError(
         "CONFLICT",
-        "This task's 30-day recovery window has ended.",
+        "This task can only be restored on the day it was moved to Trash.",
+      )
+    }
+
+    if (
+      !canUseRestorationTimeline(
+        command.startAt,
+        command.dueAt,
+        restoredAt,
+        settings.timezone,
+      )
+    ) {
+      throw new QuestServiceError(
+        "CONFLICT",
+        "Restored task times must be later today and finish before midnight.",
       )
     }
 
@@ -853,14 +1000,6 @@ export async function restoreQuestWithSchedule(
       command.questId,
       current.deletedAt,
     )
-
-    const settings = await findUserSettingsRecord(transaction, access)
-    if (!settings) {
-      throw new QuestServiceError(
-        "FORBIDDEN",
-        "Timezone settings are unavailable for this workspace.",
-      )
-    }
 
     const progression = await recordQuestProgression(transaction, access, {
       eventType: "quest_restored",

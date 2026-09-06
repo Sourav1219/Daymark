@@ -38,8 +38,18 @@ function calendarValue(date: Date): string {
 function pickerPortal(): HTMLElement | undefined {
   if (typeof document === "undefined") return undefined
 
+  const activeDialog =
+    document.activeElement instanceof Element
+      ? document.activeElement.closest<HTMLElement>(
+          '[data-slot="alert-dialog-content"]',
+        )
+      : null
+
   return (
-    document.querySelector<HTMLElement>(".device-main-viewport") ?? undefined
+    activeDialog ??
+    document.querySelector<HTMLElement>(".restore-schedule-dialog") ??
+    document.querySelector<HTMLElement>(".device-main-viewport") ??
+    undefined
   )
 }
 
@@ -47,24 +57,28 @@ export function QuestDatePicker({
   ariaDescribedby,
   ariaInvalid,
   ariaLabel,
+  disabled = false,
   id,
   minDate,
   onChange,
+  portalContainer,
   value,
 }: Readonly<{
   ariaDescribedby?: string | undefined
   ariaInvalid?: boolean | undefined
   ariaLabel: string
+  disabled?: boolean | undefined
   id: string
   /** Earliest selectable day as "yyyy-MM-dd"; earlier days render faded. */
   minDate?: string | undefined
   onChange: (value: string) => void
+  portalContainer?: HTMLElement | null | undefined
   value: string
 }>) {
   const [open, setOpen] = useState(false)
   const selected = calendarDate(value)
   const earliest = minDate ? calendarDate(minDate) : undefined
-  const portal = pickerPortal()
+  const portal = portalContainer ?? pickerPortal()
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
@@ -76,7 +90,9 @@ export function QuestDatePicker({
           className={cn(
             "quest-date-trigger",
             !selected && "quest-date-trigger--empty",
+            disabled && "quest-date-trigger--locked",
           )}
+          disabled={disabled}
           id={id}
           type="button"
           variant="outline"

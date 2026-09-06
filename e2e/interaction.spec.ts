@@ -6,7 +6,9 @@ async function register(page: Page, label: string) {
   await page.goto("/sign-up")
   await page.getByLabel("Name").fill(`${label} Operator`)
   await page.getByLabel("Email").fill(`${label}-${randomUUID()}@example.com`)
-  await page.getByLabel("Password").fill("correct-horse-battery-staple")
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("correct-horse-battery-staple")
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page).toHaveURL(/\/today$/u)
 }

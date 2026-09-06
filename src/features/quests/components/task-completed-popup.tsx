@@ -11,8 +11,14 @@ import {
   Trophy,
   Zap,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { reopenQuestAction } from "@/features/quests/application/actions"
+import {
+  taskCompletionUndoEvent,
+  type TaskCompletionUndoEventDetail,
+} from "@/features/quests/domain/quest-links"
+import { triggerHaptic } from "@/lib/platform/platform-bridge"
 
 export type CompletedTaskNotice = Readonly<{
   currentStreak?: number | undefined
@@ -25,6 +31,7 @@ export type CompletedTaskNotice = Readonly<{
 }>
 
 type NoticePhase = "completed" | "error" | "undone"
+export const taskCompletedResultDurationMs = 8_000
 
 export function TaskCompletedPopup({
   onDismiss,
@@ -37,37 +44,71 @@ export function TaskCompletedPopup({
   const [phase, setPhase] = useState<NoticePhase>("completed")
   const [pending, startTransition] = useTransition()
 
+  const closePopup = useCallback(() => {
+    onDismiss()
+    if (phase === "undone") router.replace("/today")
+  }, [onDismiss, phase, router])
+
   useEffect(() => {
-    const timeout = window.setTimeout(
-      onDismiss,
-      phase === "undone" ? 1_800 : 8_000,
-    )
+    router.prefetch("/today")
+  }, [router])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(closePopup, taskCompletedResultDurationMs)
     return () => window.clearTimeout(timeout)
-  }, [onDismiss, phase, task.id])
+  }, [closePopup, task.id])
 
   useEffect(() => {
     function dismissOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !pending) onDismiss()
+      if (event.key === "Escape" && (!pending || phase === "undone")) {
+        closePopup()
+      }
     }
 
     window.addEventListener("keydown", dismissOnEscape)
     return () => window.removeEventListener("keydown", dismissOnEscape)
-  }, [onDismiss, pending])
+  }, [closePopup, pending, phase])
 
   const undoCompletion = useCallback(() => {
     if (pending || phase === "undone") return
 
-    startTransition(async () => {
-      const result = await reopenQuestAction({
-        expectedVersion: task.version,
-        questId: task.id,
-      })
+    function announceUndo(detail: TaskCompletionUndoEventDetail) {
+      window.dispatchEvent(
+        new CustomEvent<TaskCompletionUndoEventDetail>(
+          taskCompletionUndoEvent,
+          { detail },
+        ),
+      )
+    }
 
-      if (result.ok) {
-        setPhase("undone")
-        router.refresh()
-      } else {
+    triggerHaptic("selection")
+    setPhase("undone")
+    announceUndo({ phase: "started", questId: task.id })
+
+    startTransition(async () => {
+      try {
+        const result = await reopenQuestAction({
+          expectedVersion: task.version,
+          questId: task.id,
+        })
+
+        if (result.ok) {
+          announceUndo({
+            phase: "confirmed",
+            questId: task.id,
+            version: result.data.version,
+          })
+          router.refresh()
+          return
+        }
+
+        announceUndo({ phase: "failed", questId: task.id })
         setPhase("error")
+        toast.error(result.error.message)
+      } catch {
+        announceUndo({ phase: "failed", questId: task.id })
+        setPhase("error")
+        toast.error("The completion could not be undone. Please try again.")
       }
     })
   }, [pending, phase, router, task.id, task.version])
@@ -91,7 +132,11 @@ export function TaskCompletedPopup({
         data-phase={phase}
         role="dialog"
       >
-        <div aria-hidden="true" className="task-created-popup__visual">
+        <div
+          aria-hidden="true"
+          className="task-created-popup__visual"
+          key={`visual-${phase}`}
+        >
           <span className="task-created-popup__ring task-created-popup__ring--outer" />
           <span className="task-created-popup__ring task-created-popup__ring--inner" />
           <span className="task-created-popup__icon">
@@ -100,7 +145,7 @@ export function TaskCompletedPopup({
           </span>
         </div>
 
-        <div className="task-created-popup__copy">
+        <div className="task-created-popup__copy" key={`copy-${phase}`}>
           <span>
             {phase === "undone" ? "Back in action" : "Momentum gained"}
           </span>
@@ -139,8 +184,8 @@ export function TaskCompletedPopup({
           ) : null}
           <button
             className="task-created-popup__continue"
-            disabled={pending}
-            onClick={onDismiss}
+            disabled={pending && phase !== "undone"}
+            onClick={closePopup}
             type="button"
           >
             Continue
@@ -158,7 +203,11 @@ export function TaskCompletedPopup({
             : "This screen closes automatically"}
         </p>
 
-        <span aria-hidden="true" className="task-created-popup__timer" />
+        <span
+          aria-hidden="true"
+          className="task-created-popup__timer"
+          key={`timer-${phase}`}
+        />
       </section>
     </div>,
     document.getElementById("app-device-viewport") ?? document.body,

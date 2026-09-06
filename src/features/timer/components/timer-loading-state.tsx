@@ -1,7 +1,9 @@
 import {
   BarChart3,
   Clock3,
+  Coffee,
   DoorOpen,
+  Flame,
   History,
   Play,
   Sparkles,
@@ -9,6 +11,7 @@ import {
   TrendingUp,
   UserPlus,
   Users,
+  Zap,
 } from "lucide-react"
 
 import "@/app/styles/progress-page.css"
@@ -52,6 +55,29 @@ export function TimerLoadingState() {
           </div>
           <span className="timer-status-pill" data-state="ready">
             <span /> Ready
+          </span>
+        </div>
+
+        <div aria-hidden="true" className="timer-mode-selector">
+          <span
+            className="timer-mode-pill"
+            data-active="true"
+            data-mode="pomodoro"
+          >
+            <Flame className="timer-mode-pill-icon" />
+            <span>25m Pomodoro</span>
+          </span>
+          <span className="timer-mode-pill" data-mode="deep-work">
+            <Zap className="timer-mode-pill-icon" />
+            <span>50m Deep Work</span>
+          </span>
+          <span className="timer-mode-pill" data-mode="short-break">
+            <Coffee className="timer-mode-pill-icon" />
+            <span>5m Break</span>
+          </span>
+          <span className="timer-mode-pill" data-mode="stopwatch">
+            <Clock3 className="timer-mode-pill-icon" />
+            <span>Stopwatch</span>
           </span>
         </div>
 

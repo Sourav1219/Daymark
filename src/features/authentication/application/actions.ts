@@ -122,29 +122,32 @@ export async function registerAction(
 
   const startedAt = Date.now()
   const callbackURL = safeRedirectPath(formData.get("next"))
+  let infrastructureFailure = false
   try {
-    await withHealthyAuth(async (auth, database) => {
-      const [existingAccount] = await database
-        .select({ emailVerified: users.emailVerified })
-        .from(users)
-        .where(eq(users.email, parsed.data.email))
-        .limit(1)
+    await monitorAuthenticationEmailDelivery(() =>
+      withHealthyAuth(async (auth, database) => {
+        const [existingAccount] = await database
+          .select({ emailVerified: users.emailVerified })
+          .from(users)
+          .where(eq(users.email, parsed.data.email))
+          .limit(1)
 
-      await auth.api.signUpEmail({
-        body: { ...parsed.data, callbackURL },
-        headers: await headers(),
-      })
-
-      if (existingAccount && !existingAccount.emailVerified) {
-        await auth.api.sendVerificationOTP({
-          body: {
-            email: parsed.data.email,
-            type: "email-verification",
-          },
+        await auth.api.signUpEmail({
+          body: { ...parsed.data, callbackURL },
           headers: await headers(),
         })
-      }
-    })
+
+        if (existingAccount && !existingAccount.emailVerified) {
+          await auth.api.sendVerificationOTP({
+            body: {
+              email: parsed.data.email,
+              type: "email-verification",
+            },
+            headers: await headers(),
+          })
+        }
+      }),
+    )
   } catch (error) {
     if (
       isAPIError(error) &&
@@ -156,6 +159,7 @@ export async function registerAction(
           .digest("hex"),
       })
     } else {
+      infrastructureFailure = true
       logger.error(
         "authentication.registration_failed",
         error instanceof Error ? error : undefined,
@@ -164,6 +168,8 @@ export async function registerAction(
   } finally {
     await normalizeAccountTiming(startedAt)
   }
+
+  if (infrastructureFailure) return emailServiceUnavailable()
 
   await grantRegistrationCookieConsent()
   return registrationResponse(parsed.data.email)

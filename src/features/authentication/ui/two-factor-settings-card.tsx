@@ -41,9 +41,18 @@ export function TwoFactorSettingsCard({
   initialTwoFactorEnabled = false,
 }: TwoFactorSettingsCardProps) {
   const [isEnabled, setIsEnabled] = useState(initialTwoFactorEnabled)
+  const [prevInitialTwoFactorEnabled, setPrevInitialTwoFactorEnabled] =
+    useState(initialTwoFactorEnabled)
   const [isSetupOpen, setIsSetupOpen] = useState(false)
   const [isDisableOpen, setIsDisableOpen] = useState(false)
-  const [showCelebration, setShowCelebration] = useState(false)
+  const [celebrationKind, setCelebrationKind] = useState<
+    "two-factor" | "two-factor-disabled" | null
+  >(null)
+
+  if (initialTwoFactorEnabled !== prevInitialTwoFactorEnabled) {
+    setPrevInitialTwoFactorEnabled(initialTwoFactorEnabled)
+    setIsEnabled(initialTwoFactorEnabled)
+  }
 
   return (
     <section
@@ -110,7 +119,7 @@ export function TwoFactorSettingsCard({
           onSuccess={() => {
             setIsEnabled(true)
             setIsSetupOpen(false)
-            setShowCelebration(true)
+            setCelebrationKind("two-factor")
           }}
         />
       ) : null}
@@ -122,14 +131,15 @@ export function TwoFactorSettingsCard({
           onSuccess={() => {
             setIsEnabled(false)
             setIsDisableOpen(false)
+            setCelebrationKind("two-factor-disabled")
           }}
         />
       ) : null}
 
-      {showCelebration ? (
+      {celebrationKind ? (
         <ProfileUpdatePopup
-          kind="two-factor"
-          onDismiss={() => setShowCelebration(false)}
+          kind={celebrationKind}
+          onDismiss={() => setCelebrationKind(null)}
         />
       ) : null}
     </section>
@@ -404,7 +414,6 @@ function DisableModal({ onClose, onSuccess }: DisableModalProps) {
 
   useEffect(() => {
     if (state?.ok) {
-      toast.success("Two-factor authentication disabled")
       router.refresh()
       onSuccess()
     }

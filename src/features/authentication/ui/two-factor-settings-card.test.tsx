@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TwoFactorSettingsCard } from "./two-factor-settings-card"
@@ -175,5 +181,43 @@ describe("TwoFactorSettingsCard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
+  it("shows celebration popup on successful disable, updates state, and allows dismissal", async () => {
+    mocks.disableTwoFactorAction.mockResolvedValueOnce({
+      data: { disabled: true },
+      ok: true,
+    })
+
+    render(<TwoFactorSettingsCard initialTwoFactorEnabled={true} />)
+
+    fireEvent.click(screen.getByRole("button", { name: /disable 2fa/i }))
+
+    const dialog = screen.getByRole("dialog")
+    expect(dialog).toBeInTheDocument()
+    const submitButton = within(dialog).getByRole("button", {
+      name: /^disable 2fa$/i,
+    })
+    expect(submitButton).toBeInTheDocument()
+
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(screen.getByText("Authentication disabled")).toBeInTheDocument()
+      expect(
+        screen.getByText(/Google Authenticator has been disabled/),
+      ).toBeInTheDocument()
+    })
+
+    // Dismiss celebration
+    fireEvent.click(screen.getByRole("button", { name: /done/i }))
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Authentication disabled"),
+      ).not.toBeInTheDocument()
+    })
+    expect(
+      screen.getByRole("button", { name: /set up authenticator/i }),
+    ).toBeInTheDocument()
   })
 })

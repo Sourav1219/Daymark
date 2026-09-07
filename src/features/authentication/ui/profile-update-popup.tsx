@@ -2,9 +2,15 @@
 
 import { useEffect } from "react"
 import { createPortal } from "react-dom"
-import { Check, ShieldCheck, Sparkles, UserRound } from "lucide-react"
+import {
+  Check,
+  ShieldCheck,
+  ShieldOff,
+  Sparkles,
+  UserRound,
+} from "lucide-react"
 
-export type ProfileUpdateKind = "name" | "two-factor"
+export type ProfileUpdateKind = "name" | "two-factor" | "two-factor-disabled"
 
 const updateCopy = {
   name: {
@@ -18,6 +24,12 @@ const updateCopy = {
     message:
       "Google Authenticator is now active. You will be asked for a 6-digit code next time you sign in.",
   },
+  "two-factor-disabled": {
+    eyebrow: "Two-Factor Authentication",
+    heading: "Authentication disabled",
+    message:
+      "Google Authenticator has been disabled. You can re-enable it at any time from your account settings.",
+  },
 } as const
 
 export function ProfileUpdatePopup({
@@ -28,7 +40,12 @@ export function ProfileUpdatePopup({
   onDismiss: () => void
 }>) {
   const copy = updateCopy[kind]
-  const Icon = kind === "two-factor" ? ShieldCheck : UserRound
+  const Icon =
+    kind === "two-factor"
+      ? ShieldCheck
+      : kind === "two-factor-disabled"
+        ? ShieldOff
+        : UserRound
 
   useEffect(() => {
     const timeout = window.setTimeout(onDismiss, 5_000)

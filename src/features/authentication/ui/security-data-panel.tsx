@@ -119,7 +119,6 @@ export function SecurityDataPanel({
       <TwoFactorSettingsCard
         hasPassword={hasPassword}
         initialTwoFactorEnabled={twoFactorEnabled}
-        key={String(twoFactorEnabled)}
       />
       <SessionsCard
         currentSessionId={currentSessionId}

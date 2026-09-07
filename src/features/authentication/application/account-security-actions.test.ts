@@ -7,6 +7,7 @@ const {
   enableTwoFactor,
   enforceRateLimit,
   logSecurityEvent,
+  mockCookieSet,
   revalidatePath,
   verifyTOTP,
 } = vi.hoisted(() => ({
@@ -14,6 +15,7 @@ const {
   enableTwoFactor: vi.fn(),
   enforceRateLimit: vi.fn(),
   logSecurityEvent: vi.fn(),
+  mockCookieSet: vi.fn(),
   revalidatePath: vi.fn(),
   verifyTOTP: vi.fn(),
 }))
@@ -30,7 +32,7 @@ vi.mock("next/cache", () => ({
 vi.mock("next/headers", () => ({
   cookies: vi.fn().mockResolvedValue({
     get: vi.fn(),
-    set: vi.fn(),
+    set: mockCookieSet,
   }),
   headers: vi.fn().mockResolvedValue(new Headers()),
 }))
@@ -220,5 +222,30 @@ describe("disableTwoFactorAction", () => {
         "Could not disable two-factor authentication.",
       )
     }
+  })
+
+  it("disables 2FA and syncs updated session cookie when response includes set-cookie", async () => {
+    const response = new Response(JSON.stringify({ status: true }), {
+      headers: {
+        "set-cookie":
+          "better-auth.session_token=new_token; Path=/; HttpOnly; SameSite=Lax",
+      },
+    })
+    disableTwoFactor.mockResolvedValueOnce(response)
+
+    const result = await disableTwoFactorAction(null, new FormData())
+    expect(result).toEqual({
+      data: { disabled: true },
+      ok: true,
+    })
+    expect(mockCookieSet).toHaveBeenCalledWith(
+      "better-auth.session_token",
+      "new_token",
+      expect.objectContaining({
+        httpOnly: true,
+        path: "/",
+        sameSite: "lax",
+      }),
+    )
   })
 })

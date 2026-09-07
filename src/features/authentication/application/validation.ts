@@ -69,30 +69,6 @@ export const emailVerificationCodeSchema = z.object({
   email,
 })
 
-export const twoFactorChallengeSchema = z.discriminatedUnion("method", [
-  z.object({
-    code: z
-      .string()
-      .trim()
-      .regex(/^\d{6}$/u, "Enter the 6-digit code from your authenticator app"),
-    method: z.literal("totp"),
-  }),
-  z.object({
-    code: z
-      .string()
-      .trim()
-      .min(1, "Enter one of your recovery codes")
-      .max(64, "Enter a valid recovery code"),
-    method: z.literal("backup"),
-  }),
-])
-
-export const confirmTwoFactorSchema = z.object({
-  code: z
-    .string()
-    .trim()
-    .regex(/^\d{6}$/u, "Enter the 6-digit code from Google Authenticator"),
-})
 
 export const passwordResetTokenSchema = z
   .string()

@@ -40,7 +40,6 @@ type ProfileExperienceProps = Readonly<{
   joined: string
   name: string
   role: string
-  twoFactorEnabled?: boolean
   workspaceName: string
 }>
 
@@ -64,7 +63,6 @@ export function ProfileExperience({
   joined,
   name,
   role,
-  twoFactorEnabled = false,
   workspaceName,
 }: ProfileExperienceProps) {
   const router = useRouter()
@@ -225,7 +223,6 @@ export function ProfileExperience({
             currentSessionId={currentSessionId}
             hasPassword={hasPassword}
             initialSessions={initialSessions}
-            twoFactorEnabled={twoFactorEnabled}
           />
         </div>
       </details>

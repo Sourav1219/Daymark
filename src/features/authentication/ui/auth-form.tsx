@@ -319,11 +319,6 @@ export function AuthForm({
               role={state.ok ? "status" : "alert"}
             >
               {state.ok ? state.data.message : state.error.message}
-              {!state.ok && !registering ? (
-                <Link className="auth__message-link" href="/verify-email">
-                  Enter verification code
-                </Link>
-              ) : null}
             </div>
           ) : null}
 

@@ -26,7 +26,6 @@ export default function robots(): MetadataRoute.Robots {
           "/progress",
           "/profile",
           "/settings",
-          "/two-factor",
         ],
         userAgent: "*",
       },

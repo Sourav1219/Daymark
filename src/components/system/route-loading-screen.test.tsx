@@ -73,7 +73,7 @@ describe("RouteLoadingScreen", () => {
     expect(container.querySelector(".route-loading__cards")).toBeNull()
   })
 
-  it.each(["/sign-in", "/two-factor"])(
+  it.each(["/sign-in", "/sign-up"])(
     "does not show the signed-in shell on the %s account page",
     (pathname) => {
       navigationState.pathname = pathname

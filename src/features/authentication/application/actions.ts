@@ -1,6 +1,5 @@
 "use server"
 
-import type { Route } from "next"
 import { isAPIError } from "better-auth/api"
 import { eq } from "drizzle-orm"
 import { createHash } from "node:crypto"
@@ -22,7 +21,6 @@ import {
   passwordResetSchema,
   registrationSchema,
   safeRedirectPath,
-  twoFactorChallengeSchema,
 } from "@/features/authentication/application/validation"
 import type { ActionFailure, ActionResult } from "@/lib/actions/action-result"
 import { validationFailure } from "@/lib/actions/action-helpers"
@@ -36,7 +34,6 @@ type AuthActionData = Readonly<{
 }>
 
 export type AuthActionState = ActionResult<AuthActionData> | null
-export type TwoFactorActionState = AuthActionState
 
 function registrationResponse(email: string): NonNullable<AuthActionState> {
   return {
@@ -229,23 +226,14 @@ export async function loginAction(
 
   const callbackURL = safeRedirectPath(formData.get("next"))
   const requestHeaders = await authenticationHeaders(formData)
-  let twoFactorRequired = false
   try {
-    const result = await withHealthyAuth(async (auth) =>
+    await withHealthyAuth(async (auth) =>
       auth.api.signInEmail({
         body: { ...parsed.data, callbackURL },
         headers: requestHeaders,
       }),
     )
-    twoFactorRequired =
-      typeof result === "object" &&
-      result !== null &&
-      "twoFactorRedirect" in result &&
-      result.twoFactorRedirect === true
-
-    if (!twoFactorRequired) {
-      logSecurityEvent("authentication.login_success")
-    }
+    logSecurityEvent("authentication.login_success")
   } catch (error) {
     if (isCaptchaFailure(error)) return captchaFailure()
     logSecurityEvent("authentication.login_failed", {
@@ -258,100 +246,7 @@ export async function loginAction(
     return loginFailure()
   }
 
-  if (twoFactorRequired) {
-    logSecurityEvent("authentication.two_factor_challenge_started")
-    return redirect(
-      `/two-factor?next=${encodeURIComponent(callbackURL)}` as Route,
-    )
-  }
-
   redirect(callbackURL)
-}
-
-export async function verifyTwoFactorAction(
-  _previousState: TwoFactorActionState,
-  formData: FormData,
-): Promise<TwoFactorActionState> {
-  const limited = await accountRateLimit(undefined)
-  if (limited) return limited
-
-  const parsed = twoFactorChallengeSchema.safeParse({
-    code: formData.get("code"),
-    method: formData.get("method"),
-  })
-  if (!parsed.success) {
-    return validationFailure(
-      "Check the security code and try again.",
-      parsed.error.flatten().fieldErrors,
-    )
-  }
-
-  const trustDevice = formData.get("trustDevice") === "on"
-  try {
-    await withHealthyAuth(async (auth) => {
-      const requestHeaders = await headers()
-      if (parsed.data.method === "backup") {
-        return auth.api.verifyBackupCode({
-          body: { code: parsed.data.code, trustDevice },
-          headers: requestHeaders,
-        })
-      }
-
-      return auth.api.verifyTOTP({
-        body: { code: parsed.data.code, trustDevice },
-        headers: requestHeaders,
-      })
-    })
-  } catch (error) {
-    const errorCode =
-      isAPIError(error) && typeof error.body?.code === "string"
-        ? error.body.code
-        : "UNKNOWN"
-
-    logger.warn("authentication.two_factor_rejected", { code: errorCode })
-
-    if (
-      errorCode === "ACCOUNT_TEMPORARILY_LOCKED" ||
-      errorCode === "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE"
-    ) {
-      return rateLimitFailure()
-    }
-
-    if (
-      errorCode === "INVALID_TWO_FACTOR_COOKIE" ||
-      errorCode === "TWO_FACTOR_NOT_ENABLED" ||
-      errorCode === "TOTP_NOT_ENABLED" ||
-      errorCode === "BACKUP_CODES_NOT_ENABLED"
-    ) {
-      return {
-        error: {
-          code: "AUTHENTICATION_REQUIRED",
-          message: "Your security check expired. Sign in again to continue.",
-        },
-        ok: false,
-      }
-    }
-
-    return {
-      error: {
-        code: "AUTHENTICATION_REQUIRED",
-        fieldErrors: {
-          code: [
-            parsed.data.method === "backup"
-              ? "That recovery code is invalid or has already been used."
-              : "That authenticator code is incorrect. Try the newest code shown in your app.",
-          ],
-        },
-        message: "The security code could not be verified.",
-      },
-      ok: false,
-    }
-  }
-
-  logSecurityEvent("authentication.two_factor_verified", {
-    method: parsed.data.method,
-  })
-  redirect(safeRedirectPath(formData.get("next")))
 }
 
 function emailRequestResponse(

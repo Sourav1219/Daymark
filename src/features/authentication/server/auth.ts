@@ -1,10 +1,9 @@
 import "server-only"
 
-import { AsyncLocalStorage } from "node:async_hooks"
-import { betterAuth, type BetterAuthOptions } from "better-auth"
+import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { nextCookies } from "better-auth/next-js"
-import { captcha, emailOTP, twoFactor } from "better-auth/plugins"
+import { captcha, emailOTP } from "better-auth/plugins"
 
 import type { Database } from "@/db/client"
 import { getDatabase, withHealthyDatabase } from "@/db/client"
@@ -22,74 +21,6 @@ import {
   publishRealtimeEvent,
   userSessionRealtimeChannel,
 } from "@/lib/realtime/realtime-events"
-
-export const bypassTwoFactorPasswordStorage = new AsyncLocalStorage<boolean>()
-export const preserveActiveSessionStorage = new AsyncLocalStorage<boolean>()
-
-type AdapterFindManyArgs = {
-  model?: string
-  [key: string]: unknown
-}
-
-type AdapterDeleteArgs = {
-  model?: string
-  [key: string]: unknown
-}
-
-type AccountRecord = {
-  providerId?: string
-  password?: string | null
-  [key: string]: unknown
-}
-
-function createTwoFactorCompatibleDrizzleAdapter(database: Database) {
-  const baseAdapterFactory = drizzleAdapter(database, {
-    provider: "pg",
-    schema,
-    usePlural: true,
-  })
-
-  return (options: BetterAuthOptions) => {
-    const base = baseAdapterFactory(options) as unknown as {
-      delete?: (args: AdapterDeleteArgs) => Promise<unknown>
-      findMany: (args: AdapterFindManyArgs) => Promise<AccountRecord[]>
-      [key: string]: unknown
-    }
-    const originalFindMany = base.findMany.bind(base)
-
-    base.findMany = async (args: AdapterFindManyArgs) => {
-      const result = await originalFindMany(args)
-      if (
-        args?.model === "account" &&
-        bypassTwoFactorPasswordStorage.getStore()
-      ) {
-        return result.map((account) =>
-          account?.providerId === "credential"
-            ? { ...account, password: null }
-            : account,
-        )
-      }
-      return result
-    }
-
-    const originalDelete =
-      typeof base.delete === "function" ? base.delete.bind(base) : undefined
-
-    if (originalDelete) {
-      base.delete = async (args: AdapterDeleteArgs) => {
-        if (
-          args?.model === "session" &&
-          preserveActiveSessionStorage.getStore()
-        ) {
-          return null
-        }
-        return originalDelete(args)
-      }
-    }
-
-    return base as unknown as ReturnType<typeof baseAdapterFactory>
-  }
-}
 
 function passwordResetUrl(env: ServerEnv, token: string): string {
   const url = new URL("/reset-password", env.BETTER_AUTH_URL)
@@ -113,7 +44,11 @@ export function createAuth(
     appName: "Traketo",
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
-    database: createTwoFactorCompatibleDrizzleAdapter(database),
+    database: drizzleAdapter(database, {
+      provider: "pg",
+      schema,
+      usePlural: true,
+    }),
     databaseHooks: {
       session: {
         create: {
@@ -239,27 +174,6 @@ export function createAuth(
           )
         },
         storeOTP: "hashed",
-      }),
-      twoFactor({
-        accountLockout: {
-          durationSeconds: 15 * 60,
-          enabled: true,
-          maxFailedAttempts: 5,
-        },
-        allowPasswordless: true,
-        backupCodeOptions: {
-          amount: 10,
-          length: 10,
-          storeBackupCodes: "encrypted",
-        },
-        issuer: "Traketo",
-        skipVerificationOnEnable: false,
-        totpOptions: {
-          digits: 6,
-          period: 30,
-        },
-        trustDeviceMaxAge: 30 * 24 * 60 * 60,
-        twoFactorCookieMaxAge: 10 * 60,
       }),
       nextCookies(),
     ],

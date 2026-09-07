@@ -37,7 +37,6 @@ import {
   type SessionView,
 } from "@/features/authentication/application/account-security-actions"
 import { ACTIVE_SESSIONS_CHANGED_EVENT } from "@/features/authentication/client/session-events"
-import { TwoFactorSettingsCard } from "@/features/authentication/ui/two-factor-settings-card"
 import { clearPrivateOfflineData } from "@/features/offline/storage/offline-database"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -107,19 +106,13 @@ export function SecurityDataPanel({
   currentSessionId,
   hasPassword = true,
   initialSessions,
-  twoFactorEnabled = false,
 }: Readonly<{
   currentSessionId: string | null
   hasPassword?: boolean
   initialSessions: readonly SessionView[]
-  twoFactorEnabled?: boolean
 }>) {
   return (
     <div className="security-data-panel">
-      <TwoFactorSettingsCard
-        hasPassword={hasPassword}
-        initialTwoFactorEnabled={twoFactorEnabled}
-      />
       <SessionsCard
         currentSessionId={currentSessionId}
         initialSessions={initialSessions}

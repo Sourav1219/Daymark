@@ -18,10 +18,7 @@ vi.mock("next/navigation", () => ({
 vi.mock(
   "@/features/authentication/application/account-security-actions",
   () => ({
-    confirmTwoFactorAction: vi.fn(async () => null),
     deleteAccountAction: vi.fn(async () => null),
-    disableTwoFactorAction: vi.fn(async () => null),
-    enableTwoFactorAction: vi.fn(async () => null),
     exportAccountDataAction: vi.fn(async () => null),
     listActiveSessionsAction: mocks.listActiveSessionsAction,
     revokeSessionAction: vi.fn(async () => ({

@@ -2,33 +2,15 @@
 
 import { useEffect } from "react"
 import { createPortal } from "react-dom"
-import {
-  Check,
-  ShieldCheck,
-  ShieldOff,
-  Sparkles,
-  UserRound,
-} from "lucide-react"
+import { Check, Sparkles, UserRound } from "lucide-react"
 
-export type ProfileUpdateKind = "name" | "two-factor" | "two-factor-disabled"
+export type ProfileUpdateKind = "name"
 
 const updateCopy = {
   name: {
     eyebrow: "Profile refreshed",
     heading: "Looking good!",
     message: "Your new display name is now used across Traketo.",
-  },
-  "two-factor": {
-    eyebrow: "Two-Factor Authentication",
-    heading: "Authentication enabled",
-    message:
-      "Google Authenticator is now active. You will be asked for a 6-digit code next time you sign in.",
-  },
-  "two-factor-disabled": {
-    eyebrow: "Two-Factor Authentication",
-    heading: "Authentication disabled",
-    message:
-      "Google Authenticator has been disabled. You can re-enable it at any time from your account settings.",
   },
 } as const
 
@@ -40,12 +22,7 @@ export function ProfileUpdatePopup({
   onDismiss: () => void
 }>) {
   const copy = updateCopy[kind]
-  const Icon =
-    kind === "two-factor"
-      ? ShieldCheck
-      : kind === "two-factor-disabled"
-        ? ShieldOff
-        : UserRound
+  const Icon = UserRound
 
   useEffect(() => {
     const timeout = window.setTimeout(onDismiss, 5_000)

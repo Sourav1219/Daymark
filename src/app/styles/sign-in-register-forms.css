@@ -947,66 +947,6 @@ Sign-in / Register forms — same clean app-width column as the
   text-transform: none;
 }
 
-.two-factor__trust {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.7rem;
-  padding: 0.8rem 0.9rem;
-  border: 1px solid var(--app-border);
-  border-radius: 14px;
-  background: var(--app-surface-2);
-  color: var(--app-text-sub);
-  cursor: pointer;
-}
-
-.two-factor__trust input {
-  width: 1rem;
-  height: 1rem;
-  margin-top: 0.18rem;
-  accent-color: var(--accent-blue);
-}
-
-.two-factor__trust span {
-  display: grid;
-  gap: 0.12rem;
-  font-size: 0.76rem;
-  line-height: 1.35;
-}
-
-.two-factor__trust strong {
-  color: var(--app-text);
-  font-size: 0.82rem;
-}
-
-.two-factor__alternate {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.42rem;
-  min-height: 2.5rem;
-  border: 0;
-  background: transparent;
-  color: var(--accent-blue);
-  font:
-    800 0.76rem var(--font-nunito),
-    var(--font-sans);
-  cursor: pointer;
-}
-
-.two-factor__alternate svg {
-  width: 0.95rem;
-  height: 0.95rem;
-}
-
-.two-factor__alternate:hover:not(:disabled) {
-  text-decoration: underline;
-}
-
-.two-factor__alternate:disabled {
-  cursor: wait;
-  opacity: 0.6;
-}
-
 .verification__expiry {
   display: flex;
   align-items: center;

@@ -16,7 +16,9 @@ const {
   signInEmail,
   signOut,
   signUpEmail,
+  verifyBackupCode,
   verifyEmailOTP,
+  verifyTOTP,
 } = vi.hoisted(() => ({
   cookieStore: { set: vi.fn(), get: vi.fn() },
   enforceRateLimit: vi.fn(),
@@ -31,7 +33,9 @@ const {
   signInEmail: vi.fn(),
   signOut: vi.fn(),
   signUpEmail: vi.fn(),
+  verifyBackupCode: vi.fn(),
   verifyEmailOTP: vi.fn(),
+  verifyTOTP: vi.fn(),
 }))
 
 vi.mock("better-auth/api", () => ({
@@ -55,6 +59,7 @@ import {
   resendVerificationAction,
   resetPasswordAction,
   verifyEmailCodeAction,
+  verifyTwoFactorAction,
 } from "@/features/authentication/application/actions"
 import { deliverAuthenticationEmail } from "@/features/authentication/server/authentication-email-delivery"
 
@@ -212,6 +217,103 @@ describe("loginAction", () => {
     expect(request?.headers.get("x-captcha-response")).toBe(
       "verified-turnstile-token",
     )
+  })
+
+  it("sends protected password accounts to the two-factor challenge", async () => {
+    signInEmail.mockResolvedValueOnce({
+      twoFactorMethods: ["totp", "backupCode"],
+      twoFactorRedirect: true,
+    })
+    const form = loginForm()
+    form.set("next", "/quests?view=active")
+
+    await loginAction(null, form)
+
+    expect(redirect).toHaveBeenCalledOnce()
+    expect(redirect).toHaveBeenCalledWith(
+      "/two-factor?next=%2Fquests%3Fview%3Dactive",
+    )
+    expect(logSecurityEvent).toHaveBeenCalledWith(
+      "authentication.two_factor_challenge_started",
+    )
+    expect(logSecurityEvent).not.toHaveBeenCalledWith(
+      "authentication.login_success",
+    )
+  })
+})
+
+function twoFactorForm(method: "totp" | "backup" = "totp") {
+  const form = new FormData()
+  form.set("method", method)
+  form.set("code", method === "totp" ? "123456" : "AbC12-XyZ90")
+  form.set("next", "/quests?view=active")
+  form.set("trustDevice", "on")
+  return form
+}
+
+describe("verifyTwoFactorAction", () => {
+  beforeEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+    enforceRateLimit.mockResolvedValue(null)
+    withHealthyAuth.mockImplementation((scope) =>
+      scope({ api: { verifyBackupCode, verifyTOTP } }),
+    )
+  })
+
+  it("verifies a TOTP code and trusts the device", async () => {
+    verifyTOTP.mockResolvedValueOnce({ status: true })
+
+    await verifyTwoFactorAction(null, twoFactorForm())
+
+    expect(verifyTOTP).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: { code: "123456", trustDevice: true },
+      }),
+    )
+    expect(redirect).toHaveBeenCalledWith("/quests?view=active")
+  })
+
+  it("preserves a recovery code and uses the backup-code endpoint", async () => {
+    verifyBackupCode.mockResolvedValueOnce({ status: true })
+
+    await verifyTwoFactorAction(null, twoFactorForm("backup"))
+
+    expect(verifyBackupCode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: { code: "AbC12-XyZ90", trustDevice: true },
+      }),
+    )
+  })
+
+  it("returns a field error for an invalid authenticator code", async () => {
+    verifyTOTP.mockRejectedValueOnce({ body: { code: "INVALID_CODE" } })
+
+    await expect(verifyTwoFactorAction(null, twoFactorForm())).resolves.toEqual(
+      {
+        error: {
+          code: "AUTHENTICATION_REQUIRED",
+          fieldErrors: {
+            code: [
+              "That authenticator code is incorrect. Try the newest code shown in your app.",
+            ],
+          },
+          message: "The security code could not be verified.",
+        },
+        ok: false,
+      },
+    )
+    expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it("rejects unsafe final destinations", async () => {
+    verifyTOTP.mockResolvedValueOnce({ status: true })
+    const form = twoFactorForm()
+    form.set("next", "https://attacker.example")
+
+    await verifyTwoFactorAction(null, form)
+
+    expect(redirect).toHaveBeenCalledWith("/today")
   })
 })
 

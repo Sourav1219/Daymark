@@ -73,16 +73,19 @@ describe("RouteLoadingScreen", () => {
     expect(container.querySelector(".route-loading__cards")).toBeNull()
   })
 
-  it("does not show the signed-in shell on public account pages", () => {
-    navigationState.pathname = "/sign-in"
+  it.each(["/sign-in", "/two-factor"])(
+    "does not show the signed-in shell on the %s account page",
+    (pathname) => {
+      navigationState.pathname = pathname
 
-    render(<RouteLoadingScreen />)
+      render(<RouteLoadingScreen />)
 
-    expect(
-      screen.getByRole("status", { name: "Opening your account" }),
-    ).toBeVisible()
-    expect(
-      screen.queryByRole("navigation", { name: "Primary navigation" }),
-    ).not.toBeInTheDocument()
-  })
+      expect(
+        screen.getByRole("status", { name: "Opening your account" }),
+      ).toBeVisible()
+      expect(
+        screen.queryByRole("navigation", { name: "Primary navigation" }),
+      ).not.toBeInTheDocument()
+    },
+  )
 })

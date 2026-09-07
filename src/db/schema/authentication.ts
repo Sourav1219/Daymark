@@ -28,10 +28,35 @@ export const users = pgTable(
     name: varchar("name", { length: 120 }).notNull(),
     email: varchar("email", { length: 320 }).notNull(),
     emailVerified: boolean("email_verified").default(false).notNull(),
+    twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
     image: text("image"),
     ...timestampColumns,
   },
   (table) => [uniqueIndex("users_email_unique").on(table.email)],
+)
+
+export const twoFactors = pgTable(
+  "two_factors",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    verified: boolean("verified").default(true).notNull(),
+    failedVerificationCount: integer("failed_verification_count")
+      .default(0)
+      .notNull(),
+    lockedUntil: timestamp("locked_until", {
+      mode: "date",
+      withTimezone: true,
+    }),
+  },
+  (table) => [
+    index("two_factors_secret_idx").on(table.secret),
+    index("two_factors_user_id_idx").on(table.userId),
+  ],
 )
 
 export const sessions = pgTable(

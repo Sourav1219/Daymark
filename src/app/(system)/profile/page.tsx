@@ -8,8 +8,8 @@ import {
 } from "@/features/authentication/server/authorization"
 import { ProfileExperience } from "@/features/authentication/ui/profile-experience"
 import type { SessionView } from "@/features/authentication/application/account-security-actions"
-import { and, eq, isNotNull } from "drizzle-orm"
-import { accounts } from "@/db/schema"
+import { and, eq, isNotNull, ne } from "drizzle-orm"
+import { accounts, users } from "@/db/schema"
 import { listActiveSessionRecords } from "@/features/authentication/repositories/session-management-repository"
 import { getAuthorizedWorkspaceSummary } from "@/features/workspaces/application/get-workspace-summary"
 
@@ -22,16 +22,29 @@ export default async function ProfilePage() {
     getCurrentSessionId(),
   ])
   const database = getDatabase()
-  const [workspace, sessionRecords, credentialAccounts] = await Promise.all([
-    getAuthorizedWorkspaceSummary(access),
-    listActiveSessionRecords(database, user.id, new Date()),
-    database
-      .select({ id: accounts.id })
-      .from(accounts)
-      .where(and(eq(accounts.userId, user.id), isNotNull(accounts.password)))
-      .limit(1),
-  ])
+  const [workspace, sessionRecords, credentialAccounts, userRecords] =
+    await Promise.all([
+      getAuthorizedWorkspaceSummary(access),
+      listActiveSessionRecords(database, user.id, new Date()),
+      database
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(
+          and(
+            eq(accounts.userId, user.id),
+            isNotNull(accounts.password),
+            ne(accounts.password, ""),
+          ),
+        )
+        .limit(1),
+      database
+        .select({ twoFactorEnabled: users.twoFactorEnabled })
+        .from(users)
+        .where(eq(users.id, user.id))
+        .limit(1),
+    ])
   const hasPassword = credentialAccounts.length > 0
+  const twoFactorEnabled = userRecords[0]?.twoFactorEnabled ?? false
   const sessions: readonly SessionView[] = sessionRecords.map((record) => ({
     createdAt: record.createdAt.toISOString(),
     expiresAt: record.expiresAt.toISOString(),
@@ -54,6 +67,7 @@ export default async function ProfilePage() {
       joined={joined}
       name={user.name}
       role={access.role}
+      twoFactorEnabled={twoFactorEnabled}
       workspaceName={workspace?.name ?? "Personal workspace"}
     />
   )

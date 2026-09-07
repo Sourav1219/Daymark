@@ -26,6 +26,7 @@ const publicRoutes = new Set([
   "/sign-in",
   "/sign-up",
   "/terms",
+  "/two-factor",
   "/verify-email",
   "/~offline",
 ])
@@ -91,11 +92,12 @@ function NeutralRouteLoadingScreen() {
 }
 
 function PublicRouteLoading({ pathname }: Readonly<{ pathname: string }>) {
-  const label = pathname.includes("sign")
-    ? "Opening your account"
-    : pathname === "/"
-      ? "Opening Traketo"
-      : "Opening page"
+  const label =
+    pathname.includes("sign") || pathname === "/two-factor"
+      ? "Opening your account"
+      : pathname === "/"
+        ? "Opening Traketo"
+        : "Opening page"
 
   return (
     <main aria-label={label} className="public-route-loading" role="status">

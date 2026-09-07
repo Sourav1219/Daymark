@@ -73,6 +73,16 @@ export function TurnstileWidget({
   }, [clearVerification, onVerifiedChange, siteKey])
 
   useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.turnstile &&
+      !widgetIdRef.current
+    ) {
+      renderWidget()
+    }
+  }, [renderWidget])
+
+  useEffect(() => {
     const widgetId = widgetIdRef.current
     if (!widgetId || !window.turnstile) return
 

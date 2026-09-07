@@ -16,7 +16,10 @@ import {
   revokeAllSessionRecords,
   revokeSessionRecord,
 } from "@/features/authentication/repositories/session-management-repository"
-import { getAuth } from "@/features/authentication/server/auth"
+import {
+  bypassTwoFactorPasswordStorage,
+  getAuth,
+} from "@/features/authentication/server/auth"
 import type { ActionResult } from "@/lib/actions/action-result"
 import { validationFailure } from "@/lib/actions/action-helpers"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
@@ -28,6 +31,9 @@ import {
   publishRealtimeEvent,
   userSessionRealtimeChannel,
 } from "@/lib/realtime/realtime-events"
+import { isAPIError } from "better-auth/api"
+import QRCode from "qrcode"
+import { confirmTwoFactorSchema } from "@/features/authentication/application/validation"
 
 export type SessionView = Readonly<{
   createdAt: string
@@ -42,6 +48,20 @@ export type ExportDataState = ActionResult<{
   pdfBase64: string
 }> | null
 export type DeleteAccountState = ActionResult<{ deleted: true }> | null
+
+export type EnableTwoFactorState = ActionResult<{
+  qrCodeDataUrl: string
+  secretKey: string
+  totpURI: string
+}> | null
+
+export type ConfirmTwoFactorState = ActionResult<{
+  enabled: true
+}> | null
+
+export type DisableTwoFactorState = ActionResult<{
+  disabled: true
+}> | null
 
 const revokeSessionSchema = z.object({ sessionId: z.uuid() })
 const deleteAccountPasswordSchema = z.object({
@@ -269,4 +289,156 @@ async function removeAttachmentObjects(storageKeys: readonly string[]) {
       ),
     )
   }
+}
+
+export async function enableTwoFactorAction(
+  _previousState: EnableTwoFactorState,
+  _formData?: FormData,
+): Promise<EnableTwoFactorState> {
+  void _previousState
+  void _formData
+  const user = await requireUser()
+  const limited = await accountRateLimitFailure(user.id)
+  if (limited) return limited
+
+  try {
+    const requestHeaders = await headers()
+    const response = await bypassTwoFactorPasswordStorage.run(true, () =>
+      getAuth().api.enableTwoFactor({
+        body: {},
+        headers: requestHeaders,
+      }),
+    )
+
+    if (!response || !response.totpURI) {
+      return {
+        error: {
+          code: "INTERNAL_ERROR",
+          message:
+            "Could not initialize two-factor authentication. Please try again.",
+        },
+        ok: false,
+      }
+    }
+
+    const totpURI = response.totpURI
+    const url = new URL(totpURI)
+    const secretKey = url.searchParams.get("secret") ?? ""
+
+    const qrCodeDataUrl = await QRCode.toDataURL(totpURI, {
+      color: {
+        dark: "#0b132b",
+        light: "#ffffff",
+      },
+      margin: 2,
+      width: 220,
+    })
+
+    return {
+      data: {
+        qrCodeDataUrl,
+        secretKey,
+        totpURI,
+      },
+      ok: true,
+    }
+  } catch (error) {
+    console.error("[enableTwoFactorAction error]:", error)
+    return {
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Could not start two-factor setup. Please try again.",
+      },
+      ok: false,
+    }
+  }
+}
+
+export async function confirmTwoFactorAction(
+  _previousState: ConfirmTwoFactorState,
+  formData: FormData,
+): Promise<ConfirmTwoFactorState> {
+  const user = await requireUser()
+  const limited = await accountRateLimitFailure(user.id)
+  if (limited) return limited
+
+  const parsed = confirmTwoFactorSchema.safeParse({
+    code: formData.get("code"),
+  })
+  if (!parsed.success) {
+    return validationFailure(
+      "Check the 6-digit authenticator code and try again.",
+      {
+        code: parsed.error.flatten().fieldErrors.code ?? [
+          "Enter the 6-digit code from Google Authenticator",
+        ],
+      },
+    )
+  }
+
+  try {
+    await getAuth().api.verifyTOTP({
+      body: { code: parsed.data.code },
+      headers: await headers(),
+    })
+  } catch (error) {
+    const errorCode =
+      isAPIError(error) && typeof error.body?.code === "string"
+        ? error.body.code
+        : "UNKNOWN"
+
+    return {
+      error: {
+        code: "VALIDATION_ERROR",
+        fieldErrors: {
+          code: [
+            errorCode === "INVALID_CODE"
+              ? "That code is incorrect. Enter the newest code from Google Authenticator."
+              : "The authenticator code could not be verified.",
+          ],
+        },
+        message: "The authenticator code could not be verified.",
+      },
+      ok: false,
+    }
+  }
+
+  logSecurityEvent("authentication.two_factor_enabled", { userId: user.id })
+  revalidatePath("/profile")
+
+  return { data: { enabled: true }, ok: true }
+}
+
+export async function disableTwoFactorAction(
+  _previousState: DisableTwoFactorState,
+  _formData?: FormData,
+): Promise<DisableTwoFactorState> {
+  void _previousState
+  void _formData
+  const user = await requireUser()
+  const limited = await accountRateLimitFailure(user.id)
+  if (limited) return limited
+
+  try {
+    const requestHeaders = await headers()
+    await bypassTwoFactorPasswordStorage.run(true, () =>
+      getAuth().api.disableTwoFactor({
+        body: {},
+        headers: requestHeaders,
+      }),
+    )
+  } catch {
+    return {
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Could not disable two-factor authentication.",
+      },
+      ok: false,
+    }
+  }
+
+  logSecurityEvent("authentication.two_factor_disabled", { userId: user.id })
+  revalidatePath("/profile")
+
+  return { data: { disabled: true }, ok: true }
 }

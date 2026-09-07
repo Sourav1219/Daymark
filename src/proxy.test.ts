@@ -98,7 +98,9 @@ describe("protected route proxy", () => {
     const response = proxy(new NextRequest("https://questly.test/sign-in"))
     const csp = response.headers.get("content-security-policy")
 
-    expect(csp).toMatch(/script-src 'self' 'nonce-[^']+' 'unsafe-eval'/)
+    expect(csp).toMatch(
+      /script-src 'self' 'nonce-[^']+' https:\/\/challenges\.cloudflare\.com 'unsafe-eval'/,
+    )
     expect(csp).toContain("style-src 'self' 'unsafe-inline'")
     expect(csp).not.toContain("strict-dynamic")
   })

@@ -11,6 +11,9 @@ overrides:
   # Security: qs array-limit bypass + DoS (2× moderate) via shadcn→@modelcontextprotocol/sdk→express.
   # Patched in >=6.16.0.
   qs: ">=6.16.0"
+  # Security: browserslist unbounded memory growth (GHSA-c83g-rgw3-j3cx) and crash (GHSA-73wf-gq98-2v4g).
+  # Patched in >=4.28.7.
+  browserslist: ">=4.28.7"
 minimumReleaseAgeExclude:
   - lucide-react@1.30.0
   - shadcn@4.21.0

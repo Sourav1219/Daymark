@@ -14,6 +14,33 @@ const email = z
   )
   .transform((value) => value.trim().toLowerCase())
 
+const commonWeakPasswords = new Set([
+  "123456789012",
+  "password1234",
+  "password12345",
+  "qwertyuiop12",
+  "admin1234567",
+  "administrator",
+  "welcome12345",
+])
+
+function isTrivialPassword(value: string): boolean {
+  if (commonWeakPasswords.has(value.toLowerCase())) return true
+  if (/^(.)\1+$/u.test(value)) return true
+  return false
+}
+
+const securePassword = z
+  .string()
+  .min(
+    minimumRegistrationPasswordLength,
+    `Password must be at least ${minimumRegistrationPasswordLength} characters`,
+  )
+  .max(128, "Password must be 128 characters or fewer")
+  .refine((val) => !isTrivialPassword(val), {
+    message: "Choose a less predictable password",
+  })
+
 export const registrationSchema = z.object({
   name: z
     .string()
@@ -21,13 +48,7 @@ export const registrationSchema = z.object({
     .min(2, "Name must be at least 2 characters")
     .max(120, "Name must be 120 characters or fewer"),
   email,
-  password: z
-    .string()
-    .min(
-      minimumRegistrationPasswordLength,
-      `Password must be at least ${minimumRegistrationPasswordLength} characters`,
-    )
-    .max(128, "Password must be 128 characters or fewer"),
+  password: securePassword,
 })
 
 export const loginSchema = z.object({
@@ -92,7 +113,6 @@ const protectedRedirectRoots = [
   "/quests",
   "/timer",
   "/gates",
-  "/labels",
   "/cleared",
   "/progress",
   "/profile",

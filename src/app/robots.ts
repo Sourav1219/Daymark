@@ -22,7 +22,6 @@ export default function robots(): MetadataRoute.Robots {
           "/quests",
           "/timer",
           "/gates",
-          "/labels",
           "/cleared",
           "/progress",
           "/profile",

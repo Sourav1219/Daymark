@@ -24,7 +24,7 @@ import {
 } from "@/features/authentication/application/validation"
 import type { ActionFailure, ActionResult } from "@/lib/actions/action-result"
 import { validationFailure } from "@/lib/actions/action-helpers"
-import { logger } from "@/lib/observability/logger"
+import { logSecurityEvent, logger } from "@/lib/observability/logger"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 
 type AuthActionData = Readonly<{
@@ -87,6 +87,35 @@ function rateLimitFailure(): ActionFailure {
   }
 }
 
+function captchaFailure(): ActionFailure {
+  return {
+    error: {
+      code: "VALIDATION_ERROR",
+      message: "Complete the security check and try again.",
+    },
+    ok: false,
+  }
+}
+
+function isCaptchaFailure(error: unknown) {
+  if (!isAPIError(error)) return false
+  const code = error.body?.code
+  return (
+    code === "MISSING_RESPONSE" ||
+    code === "VERIFICATION_FAILED" ||
+    code === "UNKNOWN_ERROR"
+  )
+}
+
+async function authenticationHeaders(formData: FormData) {
+  const requestHeaders = new Headers(await headers())
+  const captchaResponse = formData.get("cf-turnstile-response")
+  if (typeof captchaResponse === "string" && captchaResponse.length > 0) {
+    requestHeaders.set("x-captcha-response", captchaResponse)
+  }
+  return requestHeaders
+}
+
 async function accountRateLimit(email: unknown) {
   const requestHeaders = await headers()
   const identity =
@@ -122,6 +151,7 @@ export async function registerAction(
 
   const startedAt = Date.now()
   const callbackURL = safeRedirectPath(formData.get("next"))
+  const requestHeaders = await authenticationHeaders(formData)
   let infrastructureFailure = false
   try {
     await monitorAuthenticationEmailDelivery(() =>
@@ -132,23 +162,24 @@ export async function registerAction(
           .where(eq(users.email, parsed.data.email))
           .limit(1)
 
-        await auth.api.signUpEmail({
-          body: { ...parsed.data, callbackURL },
-          headers: await headers(),
-        })
-
         if (existingAccount && !existingAccount.emailVerified) {
           await auth.api.sendVerificationOTP({
             body: {
               email: parsed.data.email,
               type: "email-verification",
             },
-            headers: await headers(),
+            headers: requestHeaders,
+          })
+        } else {
+          await auth.api.signUpEmail({
+            body: { ...parsed.data, callbackURL },
+            headers: requestHeaders,
           })
         }
       }),
     )
   } catch (error) {
+    if (isCaptchaFailure(error)) return captchaFailure()
     if (
       isAPIError(error) &&
       error.body?.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"
@@ -194,14 +225,22 @@ export async function loginAction(
   }
 
   const callbackURL = safeRedirectPath(formData.get("next"))
+  const requestHeaders = await authenticationHeaders(formData)
   try {
     await withHealthyAuth(async (auth) =>
       auth.api.signInEmail({
         body: { ...parsed.data, callbackURL },
-        headers: await headers(),
+        headers: requestHeaders,
       }),
     )
-  } catch {
+    logSecurityEvent("authentication.login_success")
+  } catch (error) {
+    if (isCaptchaFailure(error)) return captchaFailure()
+    logSecurityEvent("authentication.login_failed", {
+      emailFingerprint: createHash("sha256")
+        .update(parsed.data.email.trim().toLowerCase())
+        .digest("hex"),
+    })
     // Keep missing-account and wrong-password responses identical so the login
     // form cannot be used to discover which email addresses are registered.
     return loginFailure()
@@ -351,17 +390,19 @@ export async function requestPasswordResetAction(
   }
 
   const startedAt = Date.now()
+  const requestHeaders = await authenticationHeaders(formData)
   let infrastructureFailure = false
   try {
     await monitorAuthenticationEmailDelivery(() =>
       withHealthyAuth(async (auth) =>
         auth.api.requestPasswordReset({
           body: { email: parsed.data.email, redirectTo: "/reset-password" },
-          headers: await headers(),
+          headers: requestHeaders,
         }),
       ),
     )
   } catch (error) {
+    if (isCaptchaFailure(error)) return captchaFailure()
     if (!isAPIError(error) || error.statusCode >= 500) {
       infrastructureFailure = true
       logger.error(
@@ -423,6 +464,7 @@ export async function resetPasswordAction(
         error instanceof Error ? error : undefined,
       )
     }
+    logSecurityEvent("authentication.password_reset_failed")
 
     return {
       error: {
@@ -434,6 +476,7 @@ export async function resetPasswordAction(
     }
   }
 
+  logSecurityEvent("authentication.password_reset_completed")
   return emailRequestResponse("Your password has been reset.")
 }
 

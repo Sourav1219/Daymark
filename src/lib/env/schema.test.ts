@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest"
 import { serverEnvSchema } from "./schema"
 
 describe("serverEnvSchema", () => {
+  const turnstile = {
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: "turnstile-public-test-key",
+    TURNSTILE_SECRET_KEY: "turnstile-secret-test-key",
+  }
   it("accepts the required server configuration", () => {
     const result = serverEnvSchema.safeParse({
       DATABASE_URL: "postgresql://user:pass@example.test/questly",
@@ -53,6 +57,25 @@ describe("serverEnvSchema", () => {
     ).toBe(true)
   })
 
+  it("accepts Turnstile credentials only as a complete pair", () => {
+    const base = {
+      DATABASE_URL: "postgresql://user:pass@example.test/questly",
+      BETTER_AUTH_SECRET: "a-secure-secret-that-is-at-least-32-characters",
+      BETTER_AUTH_URL: "https://agenda.example.test",
+    }
+
+    expect(serverEnvSchema.safeParse({ ...base, ...turnstile }).success).toBe(
+      true,
+    )
+    expect(
+      serverEnvSchema.safeParse({
+        ...base,
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY:
+          turnstile.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+      }).success,
+    ).toBe(false)
+  })
+
   it("accepts a complete R2 group and rejects partial permanent credentials", () => {
     const base = {
       DATABASE_URL: "postgresql://user:pass@example.test/questly",
@@ -91,6 +114,7 @@ describe("serverEnvSchema", () => {
     expect(
       serverEnvSchema.safeParse({
         ...production,
+        ...turnstile,
         CRON_SECRET: "cron-secret-that-is-at-least-32-characters",
         EMAIL_FROM: "auth@example.test",
         RESEND_API_KEY: "re_production-test-key",
@@ -101,6 +125,7 @@ describe("serverEnvSchema", () => {
     expect(
       serverEnvSchema.safeParse({
         ...production,
+        ...turnstile,
         CRON_SECRET_ATTACHMENTS: "attachment-secret-that-is-at-least-16",
         CRON_SECRET_OVERDUE: "overdue-secret-that-is-at-least-16-characters",
         CRON_SECRET_REMINDERS: "reminder-secret-that-is-at-least-16-characters",
@@ -154,6 +179,7 @@ describe("serverEnvSchema", () => {
     expect(
       serverEnvSchema.safeParse({
         ...production,
+        ...turnstile,
         EMAIL_FROM: "auth@example.test",
         RESEND_API_KEY: "re_production-test-key",
       }).success,
@@ -175,6 +201,7 @@ describe("serverEnvSchema", () => {
     expect(
       serverEnvSchema.safeParse({
         ...production,
+        ...turnstile,
         DATABASE_URL: "postgresql://app_user:pass@example.test/questly",
         MIGRATION_DATABASE_URL:
           "postgresql://migration_user:pass@example.test/questly?sslmode=require",
@@ -183,6 +210,7 @@ describe("serverEnvSchema", () => {
     expect(
       serverEnvSchema.safeParse({
         ...production,
+        ...turnstile,
         DATABASE_URL:
           "postgresql://shared_user:pass@example.test/questly?sslmode=require",
         MIGRATION_DATABASE_URL:
@@ -192,6 +220,7 @@ describe("serverEnvSchema", () => {
     expect(
       serverEnvSchema.safeParse({
         ...production,
+        ...turnstile,
         DATABASE_URL:
           "postgresql://app_user:pass@example.test/questly?sslmode=require",
         MIGRATION_DATABASE_URL:

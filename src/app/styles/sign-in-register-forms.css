@@ -691,6 +691,16 @@ Sign-in / Register forms — same clean app-width column as the
   color: var(--app-red);
 }
 
+.auth__turnstile {
+  display: grid;
+  min-height: 4.1rem;
+  place-items: center;
+}
+
+.auth__turnstile > div {
+  width: 100%;
+}
+
 .auth__error {
   margin-top: 0.25rem;
   padding: 0.7rem 0.9rem;

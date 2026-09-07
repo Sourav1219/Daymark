@@ -15,7 +15,10 @@ describe("NavigationLinks", () => {
     expect(
       screen.getByRole("navigation", { name: "Primary navigation" }),
     ).toBeInTheDocument()
-    expect(screen.getAllByRole("link")).toHaveLength(9)
+    expect(screen.getAllByRole("link")).toHaveLength(8)
+    expect(
+      screen.queryByRole("link", { name: "Labels" }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute(
       "aria-current",
       "page",

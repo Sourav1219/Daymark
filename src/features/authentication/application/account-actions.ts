@@ -7,6 +7,7 @@ import { profileNameSchema } from "@/features/authentication/application/validat
 import { getAuth } from "@/features/authentication/server/auth"
 import { requireUser } from "@/features/authentication/server/authorization"
 import type { ActionResult } from "@/lib/actions/action-result"
+import { logSecurityEvent } from "@/lib/observability/logger"
 import { validationFailure } from "@/lib/actions/action-helpers"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 
@@ -51,6 +52,7 @@ export async function updateProfileNameAction(
       body: { name: parsed.data.name },
       headers: await headers(),
     })
+    logSecurityEvent("profile.name_updated", { userId: user.id })
     revalidatePath("/profile")
 
     return { data: { name: parsed.data.name }, ok: true }

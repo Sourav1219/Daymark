@@ -160,6 +160,13 @@ export function AttachmentManager({
       const result = await requestAttachmentDownloadAction({ attachmentId })
       if (!result.ok) return fail(result.error.message)
 
+      if (
+        !result.data.url.startsWith("https://") &&
+        !result.data.url.startsWith("http://")
+      ) {
+        return fail("The attachment download URL is invalid.")
+      }
+
       const link = document.createElement("a")
       link.href = result.data.url
       link.rel = "noopener noreferrer"

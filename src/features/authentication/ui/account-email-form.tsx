@@ -10,6 +10,7 @@ import {
 } from "@/features/authentication/application/actions"
 import { EmailVerificationPanel } from "@/features/authentication/ui/email-verification-panel"
 import { AuthSuccessPopup } from "@/features/authentication/ui/auth-success-popup"
+import { TurnstileWidget } from "@/features/authentication/ui/turnstile-widget"
 
 type AccountEmailFormProps = Readonly<{
   mode: "password-reset" | "verification"
@@ -141,6 +142,8 @@ function PasswordResetRequest() {
   const [dismissedSuccess, setDismissedSuccess] = useState<typeof state>(null)
   const dismissSuccess = useCallback(() => setDismissedSuccess(state), [state])
   const successVisible = state?.ok && state !== dismissedSuccess
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
+  const [captchaVerified, setCaptchaVerified] = useState(!turnstileSiteKey)
 
   return (
     <main className="auth" data-mode="recovery">
@@ -189,13 +192,25 @@ function PasswordResetRequest() {
             ) : null}
           </div>
 
+          {turnstileSiteKey ? (
+            <TurnstileWidget
+              onVerifiedChange={setCaptchaVerified}
+              resetSignal={state}
+              siteKey={turnstileSiteKey}
+            />
+          ) : null}
+
           {state && !state.ok ? (
             <div className="auth__error" role="alert">
               {state.error.message}
             </div>
           ) : null}
 
-          <button className="auth__submit" disabled={pending} type="submit">
+          <button
+            className="auth__submit"
+            disabled={pending || !captchaVerified}
+            type="submit"
+          >
             {pending ? "Sending…" : "Send reset link"}
           </button>
         </form>

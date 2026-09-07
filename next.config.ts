@@ -12,6 +12,7 @@ const securityHeaders = [
       ]
     : []),
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
   {
     key: "Permissions-Policy",
     value: "camera=(), geolocation=(), microphone=()",
@@ -23,7 +24,7 @@ const securityHeaders = [
     ? [
         {
           key: "Strict-Transport-Security",
-          value: "max-age=31536000; includeSubDomains",
+          value: "max-age=31536000; includeSubDomains; preload",
         },
       ]
     : []),
@@ -36,6 +37,7 @@ const nextConfig: NextConfig = {
     authInterrupts: true,
   },
   poweredByHeader: false,
+  productionBrowserSourceMaps: false,
   reactCompiler: true,
   typedRoutes: true,
   async headers() {

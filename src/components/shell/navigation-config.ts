@@ -7,7 +7,6 @@ import {
   PanelsTopLeft,
   Settings,
   Timer,
-  Tags,
   UserRound,
   type LucideIcon,
 } from "lucide-react"
@@ -23,7 +22,6 @@ export const shellNavigationItems: readonly ShellNavigationItem[] = [
   { href: "/quests", icon: ListChecks, label: "Tasks" },
   { href: "/timer" as Route, icon: Timer, label: "Timer" },
   { href: "/gates", icon: PanelsTopLeft, label: "Lists" },
-  { href: "/labels", icon: Tags, label: "Labels" },
   { href: "/cleared", icon: CircleCheckBig, label: "Completed" },
   { href: "/progress", icon: Gauge, label: "Progress" },
   { href: "/profile" as Route, icon: UserRound, label: "Profile" },

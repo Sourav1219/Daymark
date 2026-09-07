@@ -14,7 +14,6 @@ import {
   PanelsTopLeft,
   Send,
   ShieldCheck,
-  Tags,
 } from "lucide-react"
 
 import { LoadingPlaceholder } from "@/components/system/loading-placeholder"
@@ -44,8 +43,6 @@ export function GatesLoadingState() {
       />
       <ManagementCreateCard
         description="Group related tasks into a named, shareable view."
-        icon="lists"
-        kind="list"
         title="Create List"
       />
       <ManagementSection
@@ -57,31 +54,6 @@ export function GatesLoadingState() {
         description="Archived Lists keep their task assignments but leave active navigation."
         title="Archived Lists"
       />
-    </div>
-  )
-}
-
-export function LabelsLoadingState() {
-  return (
-    <div
-      aria-label="Loading Labels"
-      className="grid gap-section exact-route-loading"
-      role="status"
-    >
-      <span className="sr-only">Loading Labels</span>
-      <PageHeading
-        actions={<LoadingPlaceholder className="exact-loading__badge" />}
-        description="Create reusable Labels and attach them to tasks. Labels cut across Lists and schedules, and each one offers a shareable filtered view of your tasks."
-        eyebrow="Labels"
-        title="Labels"
-      />
-      <ManagementCreateCard
-        description="Attach Labels to tasks to cut across Lists and schedules."
-        icon="labels"
-        kind="label"
-        title="Create Label"
-      />
-      <ManagementSection title="Workspace Labels" />
     </div>
   )
 }
@@ -238,27 +210,16 @@ export function WorkspaceLoadingState() {
 
 function ManagementCreateCard({
   description,
-  icon,
-  kind,
   title,
 }: Readonly<{
   description: string
-  icon: "labels" | "lists"
-  kind: "label" | "list"
   title: string
 }>) {
-  const Icon = icon === "lists" ? PanelsTopLeft : Tags
-  const fields =
-    kind === "list"
-      ? ([
-          ["List name", "input"],
-          ["Accent", "select"],
-          ["Description", "textarea"],
-        ] as const)
-      : ([
-          ["Label name", "input"],
-          ["Color", "select"],
-        ] as const)
+  const fields = [
+    ["List name", "input"],
+    ["Accent", "select"],
+    ["Description", "textarea"],
+  ] as const
 
   return (
     <Card
@@ -268,7 +229,7 @@ function ManagementCreateCard({
       <CardHeader>
         <div className="flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-control bg-system-blue/10 text-spectral-cyan">
-            <Icon />
+            <PanelsTopLeft />
           </span>
           <div>
             <CardTitle>{title}</CardTitle>

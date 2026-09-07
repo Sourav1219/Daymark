@@ -19,9 +19,9 @@ describe("CommandMenu", () => {
     expect(screen.getByRole("dialog", { name: "Command menu" })).toBeVisible()
     expect(screen.getByLabelText("Search commands")).toHaveFocus()
 
-    await user.type(screen.getByLabelText("Search commands"), "labels")
-    await user.click(screen.getByRole("button", { name: /Go to Labels/u }))
-    expect(push).toHaveBeenCalledWith("/labels")
+    await user.type(screen.getByLabelText("Search commands"), "lists")
+    await user.click(screen.getByRole("button", { name: /Go to Lists/u }))
+    expect(push).toHaveBeenCalledWith("/gates")
     expect(
       screen.getByRole("button", { name: "Open command menu" }),
     ).toHaveFocus()

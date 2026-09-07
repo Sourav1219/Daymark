@@ -1,6 +1,7 @@
 import { headers } from "next/headers"
 
 import { getAuth } from "@/features/authentication/server/auth"
+import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -18,8 +19,17 @@ const NO_STORE = { "Cache-Control": "no-store" } as const
  * 401 — no valid session (expired, revoked, or cookie missing)
  */
 export async function GET() {
+  const requestHeaders = await headers()
+  const limit = await enforceRateLimit({
+    headers: requestHeaders,
+    policy: "default",
+  })
+  if (limit && !limit.success) {
+    return new Response(null, { headers: NO_STORE, status: 429 })
+  }
+
   const session = await getAuth().api.getSession({
-    headers: await headers(),
+    headers: requestHeaders,
   })
 
   if (!session) {

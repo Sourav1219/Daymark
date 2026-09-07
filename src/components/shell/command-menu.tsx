@@ -11,7 +11,6 @@ import {
   PanelsTopLeft,
   Plus,
   Search,
-  Tags,
   X,
 } from "lucide-react"
 
@@ -38,7 +37,6 @@ const commands = [
     label: "Go to Lists",
     shortcut: "G G",
   },
-  { href: "/labels", icon: Tags, label: "Go to Labels", shortcut: "G L" },
   {
     href: "/cleared",
     icon: CheckCircle2,
@@ -52,7 +50,6 @@ const navigationShortcuts = new Map<string, Route>([
   ["t", "/today"],
   ["q", "/quests"],
   ["g", "/gates"],
-  ["l", "/labels"],
   ["c", "/cleared"],
 ])
 

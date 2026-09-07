@@ -8,6 +8,7 @@ const {
   findExistingAccount,
   withHealthyAuth,
   logger,
+  logSecurityEvent,
   redirect,
   requestPasswordReset,
   resetPassword,
@@ -22,6 +23,7 @@ const {
   findExistingAccount: vi.fn(),
   withHealthyAuth: vi.fn(),
   logger: { error: vi.fn(), warn: vi.fn() },
+  logSecurityEvent: vi.fn(),
   redirect: vi.fn(),
   requestPasswordReset: vi.fn(),
   resetPassword: vi.fn(),
@@ -42,7 +44,7 @@ vi.mock("next/headers", () => ({
 }))
 vi.mock("next/navigation", () => ({ redirect }))
 vi.mock("@/features/authentication/server/auth", () => ({ withHealthyAuth }))
-vi.mock("@/lib/observability/logger", () => ({ logger }))
+vi.mock("@/lib/observability/logger", () => ({ logger, logSecurityEvent }))
 vi.mock("@/lib/rate-limit/rate-limiter", () => ({ enforceRateLimit }))
 
 import {
@@ -196,6 +198,20 @@ describe("loginAction", () => {
       ok: false,
     })
     expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it("forwards the Turnstile response to Better Auth", async () => {
+    signInEmail.mockResolvedValueOnce({ user: { id: "verified-user" } })
+    const form = loginForm()
+    form.set("cf-turnstile-response", "verified-turnstile-token")
+
+    await loginAction(null, form)
+
+    const request = signInEmail.mock.calls[0]?.[0]
+    expect(request?.headers).toBeInstanceOf(Headers)
+    expect(request?.headers.get("x-captcha-response")).toBe(
+      "verified-turnstile-token",
+    )
   })
 })
 

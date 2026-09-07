@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 
 import { authClient } from "@/features/authentication/client/auth-client"
+import { safeRedirectPath } from "@/features/authentication/application/validation"
 import {
   closeAuthSession,
   isCapacitorNative,
@@ -65,13 +66,14 @@ export function GoogleAuthButton({
       setPending(false)
       try {
         const parsed = new URL(deepLinkUrl)
-        const target = parsed.searchParams.get("next") || nextPath || "/today"
+        const rawNext = parsed.searchParams.get("next")
+        const target = safeRedirectPath(rawNext || nextPath || "/today")
         if (typeof window !== "undefined") {
           window.location.assign(target)
         }
       } catch {
         if (typeof window !== "undefined") {
-          window.location.assign(nextPath || "/today")
+          window.location.assign(safeRedirectPath(nextPath || "/today"))
         }
       }
     })

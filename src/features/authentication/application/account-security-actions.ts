@@ -22,6 +22,7 @@ import { validationFailure } from "@/lib/actions/action-helpers"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 import { and, eq, isNotNull } from "drizzle-orm"
 import { accounts } from "@/db/schema"
+import { logSecurityEvent } from "@/lib/observability/logger"
 import { z } from "zod"
 import {
   publishRealtimeEvent,
@@ -76,6 +77,9 @@ export async function listActiveSessionsAction(): Promise<
   ActionResult<readonly SessionView[]>
 > {
   const user = await requireUser()
+  const limited = await accountRateLimitFailure(user.id)
+  if (limited) return limited
+
   const records = await listActiveSessionRecords(
     getDatabase(),
     user.id,
@@ -111,6 +115,10 @@ export async function revokeSessionAction(input: {
     userId: user.id,
   })
   if (revoked) {
+    logSecurityEvent("session.revoked", {
+      sessionId: parsed.data.sessionId,
+      userId: user.id,
+    })
     await publishRealtimeEvent(userSessionRealtimeChannel(user.id), {
       kind: "revoked",
       sessionId: parsed.data.sessionId,
@@ -133,6 +141,7 @@ export async function signOutEverywhereAction(): Promise<
   if (limited) return limited
 
   await revokeAllSessionRecords(getDatabase(), user.id)
+  logSecurityEvent("session.revoked_all", { userId: user.id })
   await getAuth().api.signOut({ headers: await headers() })
   await publishRealtimeEvent(userSessionRealtimeChannel(user.id), {
     kind: "revoked-all",
@@ -221,6 +230,7 @@ export async function deleteAccountAction(
   }
 
   const summary = await deleteUserAndOwnedData(database, user.id)
+  logSecurityEvent("account.deleted", { userId: user.id })
 
   if (summary.attachmentKeys.length > 0) {
     await removeAttachmentObjects(summary.attachmentKeys)
@@ -248,11 +258,15 @@ async function removeAttachmentObjects(storageKeys: readonly string[]) {
   if (!r2) return
 
   const storage = createR2AttachmentStorage(r2)
-  for (const key of storageKeys.slice(0, 100)) {
-    try {
-      await storage.deleteObject(key)
-    } catch {
-      // Leftover objects are inert without their database rows.
-    }
+  const batchSize = 20
+  for (let i = 0; i < storageKeys.length; i += batchSize) {
+    const chunk = storageKeys.slice(i, i + batchSize)
+    await Promise.allSettled(
+      chunk.map((key) =>
+        storage.deleteObject(key).catch(() => {
+          // Leftover objects are inert without their database rows.
+        }),
+      ),
+    )
   }
 }

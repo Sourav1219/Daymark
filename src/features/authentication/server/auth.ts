@@ -3,7 +3,7 @@ import "server-only"
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { nextCookies } from "better-auth/next-js"
-import { emailOTP } from "better-auth/plugins"
+import { captcha, emailOTP } from "better-auth/plugins"
 
 import type { Database } from "@/db/client"
 import { getDatabase, withHealthyDatabase } from "@/db/client"
@@ -38,6 +38,7 @@ export function createAuth(
   const secureCookies = env.NODE_ENV === "production"
   const minPasswordLength = env.NODE_ENV === "development" ? 8 : 12
   const googleAuth = googleAuthEnvFromServerEnv(env)
+  const turnstileSecret = env.TURNSTILE_SECRET_KEY
 
   const authentication = betterAuth({
     appName: "Traketo",
@@ -131,8 +132,8 @@ export function createAuth(
     },
     trustedOrigins: [
       env.BETTER_AUTH_URL,
-      "traketo://*",
-      "daymark://*",
+      "traketo://auth/callback",
+      "daymark://auth/callback",
       "capacitor://localhost",
     ],
     advanced: {
@@ -149,6 +150,15 @@ export function createAuth(
     // Keep this plugin last so auth API calls made by Server Actions can set
     // the response cookie through Next.js.
     plugins: [
+      ...(turnstileSecret
+        ? [
+            captcha({
+              expectedAction: "authentication",
+              provider: "cloudflare-turnstile",
+              secretKey: turnstileSecret,
+            }),
+          ]
+        : []),
       emailOTP({
         allowedAttempts: 5,
         expiresIn: 10 * 60,

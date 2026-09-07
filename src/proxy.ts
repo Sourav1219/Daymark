@@ -26,6 +26,7 @@ export function buildContentSecurityPolicy(
   )
   const connectSources = [
     "'self'",
+    "https://challenges.cloudflare.com",
     ...r2Sources,
     ...(development ? ["ws:", "wss:"] : []),
   ]
@@ -38,12 +39,13 @@ export function buildContentSecurityPolicy(
     "frame-ancestors 'none'",
     "img-src 'self' data: blob:",
     "object-src 'none'",
-    `script-src 'self' 'nonce-${nonce}'${development ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com${development ? " 'unsafe-eval'" : ""}`,
     development
       ? "style-src 'self' 'unsafe-inline'"
       : `style-src 'self' 'nonce-${nonce}'`,
     ...(!development ? ["style-src-attr 'unsafe-inline'"] : []),
     `connect-src ${connectSources.join(" ")}`,
+    "frame-src 'self' https://challenges.cloudflare.com",
     "worker-src 'self' blob:",
     ...(!development ? ["upgrade-insecure-requests"] : []),
   ].join("; ")
@@ -63,7 +65,6 @@ function isProtectedPath(pathname: string) {
     [
       "/timer",
       "/gates",
-      "/labels",
       "/cleared",
       "/progress",
       "/profile",

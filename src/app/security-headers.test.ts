@@ -22,6 +22,10 @@ describe("response security headers", () => {
     expect(csp).toContain("frame-ancestors 'none'")
     expect(csp).toMatch(/script-src 'self' 'nonce-[^']+'/)
     expect(csp).not.toContain("strict-dynamic")
+    expect(csp).toContain("frame-src 'self' https://challenges.cloudflare.com")
+    expect(csp).toContain("https://challenges.cloudflare.com")
+    expect(headers.get("Cross-Origin-Opener-Policy")).toBe("same-origin")
+    expect(headers.get("Cross-Origin-Resource-Policy")).toBe("same-origin")
     expect(headers.get("Permissions-Policy")).toContain("camera=()")
     expect(headers.get("Referrer-Policy")).toBe(
       "strict-origin-when-cross-origin",

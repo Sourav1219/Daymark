@@ -7,7 +7,6 @@ import { BottomTabBar } from "@/components/shell/bottom-tab-bar"
 import {
   ContactLoadingState,
   GatesLoadingState,
-  LabelsLoadingState,
   SettingsLoadingState,
   WorkspaceLoadingState,
 } from "@/components/system/management-loading-states"
@@ -43,7 +42,6 @@ export function SystemRouteLoadingState() {
   if (pathname.startsWith("/profile")) return <ProfileLoadingState />
   if (pathname.startsWith("/settings")) return <SettingsLoadingState />
   if (pathname.startsWith("/gates")) return <GatesLoadingState />
-  if (pathname.startsWith("/labels")) return <LabelsLoadingState />
   if (pathname.startsWith("/contact")) return <ContactLoadingState />
   if (pathname.startsWith("/app/workspaces")) return <WorkspaceLoadingState />
 

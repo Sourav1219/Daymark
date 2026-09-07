@@ -117,8 +117,16 @@ export async function enforceRateLimit(
     userId?: string
   }>,
 ): Promise<RateLimitResult | null> {
+  const ip = clientIp(input.headers)
+  const isUnknownIp = ip === "unknown"
+
+  // If the client IP is genuinely known, check the IP bucket.
+  // When the IP is "unknown" but an identity/userId is provided, meter against the user/identity
+  // bucket to prevent the shared "unknown" IP bucket from causing a global Denial of Service for all users.
+  const checkIp = !isUnknownIp || !input.userId
+
   const checks = [
-    limiter(input.policy, "ip")?.limit(clientIp(input.headers)),
+    checkIp ? limiter(input.policy, "ip")?.limit(ip) : undefined,
     input.userId
       ? limiter(input.policy, "user")?.limit(input.userId)
       : undefined,

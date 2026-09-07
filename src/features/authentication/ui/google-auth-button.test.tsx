@@ -178,4 +178,58 @@ describe("GoogleAuthButton", () => {
       windowName: "_system",
     })
   })
+
+  it("sanitizes deep-link redirect target and blocks open redirects", async () => {
+    let deepLinkCallback: ((data: { url: string }) => void) | undefined
+    const assignSpy = vi.fn()
+    const originalLocation = window.location
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...originalLocation, assign: assignSpy },
+      writable: true,
+    })
+
+    vi.stubGlobal("Capacitor", {
+      isNativePlatform: () => true,
+      Plugins: {
+        App: {
+          addListener: vi.fn().mockImplementation((_event, cb) => {
+            deepLinkCallback = cb
+            return { remove: vi.fn() }
+          }),
+        },
+        Browser: {
+          close: vi.fn().mockResolvedValue(undefined),
+          open: vi.fn().mockResolvedValue(undefined),
+        },
+      },
+    })
+
+    render(
+      <GoogleAuthButton
+        configured
+        mode="login"
+        nextPath="/today"
+        oauthError={null}
+      />,
+    )
+
+    try {
+      expect(deepLinkCallback).toBeDefined()
+      deepLinkCallback?.({
+        url: "daymark://auth/callback?next=https://malicious.example.com",
+      })
+
+      // Allow the async handler to complete
+      await vi.waitFor(() => {
+        expect(assignSpy).toHaveBeenCalledWith("/today")
+      })
+    } finally {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: originalLocation,
+        writable: true,
+      })
+    }
+  })
 })

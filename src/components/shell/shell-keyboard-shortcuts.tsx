@@ -9,7 +9,6 @@ const navigationShortcuts = new Map<string, Route>([
   ["t", "/today"],
   ["q", "/quests"],
   ["g", "/gates"],
-  ["l", "/labels"],
   ["c", "/cleared"],
 ])
 

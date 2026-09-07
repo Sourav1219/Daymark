@@ -25,6 +25,8 @@ export const serverEnvSchema = z
     BETTER_AUTH_URL: z.string().url(),
     GOOGLE_CLIENT_ID: optionalGoogleCredential,
     GOOGLE_CLIENT_SECRET: optionalGoogleCredential,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().trim().min(8).optional(),
+    TURNSTILE_SECRET_KEY: z.string().trim().min(8).optional(),
     // Shared cron secret. Required in production: Vercel Cron sends this and
     // only this value as the Bearer token for native scheduled jobs.
     CRON_SECRET: z.string().min(32).optional(),
@@ -80,6 +82,17 @@ export const serverEnvSchema = z
       .optional(),
   })
   .superRefine((env, context) => {
+    if (
+      Boolean(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) !==
+      Boolean(env.TURNSTILE_SECRET_KEY)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Configure both NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY or neither.",
+        path: ["TURNSTILE_SECRET_KEY"],
+      })
+    }
     if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) {
       context.addIssue({
         code: "custom",
@@ -100,6 +113,13 @@ export const serverEnvSchema = z
       })
     }
     if (env.NODE_ENV === "production") {
+      if (!env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || !env.TURNSTILE_SECRET_KEY) {
+        context.addIssue({
+          code: "custom",
+          message: "Turnstile site and secret keys are required in production.",
+          path: ["TURNSTILE_SECRET_KEY"],
+        })
+      }
       if (!env.CRON_SECRET) {
         context.addIssue({
           code: "custom",

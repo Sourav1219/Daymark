@@ -49,7 +49,6 @@ describe("RouteLoadingScreen", () => {
     ["/profile", "Loading Your profile", ".profile-hero"],
     ["/settings", "Loading Settings", "[data-slot='card']"],
     ["/gates", "Loading Lists", "[data-slot='card']"],
-    ["/labels", "Loading Labels", "[data-slot='card']"],
     ["/contact", "Loading Contact us", ".contact-form"],
     ["/app/workspaces/workspace-1", "Loading workspace", "[data-slot='card']"],
   ])(

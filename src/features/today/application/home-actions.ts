@@ -1,11 +1,13 @@
 "use server"
 
 import { z } from "zod"
+import { headers } from "next/headers"
 import { requireWorkspaceAccess } from "@/features/authentication/server/authorization"
 import { taskTypes } from "@/features/quests/domain/classification"
 import { questPriorities } from "@/features/quests/domain/types"
 import { getHomePage, getHomeFacets } from "@/features/today/queries/home-query"
 import { getUserSettings } from "@/features/reminders/queries/user-settings-query-service"
+import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 
 const requestSchema = z
   .object({
@@ -24,8 +26,22 @@ const requestSchema = z
   })
   .strict()
 
+async function checkHomeRateLimit(userId: string) {
+  const limit = await enforceRateLimit({
+    headers: await headers(),
+    policy: "default",
+    userId,
+  })
+  if (limit && !limit.success) {
+    throw new Error(
+      "Too many dashboard requests. Please slow down and try again shortly.",
+    )
+  }
+}
+
 export async function loadHomePage(input: z.infer<typeof requestSchema>) {
   const access = await requireWorkspaceAccess()
+  await checkHomeRateLimit(access.userId)
   const request = requestSchema.parse(input)
   const settings = await getUserSettings(access)
   return getHomePage(
@@ -42,6 +58,7 @@ export async function loadHomePages(
   input: Omit<z.infer<typeof requestSchema>, "bucket" | "offset">,
 ) {
   const access = await requireWorkspaceAccess()
+  await checkHomeRateLimit(access.userId)
   const request = requestSchema
     .omit({ bucket: true, offset: true })
     .parse(input)
@@ -65,5 +82,6 @@ export async function loadHomePages(
 
 export async function loadHomeFacets() {
   const access = await requireWorkspaceAccess()
+  await checkHomeRateLimit(access.userId)
   return getHomeFacets(access)
 }

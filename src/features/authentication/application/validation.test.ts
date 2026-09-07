@@ -40,6 +40,24 @@ describe("registration validation", () => {
       })
     }
   })
+
+  it("rejects trivial and common passwords", () => {
+    expect(
+      registrationSchema.safeParse({
+        email: "user@example.com",
+        name: "Valid Name",
+        password: "123456789012",
+      }).success,
+    ).toBe(false)
+
+    expect(
+      registrationSchema.safeParse({
+        email: "user@example.com",
+        name: "Valid Name",
+        password: "aaaaaaaaaaaa",
+      }).success,
+    ).toBe(false)
+  })
 })
 
 describe("login validation", () => {

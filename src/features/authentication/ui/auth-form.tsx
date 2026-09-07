@@ -13,6 +13,7 @@ import {
   GoogleAuthButton,
 } from "@/features/authentication/ui/google-auth-button"
 import { EmailVerificationPanel } from "@/features/authentication/ui/email-verification-panel"
+import { TurnstileWidget } from "@/features/authentication/ui/turnstile-widget"
 import { requestAutomaticPushPermission } from "@/features/reminders/components/automatic-push-enrollment"
 import type { AuthNotice } from "@/features/authentication/ui/auth-experience"
 
@@ -69,6 +70,8 @@ export function AuthForm({
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [passwordVisible, setPasswordVisible] = useState(false)
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
+  const [captchaVerified, setCaptchaVerified] = useState(!turnstileSiteKey)
   const [messageIndex, setMessageIndex] = useState(0)
   const fieldErrors = state && !state.ok ? state.error.fieldErrors : undefined
   const noticeMessage =
@@ -302,6 +305,14 @@ export function AuthForm({
             <FieldError id="password-error" messages={fieldErrors?.password} />
           </div>
 
+          {turnstileSiteKey ? (
+            <TurnstileWidget
+              onVerifiedChange={setCaptchaVerified}
+              resetSignal={state}
+              siteKey={turnstileSiteKey}
+            />
+          ) : null}
+
           {state ? (
             <div
               className={state.ok ? "auth__hint" : "auth__error"}
@@ -316,7 +327,11 @@ export function AuthForm({
             </div>
           ) : null}
 
-          <button className="auth__submit" disabled={pending} type="submit">
+          <button
+            className="auth__submit"
+            disabled={pending || !captchaVerified}
+            type="submit"
+          >
             {pending
               ? loadingMessages[messageIndex]
               : registering

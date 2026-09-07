@@ -115,6 +115,55 @@ describe("TwoFactorSettingsCard", () => {
     expect(screen.getByText("JBSWY3DPEHPK3PXP")).toBeInTheDocument()
   })
 
+  it("shows celebration popup on successful activation and activates 2FA", async () => {
+    mocks.enableTwoFactorAction.mockResolvedValueOnce({
+      data: {
+        qrCodeDataUrl: "data:image/png;base64,mockqr",
+        secretKey: "JBSWY3DPEHPK3PXP",
+        totpURI:
+          "otpauth://totp/Traketo:user@example.com?secret=JBSWY3DPEHPK3PXP",
+      },
+      ok: true,
+    })
+    mocks.confirmTwoFactorAction.mockResolvedValueOnce({
+      data: { enabled: true },
+      ok: true,
+    })
+
+    render(<TwoFactorSettingsCard initialTwoFactorEnabled={false} />)
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /set up authenticator/i }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/6-digit code/i)).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByLabelText(/6-digit code/i), {
+      target: { value: "123456" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /activate 2fa/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText("Authentication enabled")).toBeInTheDocument()
+      expect(
+        screen.getByText(/Google Authenticator is now active/),
+      ).toBeInTheDocument()
+    })
+
+    // Dismiss celebration
+    fireEvent.click(screen.getByRole("button", { name: /done/i }))
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Authentication enabled"),
+      ).not.toBeInTheDocument()
+    })
+    expect(
+      screen.getByRole("button", { name: /disable 2fa/i }),
+    ).toBeInTheDocument()
+  })
+
   it("opens disable confirmation dialog without password field and handles cancellation", async () => {
     render(<TwoFactorSettingsCard initialTwoFactorEnabled={true} />)
 

@@ -817,7 +817,7 @@ Sign-in / Register forms — same clean app-width column as the
 
 .auth__inner--verification,
 .auth__inner--verification-request {
-  max-width: 30rem;
+  max-width: 26rem;
 }
 
 .verification {

@@ -24,8 +24,14 @@ import {
 } from "@/lib/realtime/realtime-events"
 
 export const bypassTwoFactorPasswordStorage = new AsyncLocalStorage<boolean>()
+export const preserveActiveSessionStorage = new AsyncLocalStorage<boolean>()
 
 type AdapterFindManyArgs = {
+  model?: string
+  [key: string]: unknown
+}
+
+type AdapterDeleteArgs = {
   model?: string
   [key: string]: unknown
 }
@@ -45,6 +51,7 @@ function createTwoFactorCompatibleDrizzleAdapter(database: Database) {
 
   return (options: BetterAuthOptions) => {
     const base = baseAdapterFactory(options) as unknown as {
+      delete?: (args: AdapterDeleteArgs) => Promise<unknown>
       findMany: (args: AdapterFindManyArgs) => Promise<AccountRecord[]>
       [key: string]: unknown
     }
@@ -63,6 +70,21 @@ function createTwoFactorCompatibleDrizzleAdapter(database: Database) {
         )
       }
       return result
+    }
+
+    const originalDelete =
+      typeof base.delete === "function" ? base.delete.bind(base) : undefined
+
+    if (originalDelete) {
+      base.delete = async (args: AdapterDeleteArgs) => {
+        if (
+          args?.model === "session" &&
+          preserveActiveSessionStorage.getStore()
+        ) {
+          return null
+        }
+        return originalDelete(args)
+      }
     }
 
     return base as unknown as ReturnType<typeof baseAdapterFactory>

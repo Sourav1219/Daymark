@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 
 import { getDatabase } from "@/db/client"
 import {
@@ -19,6 +19,7 @@ import {
 import {
   bypassTwoFactorPasswordStorage,
   getAuth,
+  preserveActiveSessionStorage,
 } from "@/features/authentication/server/auth"
 import type { ActionResult } from "@/lib/actions/action-result"
 import { validationFailure } from "@/lib/actions/action-helpers"
@@ -377,9 +378,56 @@ export async function confirmTwoFactorAction(
   }
 
   try {
-    await getAuth().api.verifyTOTP({
-      body: { code: parsed.data.code },
-      headers: await headers(),
+    const requestHeaders = await headers()
+    await preserveActiveSessionStorage.run(true, async () => {
+      const response = await getAuth().api.verifyTOTP({
+        asResponse: true,
+        body: { code: parsed.data.code },
+        headers: requestHeaders,
+      })
+
+      if (response instanceof Response) {
+        const cookieStore = await cookies()
+        const rawSetCookies =
+          typeof response.headers.getSetCookie === "function"
+            ? response.headers.getSetCookie()
+            : [response.headers.get("set-cookie")].filter((c): c is string =>
+                Boolean(c),
+              )
+
+        for (const cookieStr of rawSetCookies) {
+          const parts = cookieStr.split(";").map((p) => p.trim())
+          const nameValue = parts[0]
+          if (!nameValue) continue
+          const [name, ...valParts] = nameValue.split("=")
+          if (!name) continue
+          const value = valParts.join("=")
+
+          const options: Parameters<typeof cookieStore.set>[2] = {}
+          for (let i = 1; i < parts.length; i++) {
+            const attr = parts[i]
+            if (!attr) continue
+            const [attrName, ...attrValParts] = attr.split("=")
+            if (!attrName) continue
+            const attrVal = attrValParts.join("=")
+            const lower = attrName.toLowerCase()
+            if (lower === "path") options.path = attrVal
+            else if (lower === "max-age") options.maxAge = parseInt(attrVal, 10)
+            else if (lower === "expires") options.expires = new Date(attrVal)
+            else if (lower === "httponly") options.httpOnly = true
+            else if (lower === "secure") options.secure = true
+            else if (lower === "samesite") {
+              const s = attrVal.toLowerCase()
+              if (s === "lax" || s === "strict" || s === "none") {
+                options.sameSite = s
+              }
+            }
+          }
+          try {
+            cookieStore.set(name, value, options)
+          } catch {}
+        }
+      }
     })
   } catch (error) {
     const errorCode =

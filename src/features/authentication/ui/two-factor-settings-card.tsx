@@ -29,6 +29,7 @@ import {
   disableTwoFactorAction,
   enableTwoFactorAction,
 } from "@/features/authentication/application/account-security-actions"
+import { ProfileUpdatePopup } from "@/features/authentication/ui/profile-update-popup"
 
 type TwoFactorSettingsCardProps = Readonly<{
   hasPassword?: boolean
@@ -42,6 +43,7 @@ export function TwoFactorSettingsCard({
   const [isEnabled, setIsEnabled] = useState(initialTwoFactorEnabled)
   const [isSetupOpen, setIsSetupOpen] = useState(false)
   const [isDisableOpen, setIsDisableOpen] = useState(false)
+  const [showCelebration, setShowCelebration] = useState(false)
 
   return (
     <section
@@ -108,6 +110,7 @@ export function TwoFactorSettingsCard({
           onSuccess={() => {
             setIsEnabled(true)
             setIsSetupOpen(false)
+            setShowCelebration(true)
           }}
         />
       ) : null}
@@ -120,6 +123,13 @@ export function TwoFactorSettingsCard({
             setIsEnabled(false)
             setIsDisableOpen(false)
           }}
+        />
+      ) : null}
+
+      {showCelebration ? (
+        <ProfileUpdatePopup
+          kind="two-factor"
+          onDismiss={() => setShowCelebration(false)}
         />
       ) : null}
     </section>
@@ -161,7 +171,6 @@ function SetupModal({ onClose, onSuccess }: SetupModalProps) {
   // Handle confirmation outcome
   useEffect(() => {
     if (confirmState?.ok) {
-      toast.success("Google Authenticator activated successfully!")
       router.refresh()
       onSuccess()
     }

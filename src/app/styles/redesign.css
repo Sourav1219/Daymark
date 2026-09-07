@@ -2024,6 +2024,17 @@ Redesign — native mobile app shell, motion, and playful depth
   background: linear-gradient(145deg, #735fe1, #4a68d9);
 }
 
+.profile-update-popup[data-kind="two-factor"] .profile-update-popup__icon {
+  background: linear-gradient(145deg, #10b981, #2563eb);
+  box-shadow:
+    0 19px 30px -17px rgba(16, 185, 129, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.profile-update-popup[data-kind="two-factor"] .profile-update-popup__ring {
+  border-color: rgba(16, 185, 129, 0.32);
+}
+
 .profile-update-popup__icon > svg:first-child {
   width: 1.35rem;
   height: 1.35rem;

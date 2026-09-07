@@ -28,6 +28,10 @@ vi.mock("next/cache", () => ({
 }))
 
 vi.mock("next/headers", () => ({
+  cookies: vi.fn().mockResolvedValue({
+    get: vi.fn(),
+    set: vi.fn(),
+  }),
   headers: vi.fn().mockResolvedValue(new Headers()),
 }))
 
@@ -63,6 +67,9 @@ vi.mock("@/features/authentication/server/auth", () => ({
       verifyTOTP,
     },
   }),
+  preserveActiveSessionStorage: {
+    run: (_val: boolean, fn: () => unknown) => fn(),
+  },
 }))
 
 vi.mock("@/lib/observability/logger", () => ({

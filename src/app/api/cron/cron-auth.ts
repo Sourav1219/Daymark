@@ -4,7 +4,7 @@ import { timingSafeEqual } from "node:crypto"
 
 import type { ServerEnv } from "@/lib/env/schema"
 import { readServerEnv } from "@/lib/env/server"
-import { incrementCounter } from "@/lib/observability/metrics"
+import { observeCronAuthorizationDenial } from "@/lib/observability/metrics"
 
 type CronJobName =
   | "stale-rooms"
@@ -51,7 +51,7 @@ export function authorizeCronRequest(
   // Scheduled jobs mutate application state. Missing configuration must never
   // turn an endpoint into a public mutation route, including in development.
   if (secrets.length === 0) {
-    incrementCounter("cron_auth_denied", { job })
+    observeCronAuthorizationDenial(job, "missing_configuration")
     return false
   }
 
@@ -60,7 +60,7 @@ export function authorizeCronRequest(
     timingSafeCompare(authHeader, `Bearer ${secret}`),
   )
   if (!authorized) {
-    incrementCounter("cron_auth_denied", { job })
+    observeCronAuthorizationDenial(job, "invalid_credentials")
   }
   return authorized
 }

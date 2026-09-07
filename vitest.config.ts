@@ -6,6 +6,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(process.cwd(), "src"),
+      "@sentry/nextjs/config": resolve(
+        process.cwd(),
+        "src/test/sentry-nextjs.ts",
+      ),
+      "@sentry/nextjs": resolve(process.cwd(), "src/test/sentry-nextjs.ts"),
       "server-only": resolve(process.cwd(), "src/test/server-only.ts"),
     },
   },

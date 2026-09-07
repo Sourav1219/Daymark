@@ -102,6 +102,9 @@ describe("protected route proxy", () => {
       /script-src 'self' 'nonce-[^']+' https:\/\/challenges\.cloudflare\.com 'unsafe-eval'/,
     )
     expect(csp).toContain("style-src 'self' 'unsafe-inline'")
+    expect(csp).toContain(
+      "connect-src 'self' https://challenges.cloudflare.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+    )
     expect(csp).not.toContain("strict-dynamic")
   })
 

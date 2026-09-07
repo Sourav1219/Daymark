@@ -4,6 +4,10 @@ import { NextResponse, type NextRequest } from "next/server"
 import { AUTH_COOKIE_PREFIX } from "@/features/authentication/config"
 
 const r2AccountIdPattern = /^[a-f\d]{32}$/iu
+const sentryConnectSources = [
+  "https://*.ingest.sentry.io",
+  "https://*.ingest.us.sentry.io",
+]
 
 function r2ConnectSources(accountId: string | undefined) {
   if (!accountId || !r2AccountIdPattern.test(accountId)) return []
@@ -27,6 +31,7 @@ export function buildContentSecurityPolicy(
   const connectSources = [
     "'self'",
     "https://challenges.cloudflare.com",
+    ...sentryConnectSources,
     ...r2Sources,
     ...(development ? ["ws:", "wss:"] : []),
   ]

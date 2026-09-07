@@ -45,3 +45,6 @@ secrets.*.json
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Sentry Config File
+.env.sentry-build-plugin

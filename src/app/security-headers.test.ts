@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+
+vi.mock("@sentry/nextjs", () => ({
+  withSentryConfig: <T>(config: T) => config,
+}))
 
 import nextConfig from "../../next.config"
 import { proxy } from "../proxy"

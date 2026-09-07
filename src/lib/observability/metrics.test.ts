@@ -1,8 +1,34 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+const sentry = vi.hoisted(() => ({
+  captureMessage: vi.fn(),
+  count: vi.fn(),
+  setContext: vi.fn(),
+  setFingerprint: vi.fn(),
+  setLevel: vi.fn(),
+  setTag: vi.fn(),
+  setTags: vi.fn(),
+}))
+
+vi.mock("@sentry/nextjs", () => ({
+  captureMessage: sentry.captureMessage,
+  metrics: { count: sentry.count },
+  withScope: (
+    callback: (scope: {
+      setContext: typeof sentry.setContext
+      setFingerprint: typeof sentry.setFingerprint
+      setLevel: typeof sentry.setLevel
+      setTag: typeof sentry.setTag
+      setTags: typeof sentry.setTags
+    }) => void,
+  ) => callback(sentry),
+}))
+
 import {
   incrementCounter,
+  observeAuthenticationAnomaly,
   observeAuthorizationDenial,
+  observeCronAuthorizationDenial,
   observeCronOutcome,
   observeRateLimitHit,
   observeReminderBacklog,
@@ -52,6 +78,38 @@ describe("observability metrics", () => {
     observeRateLimitHit("default")
 
     expect(renderMetricsSnapshot()).toContain("rate_limited,policy=default 1")
+    expect(sentry.count).toHaveBeenCalledWith("security.events", 1, {
+      attributes: { event: "rate_limit.hit", policy: "default" },
+    })
+  })
+
+  it("sends authentication anomalies as aggregate Sentry metrics", () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    observeAuthenticationAnomaly("captcha_failed", { flow: "login" })
+
+    expect(sentry.count).toHaveBeenCalledWith("security.events", 1, {
+      attributes: {
+        event: "authentication.anomaly",
+        flow: "login",
+        kind: "captcha_failed",
+      },
+    })
+  })
+
+  it("creates an immediate grouped issue for cron authorization denial", () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    observeCronAuthorizationDenial("reminders", "invalid_credentials")
+
+    expect(sentry.captureMessage).toHaveBeenCalledWith(
+      "Security alert: cron.authorization_denied",
+    )
+    expect(sentry.setFingerprint).toHaveBeenCalledWith([
+      "security",
+      "cron.authorization_denied",
+      "reminders",
+    ])
   })
 
   it("warns only when a reminder backlog exists", () => {

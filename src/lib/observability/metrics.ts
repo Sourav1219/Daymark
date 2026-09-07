@@ -1,4 +1,5 @@
 import { logSecurityEvent, logger } from "./logger"
+import { sendSecuritySignal } from "./security-signals"
 
 /**
  * Process-local, dependency-free counters. Counts are per runtime instance and
@@ -52,12 +53,48 @@ export function observeAuthorizationDenial(
 ): void {
   incrementCounter("authz_denied", { reason })
   logSecurityEvent("authorization.denied", { reason, ...details })
+  sendSecuritySignal("authorization.denied", { reason })
 }
 
 /** Counts rate-limited mutations per policy for abuse alerting. */
 export function observeRateLimitHit(policy: string): void {
   incrementCounter("rate_limited", { policy })
   logSecurityEvent("rate_limit.hit", { policy })
+  sendSecuritySignal("rate_limit.hit", { policy })
+}
+
+export type CronAuthorizationDenialReason =
+  "invalid_credentials" | "missing_configuration"
+
+export function observeCronAuthorizationDenial(
+  job: string,
+  reason: CronAuthorizationDenialReason,
+): void {
+  incrementCounter("cron_auth_denied", { job, reason })
+  logSecurityEvent("cron.authorization_denied", { job, reason })
+  sendSecuritySignal(
+    "cron.authorization_denied",
+    { job, reason },
+    { immediate: true },
+  )
+}
+
+export type AuthenticationAnomaly =
+  | "captcha_failed"
+  | "login_failed"
+  | "password_reset_failed"
+  | "verification_code_rejected"
+
+export function observeAuthenticationAnomaly(
+  kind: AuthenticationAnomaly,
+  details?: Record<string, unknown>,
+): void {
+  incrementCounter("authentication_anomaly", { kind })
+  logSecurityEvent(`authentication.${kind}`, details)
+  sendSecuritySignal("authentication.anomaly", {
+    kind,
+    ...(typeof details?.flow === "string" ? { flow: details.flow } : {}),
+  })
 }
 
 /**

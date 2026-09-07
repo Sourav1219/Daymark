@@ -1,5 +1,8 @@
 "use client"
 
+import * as Sentry from "@sentry/nextjs"
+import { useEffect } from "react"
+
 import "./globals.css"
 
 type GlobalErrorProps = Readonly<{
@@ -8,8 +11,12 @@ type GlobalErrorProps = Readonly<{
   retry?: () => void
 }>
 
-export default function GlobalError({ reset, retry }: GlobalErrorProps) {
+export default function GlobalError({ error, reset, retry }: GlobalErrorProps) {
   const recover = retry ?? reset
+
+  useEffect(() => {
+    Sentry.captureException(error)
+  }, [error])
 
   return (
     <html className="recovery-document" lang="en">

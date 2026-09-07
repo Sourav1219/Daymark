@@ -25,6 +25,10 @@ import {
 import type { ActionFailure, ActionResult } from "@/lib/actions/action-result"
 import { validationFailure } from "@/lib/actions/action-helpers"
 import { logSecurityEvent, logger } from "@/lib/observability/logger"
+import {
+  observeAuthenticationAnomaly,
+  observeRateLimitHit,
+} from "@/lib/observability/metrics"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
 
 type AuthActionData = Readonly<{
@@ -87,7 +91,10 @@ function rateLimitFailure(): ActionFailure {
   }
 }
 
-function captchaFailure(): ActionFailure {
+function captchaFailure(
+  flow: "login" | "password_reset_request" | "registration",
+): ActionFailure {
+  observeAuthenticationAnomaly("captcha_failed", { flow })
   return {
     error: {
       code: "VALIDATION_ERROR",
@@ -127,7 +134,11 @@ async function accountRateLimit(email: unknown) {
     policy: "account",
     ...(identity ? { userId: identity } : {}),
   })
-  return result && !result.success ? rateLimitFailure() : null
+  if (result && !result.success) {
+    observeRateLimitHit("account")
+    return rateLimitFailure()
+  }
+  return null
 }
 
 export async function registerAction(
@@ -179,7 +190,7 @@ export async function registerAction(
       }),
     )
   } catch (error) {
-    if (isCaptchaFailure(error)) return captchaFailure()
+    if (isCaptchaFailure(error)) return captchaFailure("registration")
     if (
       isAPIError(error) &&
       error.body?.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"
@@ -235,8 +246,8 @@ export async function loginAction(
     )
     logSecurityEvent("authentication.login_success")
   } catch (error) {
-    if (isCaptchaFailure(error)) return captchaFailure()
-    logSecurityEvent("authentication.login_failed", {
+    if (isCaptchaFailure(error)) return captchaFailure("login")
+    observeAuthenticationAnomaly("login_failed", {
       emailFingerprint: createHash("sha256")
         .update(parsed.data.email.trim().toLowerCase())
         .digest("hex"),
@@ -350,7 +361,7 @@ export async function verifyEmailCodeAction(
       }),
     )
   } catch (error) {
-    logger.warn("authentication.verification_code_rejected", {
+    observeAuthenticationAnomaly("verification_code_rejected", {
       code:
         isAPIError(error) && typeof error.body?.code === "string"
           ? error.body.code
@@ -402,7 +413,7 @@ export async function requestPasswordResetAction(
       ),
     )
   } catch (error) {
-    if (isCaptchaFailure(error)) return captchaFailure()
+    if (isCaptchaFailure(error)) return captchaFailure("password_reset_request")
     if (!isAPIError(error) || error.statusCode >= 500) {
       infrastructureFailure = true
       logger.error(
@@ -464,7 +475,7 @@ export async function resetPasswordAction(
         error instanceof Error ? error : undefined,
       )
     }
-    logSecurityEvent("authentication.password_reset_failed")
+    observeAuthenticationAnomaly("password_reset_failed")
 
     return {
       error: {

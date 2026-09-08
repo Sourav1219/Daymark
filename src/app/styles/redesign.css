@@ -1739,7 +1739,8 @@ Redesign — native mobile app shell, motion, and playful depth
 }
 
 .profile-overview,
-.profile-editor {
+.profile-editor,
+.profile-feedback {
   gap: 0.85rem;
 }
 
@@ -1757,12 +1758,89 @@ Redesign — native mobile app shell, motion, and playful depth
   color: #4e6dca;
 }
 
-.profile-account-card {
+.profile-account-card,
+.profile-feedback-card {
   overflow: hidden;
   border: 1px solid rgba(54, 84, 166, 0.11);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 17px 38px -32px rgba(30, 64, 140, 0.72);
+}
+
+.profile-feedback-action {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.82rem 0.95rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms var(--ease-system);
+}
+
+.profile-feedback-action + .profile-feedback-action {
+  border-top: 1px solid rgba(54, 84, 166, 0.08);
+}
+
+.profile-feedback-action:hover,
+.profile-feedback-action:focus-visible {
+  background: rgba(238, 243, 255, 0.65);
+  outline: none;
+}
+
+.profile-feedback-action__icon {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border-radius: 13px;
+  background: #edf2ff;
+  color: #4e70d4;
+}
+
+.profile-feedback-action__icon--accent {
+  background: linear-gradient(145deg, #fff0eb, #ffe8e0);
+  color: #e05b38;
+}
+
+.profile-feedback-action__icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.profile-feedback-action__content {
+  display: grid;
+  min-width: 0;
+}
+
+.profile-feedback-action__content strong {
+  overflow: hidden;
+  color: var(--app-text-sub);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-feedback-action__content small {
+  overflow: hidden;
+  margin-top: 0.15rem;
+  color: var(--app-text-muted);
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-feedback-action__arrow {
+  width: 1rem;
+  height: 1rem;
+  color: #8b98ab;
 }
 
 .profile-account-card dl {

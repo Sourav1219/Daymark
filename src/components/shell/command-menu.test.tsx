@@ -45,18 +45,4 @@ describe("CommandMenu", () => {
     await user.keyboard("gh")
     expect(push).toHaveBeenCalledWith("/today")
   })
-
-  it("triggers feedback modal when selecting Report a Problem", async () => {
-    const user = userEvent.setup()
-    const feedbackListener = vi.fn()
-    window.addEventListener("traketo:open-feedback", feedbackListener)
-
-    render(<CommandMenu />)
-    await user.keyboard("{Control>}k{/Control}")
-    await user.type(screen.getByLabelText("Search commands"), "report")
-    await user.click(screen.getByRole("button", { name: /Report a Problem/u }))
-
-    expect(feedbackListener).toHaveBeenCalledOnce()
-    window.removeEventListener("traketo:open-feedback", feedbackListener)
-  })
 })

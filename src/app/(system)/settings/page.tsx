@@ -1,17 +1,9 @@
 import type { Metadata } from "next"
 import "@/app/styles/notifications.css"
 import Link from "next/link"
-import {
-  BellRing,
-  Download,
-  FileText,
-  LifeBuoy,
-  MessageSquareWarning,
-  ShieldCheck,
-} from "lucide-react"
+import { BellRing, Download, FileText, ShieldCheck } from "lucide-react"
 
 import { PageHeading } from "@/components/system/page-heading"
-import { ReportProblemButton } from "@/components/system/sentry-feedback-widget"
 import {
   Card,
   CardContent,
@@ -127,39 +119,6 @@ export default async function SettingsPage() {
               <div className="grid gap-4">
                 <PwaInstallCard />
                 <OfflineStorageControl />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border-soft bg-card/75 shadow-panel xl:col-span-2">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <LifeBuoy
-                  aria-hidden="true"
-                  className="size-5 text-mana-violet"
-                />
-                <div>
-                  <CardTitle>Help and feedback</CardTitle>
-                  <CardDescription>
-                    Report problems directly to our development team or reach
-                    out to support.
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap items-center gap-3">
-                <ReportProblemButton className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border-soft bg-background px-4 py-2 font-semibold text-system-blue transition-colors hover:bg-system-blue/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-system-blue">
-                  <MessageSquareWarning aria-hidden="true" className="size-4" />
-                  Report a problem
-                </ReportProblemButton>
-                <Link
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border-soft bg-background px-4 py-2 font-semibold text-system-blue transition-colors hover:bg-system-blue/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-system-blue"
-                  href="/contact"
-                >
-                  <LifeBuoy aria-hidden="true" className="size-4" />
-                  Contact Support
-                </Link>
               </div>
             </CardContent>
           </Card>

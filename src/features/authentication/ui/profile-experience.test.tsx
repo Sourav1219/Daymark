@@ -109,4 +109,35 @@ describe("ProfileExperience", () => {
     expect(screen.getAllByText("Demo User")).not.toHaveLength(0)
     expect(screen.queryByText("Demo Hunter")).not.toBeInTheDocument()
   })
+
+  it("renders Help & feedback card with Report a problem action", async () => {
+    const user = userEvent.setup()
+    const feedbackListener = vi.fn()
+    window.addEventListener("traketo:open-feedback", feedbackListener)
+
+    render(
+      <ProfileExperience
+        currentSessionId={null}
+        initialSessions={[]}
+        email="ada@example.com"
+        joined="12 August 2026"
+        name="Ada Lovelace"
+        role="owner"
+        workspaceName="Ada's workspace"
+      />,
+    )
+
+    expect(
+      screen.getByRole("heading", { name: "Help & feedback" }),
+    ).toBeInTheDocument()
+    const reportButton = screen.getByRole("button", {
+      name: /Report a problem/u,
+    })
+    expect(reportButton).toBeVisible()
+
+    await user.click(reportButton)
+    expect(feedbackListener).toHaveBeenCalledOnce()
+
+    window.removeEventListener("traketo:open-feedback", feedbackListener)
+  })
 })

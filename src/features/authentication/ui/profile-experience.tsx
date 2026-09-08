@@ -13,10 +13,12 @@ import {
   CircleHelp,
   FileText,
   Info,
+  LifeBuoy,
   LockKeyhole,
   LogOut,
   Mail,
   MessageCircleMore,
+  MessageSquareWarning,
   Pencil,
   ShieldCheck,
   UserRound,
@@ -31,6 +33,7 @@ import {
 } from "@/features/authentication/ui/profile-update-popup"
 import { SecurityDataPanel } from "@/features/authentication/ui/security-data-panel"
 import { OfflineLogoutButton } from "@/features/offline/components/offline-logout-button"
+import { ReportProblemButton } from "@/components/system/sentry-feedback-widget"
 
 type ProfileExperienceProps = Readonly<{
   currentSessionId: string | null
@@ -199,6 +202,51 @@ export function ProfileExperience({
       {updateNotice ? (
         <ProfileUpdatePopup kind={updateNotice} onDismiss={dismissUpdate} />
       ) : null}
+
+      <section
+        aria-labelledby="profile-feedback-heading"
+        className="profile-feedback"
+      >
+        <div className="profile-section-heading">
+          <div>
+            <span>Support &amp; feedback</span>
+            <h2 id="profile-feedback-heading">Help &amp; feedback</h2>
+            <p>Report issues directly to developers or reach out to support.</p>
+          </div>
+          <LifeBuoy aria-hidden="true" />
+        </div>
+
+        <article className="profile-feedback-card">
+          <ReportProblemButton className="profile-feedback-action">
+            <span className="profile-feedback-action__icon profile-feedback-action__icon--accent">
+              <MessageSquareWarning aria-hidden="true" />
+            </span>
+            <div className="profile-feedback-action__content">
+              <strong>Report a problem</strong>
+              <small>Send a bug report or tell us what went wrong</small>
+            </div>
+            <ChevronRight
+              aria-hidden="true"
+              className="profile-feedback-action__arrow"
+            />
+          </ReportProblemButton>
+
+          <Link className="profile-feedback-action" href={"/contact" as Route}>
+            <span className="profile-feedback-action__icon">
+              <MessageCircleMore aria-hidden="true" />
+            </span>
+            <div className="profile-feedback-action__content">
+              <strong>Contact support</strong>
+              <small>Choose a topic and send an email message</small>
+            </div>
+            <ChevronRight
+              aria-hidden="true"
+              className="profile-feedback-action__arrow"
+            />
+          </Link>
+        </article>
+      </section>
+
       <details className="profile-security-settings">
         <summary className="profile-security-settings__trigger">
           <span className="profile-security-settings__icon">

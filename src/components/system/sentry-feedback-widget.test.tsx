@@ -9,9 +9,7 @@ import {
 } from "./sentry-feedback-widget"
 
 vi.mock("@sentry/nextjs", () => ({
-  addIntegration: vi.fn(),
-  feedbackIntegration: vi.fn(() => ({ name: "Feedback" })),
-  getFeedback: vi.fn(),
+  captureFeedback: vi.fn().mockResolvedValue("feedback-event"),
 }))
 
 describe("SentryFeedbackWidget", () => {
@@ -20,43 +18,36 @@ describe("SentryFeedbackWidget", () => {
     vi.clearAllMocks()
   })
 
-  it("configures feedback with CSP nonces and opens the dialog upon trigger", async () => {
-    const appendToDom = vi.fn()
-    const open = vi.fn()
-    const removeFromDom = vi.fn()
-    const createForm = vi.fn().mockResolvedValue({
-      appendToDom,
-      open,
-      removeFromDom,
-    })
-
-    vi.mocked(Sentry.getFeedback)
-      .mockReturnValueOnce(undefined)
-      .mockReturnValue({ createForm } as never)
-
-    const view = render(<SentryFeedbackWidget nonce="request-nonce" />)
-
-    expect(Sentry.feedbackIntegration).toHaveBeenCalledWith(
-      expect.objectContaining({
-        autoInject: false,
-        enableScreenshot: false,
-        scriptNonce: "request-nonce",
-        showName: false,
-        styleNonce: "request-nonce",
-        triggerLabel: "Report a problem",
-      }),
-    )
+  it("opens the branded report dialog and sends feedback to Sentry", async () => {
+    render(<SentryFeedbackWidget />)
 
     openFeedbackModal()
 
+    expect(
+      await screen.findByRole("dialog", { name: "Report a problem" }),
+    ).toBeVisible()
+
+    fireEvent.change(screen.getByLabelText(/Email/), {
+      target: { value: "ada@example.com" },
+    })
+    fireEvent.change(screen.getByLabelText(/What happened/), {
+      target: { value: "The quest list did not update." },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Send report" }))
+
     await vi.waitFor(() => {
-      expect(createForm).toHaveBeenCalledOnce()
-      expect(appendToDom).toHaveBeenCalledOnce()
-      expect(open).toHaveBeenCalledOnce()
+      expect(Sentry.captureFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: "ada@example.com",
+          message: "The quest list did not update.",
+          source: "user-feedback-widget",
+        }),
+      )
     })
 
-    view.unmount()
-    expect(removeFromDom).toHaveBeenCalledOnce()
+    expect(
+      await screen.findByRole("heading", { name: "Thanks for the heads-up" }),
+    ).toBeVisible()
   })
 
   it("ReportProblemButton dispatches open feedback trigger", () => {

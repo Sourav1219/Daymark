@@ -110,7 +110,7 @@ describe("ProfileExperience", () => {
     expect(screen.queryByText("Demo Hunter")).not.toBeInTheDocument()
   })
 
-  it("renders Help & feedback card with Report a problem action", async () => {
+  it("keeps Report a problem inside the Contact & about dropdown", async () => {
     const user = userEvent.setup()
     const feedbackListener = vi.fn()
     window.addEventListener("traketo:open-feedback", feedbackListener)
@@ -128,8 +128,12 @@ describe("ProfileExperience", () => {
     )
 
     expect(
-      screen.getByRole("heading", { name: "Help & feedback" }),
-    ).toBeInTheDocument()
+      screen.queryByRole("heading", { name: "Help & feedback" }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText("Contact support")).not.toBeInTheDocument()
+
+    await user.click(screen.getByText("Contact & about"))
+
     const reportButton = screen.getByRole("button", {
       name: /Report a problem/u,
     })

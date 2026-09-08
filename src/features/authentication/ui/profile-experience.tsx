@@ -13,7 +13,6 @@ import {
   CircleHelp,
   FileText,
   Info,
-  LifeBuoy,
   LockKeyhole,
   LogOut,
   Mail,
@@ -203,50 +202,6 @@ export function ProfileExperience({
         <ProfileUpdatePopup kind={updateNotice} onDismiss={dismissUpdate} />
       ) : null}
 
-      <section
-        aria-labelledby="profile-feedback-heading"
-        className="profile-feedback"
-      >
-        <div className="profile-section-heading">
-          <div>
-            <span>Support &amp; feedback</span>
-            <h2 id="profile-feedback-heading">Help &amp; feedback</h2>
-            <p>Report issues directly to developers or reach out to support.</p>
-          </div>
-          <LifeBuoy aria-hidden="true" />
-        </div>
-
-        <article className="profile-feedback-card">
-          <ReportProblemButton className="profile-feedback-action">
-            <span className="profile-feedback-action__icon profile-feedback-action__icon--accent">
-              <MessageSquareWarning aria-hidden="true" />
-            </span>
-            <div className="profile-feedback-action__content">
-              <strong>Report a problem</strong>
-              <small>Send a bug report or tell us what went wrong</small>
-            </div>
-            <ChevronRight
-              aria-hidden="true"
-              className="profile-feedback-action__arrow"
-            />
-          </ReportProblemButton>
-
-          <Link className="profile-feedback-action" href={"/contact" as Route}>
-            <span className="profile-feedback-action__icon">
-              <MessageCircleMore aria-hidden="true" />
-            </span>
-            <div className="profile-feedback-action__content">
-              <strong>Contact support</strong>
-              <small>Choose a topic and send an email message</small>
-            </div>
-            <ChevronRight
-              aria-hidden="true"
-              className="profile-feedback-action__arrow"
-            />
-          </Link>
-        </article>
-      </section>
-
       <details className="profile-security-settings">
         <summary className="profile-security-settings__trigger">
           <span className="profile-security-settings__icon">
@@ -293,7 +248,20 @@ export function ProfileExperience({
           aria-label="Help and information"
           className="profile-help-settings__content"
         >
-          <Link href={"/contact" as Route}>
+          <ReportProblemButton className="profile-help-settings__action profile-help-settings__action--report">
+            <span>
+              <MessageSquareWarning aria-hidden="true" />
+            </span>
+            <div>
+              <strong>Report a problem</strong>
+              <small>Tell us what went wrong</small>
+            </div>
+            <ChevronRight aria-hidden="true" />
+          </ReportProblemButton>
+          <Link
+            className="profile-help-settings__action"
+            href={"/contact" as Route}
+          >
             <span>
               <MessageCircleMore aria-hidden="true" />
             </span>
@@ -303,7 +271,10 @@ export function ProfileExperience({
             </div>
             <ChevronRight aria-hidden="true" />
           </Link>
-          <Link href={"/about" as Route}>
+          <Link
+            className="profile-help-settings__action"
+            href={"/about" as Route}
+          >
             <span>
               <Info aria-hidden="true" />
             </span>
@@ -313,7 +284,7 @@ export function ProfileExperience({
             </div>
             <ChevronRight aria-hidden="true" />
           </Link>
-          <Link href="/privacy">
+          <Link className="profile-help-settings__action" href="/privacy">
             <span>
               <ShieldCheck aria-hidden="true" />
             </span>
@@ -323,7 +294,7 @@ export function ProfileExperience({
             </div>
             <ChevronRight aria-hidden="true" />
           </Link>
-          <Link href="/terms">
+          <Link className="profile-help-settings__action" href="/terms">
             <span>
               <FileText aria-hidden="true" />
             </span>

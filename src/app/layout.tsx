@@ -115,7 +115,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             />
           ) : null}
           <DevServiceWorkerCleanup />
-          <SentryFeedbackWidget nonce={requestNonce} />
+          <SentryFeedbackWidget />
           <SerwistProvider
             disable={process.env.NODE_ENV !== "production"}
             options={{ scope: "/", updateViaCache: "none" }}

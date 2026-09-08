@@ -8,6 +8,7 @@ import type { ReactNode } from "react"
 import "./globals.css"
 import { Baloo_2, Caveat, Inter, Nunito } from "next/font/google"
 import { DevServiceWorkerCleanup } from "@/components/system/dev-service-worker-cleanup"
+import { SentryFeedbackWidget } from "@/components/system/sentry-feedback-widget"
 import {
   parseCookieConsent,
   cookieConsentName,
@@ -114,6 +115,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             />
           ) : null}
           <DevServiceWorkerCleanup />
+          <SentryFeedbackWidget nonce={requestNonce} />
           <SerwistProvider
             disable={process.env.NODE_ENV !== "production"}
             options={{ scope: "/", updateViaCache: "none" }}

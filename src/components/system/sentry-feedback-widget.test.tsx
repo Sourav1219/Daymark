@@ -1,8 +1,12 @@
 import * as Sentry from "@sentry/nextjs"
-import { cleanup, render } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { SentryFeedbackWidget } from "./sentry-feedback-widget"
+import {
+  ReportProblemButton,
+  SentryFeedbackWidget,
+  openFeedbackModal,
+} from "./sentry-feedback-widget"
 
 vi.mock("@sentry/nextjs", () => ({
   addIntegration: vi.fn(),
@@ -16,13 +20,19 @@ describe("SentryFeedbackWidget", () => {
     vi.clearAllMocks()
   })
 
-  it("creates a privacy-conscious widget with the request CSP nonce", () => {
+  it("configures feedback with CSP nonces and opens the dialog upon trigger", async () => {
+    const appendToDom = vi.fn()
+    const open = vi.fn()
     const removeFromDom = vi.fn()
-    const createWidget = vi.fn(() => ({ removeFromDom }))
+    const createForm = vi.fn().mockResolvedValue({
+      appendToDom,
+      open,
+      removeFromDom,
+    })
 
     vi.mocked(Sentry.getFeedback)
       .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce({ createWidget } as never)
+      .mockReturnValue({ createForm } as never)
 
     const view = render(<SentryFeedbackWidget nonce="request-nonce" />)
 
@@ -36,10 +46,27 @@ describe("SentryFeedbackWidget", () => {
         triggerLabel: "Report a problem",
       }),
     )
-    expect(Sentry.addIntegration).toHaveBeenCalledOnce()
-    expect(createWidget).toHaveBeenCalledOnce()
+
+    openFeedbackModal()
+
+    await vi.waitFor(() => {
+      expect(createForm).toHaveBeenCalledOnce()
+      expect(appendToDom).toHaveBeenCalledOnce()
+      expect(open).toHaveBeenCalledOnce()
+    })
 
     view.unmount()
     expect(removeFromDom).toHaveBeenCalledOnce()
+  })
+
+  it("ReportProblemButton dispatches open feedback trigger", () => {
+    const listener = vi.fn()
+    window.addEventListener("traketo:open-feedback", listener)
+
+    render(<ReportProblemButton>Need help?</ReportProblemButton>)
+    fireEvent.click(screen.getByRole("button", { name: "Need help?" }))
+
+    expect(listener).toHaveBeenCalledOnce()
+    window.removeEventListener("traketo:open-feedback", listener)
   })
 })

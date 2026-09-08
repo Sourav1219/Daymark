@@ -8,42 +8,71 @@ import {
   CheckCircle2,
   House,
   ListChecks,
+  MessageSquareWarning,
   PanelsTopLeft,
   Plus,
   Search,
   X,
+  type LucideIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { openFeedbackModal } from "@/components/system/sentry-feedback-widget"
 
-const commands = [
+type CommandItem = Readonly<{
+  action?: () => void
+  href?: Route
+  icon: LucideIcon
+  id: string
+  label: string
+  shortcut: string
+}>
+
+const commands: readonly CommandItem[] = [
   {
     href: "/quests#create-quest-title",
     icon: Plus,
+    id: "create-task",
     label: "Create Task",
     shortcut: "N",
   },
-  { href: "/today", icon: House, label: "Go to Home", shortcut: "G H" },
+  {
+    href: "/today",
+    icon: House,
+    id: "go-home",
+    label: "Go to Home",
+    shortcut: "G H",
+  },
   {
     href: "/quests",
     icon: ListChecks,
+    id: "go-tasks",
     label: "Go to All Tasks",
     shortcut: "G Q",
   },
   {
     href: "/gates",
     icon: PanelsTopLeft,
+    id: "go-lists",
     label: "Go to Lists",
     shortcut: "G G",
   },
   {
     href: "/cleared",
     icon: CheckCircle2,
+    id: "go-cleared",
     label: "Go to Cleared",
     shortcut: "G C",
   },
-] as const
+  {
+    action: openFeedbackModal,
+    icon: MessageSquareWarning,
+    id: "report-problem",
+    label: "Report a Problem",
+    shortcut: "Feedback",
+  },
+]
 
 const navigationShortcuts = new Map<string, Route>([
   ["h", "/today"],
@@ -89,10 +118,14 @@ export function CommandMenu({
   }, [query])
 
   const run = useCallback(
-    (href: Route) => {
+    (command: CommandItem) => {
       setOpen(false)
       setQuery("")
-      router.push(href)
+      if (command.action) {
+        command.action()
+      } else if (command.href) {
+        router.push(command.href)
+      }
     },
     [router],
   )
@@ -125,7 +158,9 @@ export function CommandMenu({
 
       if (key === "n") {
         event.preventDefault()
-        run("/quests#create-quest-title")
+        setOpen(false)
+        setQuery("")
+        router.push("/quests#create-quest-title")
         return
       }
 
@@ -135,7 +170,9 @@ export function CommandMenu({
         const href = navigationShortcuts.get(key)
         if (href) {
           event.preventDefault()
-          run(href)
+          setOpen(false)
+          setQuery("")
+          router.push(href)
         }
         return
       }
@@ -157,7 +194,7 @@ export function CommandMenu({
       window.removeEventListener(OPEN_COMMAND_MENU_EVENT, handleOpen)
       if (navigationTimer.current) clearTimeout(navigationTimer.current)
     }
-  }, [run])
+  }, [router])
 
   return (
     <Dialog.Root onOpenChange={setOpen} open={open}>
@@ -228,22 +265,25 @@ export function CommandMenu({
             value={query}
           />
           <div className="grid gap-1 overflow-y-auto">
-            {visibleCommands.map(({ href, icon: Icon, label, shortcut }) => (
-              <Button
-                className="h-auto min-h-11 justify-start gap-3 px-3 py-2 text-left"
-                data-command-item
-                key={href}
-                onClick={() => run(href)}
-                type="button"
-                variant="ghost"
-              >
-                <Icon aria-hidden="true" />
-                <span className="flex-1">{label}</span>
-                <kbd className="rounded-control border border-border-soft px-1.5 py-0.5 font-mono text-[0.65rem] text-ink-muted">
-                  {shortcut}
-                </kbd>
-              </Button>
-            ))}
+            {visibleCommands.map((command) => {
+              const Icon = command.icon
+              return (
+                <Button
+                  className="h-auto min-h-11 justify-start gap-3 px-3 py-2 text-left"
+                  data-command-item
+                  key={command.id}
+                  onClick={() => run(command)}
+                  type="button"
+                  variant="ghost"
+                >
+                  <Icon aria-hidden="true" />
+                  <span className="flex-1">{command.label}</span>
+                  <kbd className="rounded-control border border-border-soft px-1.5 py-0.5 font-mono text-[0.65rem] text-ink-muted">
+                    {command.shortcut}
+                  </kbd>
+                </Button>
+              )
+            })}
             {visibleCommands.length === 0 ? (
               <p className="px-3 py-6 text-center text-sm text-ink-muted">
                 No command matches “{query}”.

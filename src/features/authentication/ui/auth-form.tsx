@@ -15,6 +15,7 @@ import {
 import { EmailVerificationPanel } from "@/features/authentication/ui/email-verification-panel"
 import { TurnstileWidget } from "@/features/authentication/ui/turnstile-widget"
 import { requestAutomaticPushPermission } from "@/features/reminders/components/automatic-push-enrollment"
+import { ReportProblemButton } from "@/components/system/sentry-feedback-widget"
 import type { AuthNotice } from "@/features/authentication/ui/auth-experience"
 
 const loadingMessages = [
@@ -345,6 +346,12 @@ export function AuthForm({
           {!registering ? (
             <div className="auth__help-footer">
               <span>Having trouble signing in?</span>{" "}
+              <ReportProblemButton className="auth__help-link cursor-pointer border-0 bg-transparent p-0">
+                Report a problem
+              </ReportProblemButton>
+              <span aria-hidden="true" className="mx-1.5 opacity-50">
+                ·
+              </span>
               <Link className="auth__help-link" href="/contact">
                 Contact us
               </Link>

@@ -1,7 +1,15 @@
 "use client"
 
 import * as Sentry from "@sentry/nextjs"
-import { useEffect } from "react"
+import { type ComponentProps, useEffect } from "react"
+
+export const OPEN_FEEDBACK_EVENT = "traketo:open-feedback"
+
+export function openFeedbackModal() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(OPEN_FEEDBACK_EVENT))
+  }
+}
 
 type SentryFeedbackWidgetProps = Readonly<{
   nonce?: string | undefined
@@ -36,12 +44,64 @@ export function SentryFeedbackWidget({ nonce }: SentryFeedbackWidgetProps) {
       feedback = Sentry.getFeedback()
     }
 
-    const widget = feedback?.createWidget()
+    let dialog: {
+      appendToDom: () => void
+      open: () => void
+      close?: () => void
+      removeFromDom: () => void
+    } | null = null
+
+    const handleOpen = async () => {
+      const activeFeedback = Sentry.getFeedback()
+      if (!activeFeedback) return
+
+      try {
+        if (!dialog) {
+          dialog = await activeFeedback.createForm({
+            onFormClose: () => {
+              dialog?.removeFromDom()
+              dialog = null
+            },
+            onFormSubmitted: () => {
+              dialog?.removeFromDom()
+              dialog = null
+            },
+          })
+        }
+        dialog.appendToDom()
+        dialog.open()
+      } catch (err) {
+        console.error("Failed to open Sentry feedback form:", err)
+      }
+    }
+
+    window.addEventListener(OPEN_FEEDBACK_EVENT, handleOpen)
 
     return () => {
-      widget?.removeFromDom()
+      window.removeEventListener(OPEN_FEEDBACK_EVENT, handleOpen)
+      dialog?.removeFromDom()
     }
   }, [nonce])
 
   return null
+}
+
+export function ReportProblemButton({
+  children,
+  ...props
+}: ComponentProps<"button">) {
+  return (
+    <button
+      type="button"
+      {...props}
+      onClick={(e) => {
+        props.onClick?.(e)
+        if (!e.defaultPrevented) {
+          openFeedbackModal()
+        }
+      }}
+    >
+      {children ?? "Report a problem"}
+    </button>
+  )
 }

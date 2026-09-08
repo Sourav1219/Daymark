@@ -16,39 +16,10 @@ vi.mock("@/features/offline/storage/offline-database", () => ({
   clearPrivateOfflineData: mocks.clearPrivateOfflineData,
 }))
 
-type EventListener = (event: Event) => void
-
-class FakeEventSource {
-  static instances: FakeEventSource[] = []
-
-  readonly listeners = new Map<string, Set<EventListener>>()
-  onerror: (() => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeEventSource.instances.push(this)
-  }
-
-  addEventListener(type: string, listener: EventListener) {
-    const listeners = this.listeners.get(type) ?? new Set<EventListener>()
-    listeners.add(listener)
-    this.listeners.set(type, listeners)
-  }
-
-  close() {}
-
-  emit(type: string) {
-    for (const listener of this.listeners.get(type) ?? []) {
-      listener(new Event(type))
-    }
-  }
-}
-
 describe("SessionWatcher", () => {
   beforeEach(() => {
-    FakeEventSource.instances = []
     mocks.clearPrivateOfflineData.mockClear()
     mocks.replace.mockClear()
-    vi.stubGlobal("EventSource", FakeEventSource)
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response(null, { status: 204 })),
@@ -59,14 +30,9 @@ describe("SessionWatcher", () => {
     vi.unstubAllGlobals()
   })
 
-  it("shows the signed-out screen immediately when another device revokes the session", async () => {
-    render(<SessionWatcher />)
-
-    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
-    expect(FakeEventSource.instances[0]?.url).toBe("/api/session/events")
+  it("shows the signed-out screen when the initial session check is revoked", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 401 }))
-
-    act(() => FakeEventSource.instances[0]?.emit("sessions-changed"))
+    render(<SessionWatcher />)
 
     await waitFor(() => {
       expect(
@@ -79,16 +45,20 @@ describe("SessionWatcher", () => {
     expect(mocks.clearPrivateOfflineData).toHaveBeenCalledOnce()
   })
 
-  it("notifies active-session views when another device signs in", async () => {
-    const listener = vi.fn()
-    window.addEventListener("traketo:active-sessions-changed", listener)
+  it("rechecks the session periodically without opening an event stream", async () => {
+    vi.useFakeTimers()
     render(<SessionWatcher />)
 
-    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
-    act(() => FakeEventSource.instances[0]?.emit("sessions-changed"))
+    await act(async () => undefined)
+    expect(fetch).toHaveBeenCalledOnce()
 
-    await waitFor(() => expect(listener).toHaveBeenCalledOnce())
-    expect(mocks.replace).not.toHaveBeenCalled()
-    window.removeEventListener("traketo:active-sessions-changed", listener)
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 401 }))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1_000)
+    })
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(mocks.replace).toHaveBeenCalledWith("/sign-out?next=%2F")
+    vi.useRealTimers()
   })
 })

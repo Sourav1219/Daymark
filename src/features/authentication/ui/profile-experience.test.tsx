@@ -144,4 +144,30 @@ describe("ProfileExperience", () => {
 
     window.removeEventListener("traketo:open-feedback", feedbackListener)
   })
+
+  it("loads security controls only when their dropdown is opened", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <ProfileExperience
+        currentSessionId={null}
+        initialSessions={[]}
+        email="ada@example.com"
+        joined="12 August 2026"
+        name="Ada Lovelace"
+        role="owner"
+        workspaceName="Ada's workspace"
+      />,
+    )
+
+    expect(
+      screen.queryByRole("heading", { name: "Active sessions" }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByText("Security & data"))
+
+    expect(
+      screen.getByRole("heading", { name: "Active sessions" }),
+    ).toBeVisible()
+  })
 })

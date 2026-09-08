@@ -41,6 +41,8 @@ import { clearPrivateOfflineData } from "@/features/offline/storage/offline-data
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
+const SESSION_LIST_REFRESH_INTERVAL_MS = 5 * 60 * 1_000
+
 type DeviceKind = "mobile" | "tablet" | "desktop"
 
 function deviceKind(userAgent: string | null): DeviceKind {
@@ -173,18 +175,26 @@ function SessionsCard({
 
   useEffect(() => {
     const refresh = () => void refreshSessions()
-    const interval = window.setInterval(refresh, 30_000)
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") refresh()
+    }
+    const interval = window.setInterval(
+      refreshIfVisible,
+      SESSION_LIST_REFRESH_INTERVAL_MS,
+    )
 
     function onVisibilityChange() {
-      if (document.visibilityState === "visible") refresh()
+      refreshIfVisible()
     }
 
     window.addEventListener(ACTIVE_SESSIONS_CHANGED_EVENT, refresh)
+    window.addEventListener("focus", refreshIfVisible)
     document.addEventListener("visibilitychange", onVisibilityChange)
 
     return () => {
       window.clearInterval(interval)
       window.removeEventListener(ACTIVE_SESSIONS_CHANGED_EVENT, refresh)
+      window.removeEventListener("focus", refreshIfVisible)
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
   }, [refreshSessions])

@@ -69,6 +69,7 @@ export function ProfileExperience({
 }: ProfileExperienceProps) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
+  const [securityOpen, setSecurityOpen] = useState(false)
   const [updateNotice, setUpdateNotice] = useState<ProfileUpdateKind | null>(
     null,
   )
@@ -202,7 +203,11 @@ export function ProfileExperience({
         <ProfileUpdatePopup kind={updateNotice} onDismiss={dismissUpdate} />
       ) : null}
 
-      <details className="profile-security-settings">
+      <details
+        className="profile-security-settings"
+        onToggle={(event) => setSecurityOpen(event.currentTarget.open)}
+        open={securityOpen}
+      >
         <summary className="profile-security-settings__trigger">
           <span className="profile-security-settings__icon">
             <ShieldCheck aria-hidden="true" />
@@ -222,11 +227,13 @@ export function ProfileExperience({
           />
         </summary>
         <div className="profile-security-settings__content">
-          <SecurityDataPanel
-            currentSessionId={currentSessionId}
-            hasPassword={hasPassword}
-            initialSessions={initialSessions}
-          />
+          {securityOpen ? (
+            <SecurityDataPanel
+              currentSessionId={currentSessionId}
+              hasPassword={hasPassword}
+              initialSessions={initialSessions}
+            />
+          ) : null}
         </div>
       </details>
       <details className="profile-help-settings">

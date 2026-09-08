@@ -91,10 +91,14 @@ export function observeAuthenticationAnomaly(
 ): void {
   incrementCounter("authentication_anomaly", { kind })
   logSecurityEvent(`authentication.${kind}`, details)
-  sendSecuritySignal("authentication.anomaly", {
-    kind,
-    ...(typeof details?.flow === "string" ? { flow: details.flow } : {}),
-  })
+  sendSecuritySignal(
+    "authentication.anomaly",
+    {
+      kind,
+      ...(typeof details?.flow === "string" ? { flow: details.flow } : {}),
+    },
+    { immediate: true },
+  )
 }
 
 /**

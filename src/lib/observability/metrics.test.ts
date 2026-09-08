@@ -83,7 +83,7 @@ describe("observability metrics", () => {
     })
   })
 
-  it("sends authentication anomalies as aggregate Sentry metrics", () => {
+  it("sends authentication anomalies as metrics and grouped issues", () => {
     vi.spyOn(console, "log").mockImplementation(() => undefined)
 
     observeAuthenticationAnomaly("captcha_failed", { flow: "login" })
@@ -95,6 +95,14 @@ describe("observability metrics", () => {
         kind: "captcha_failed",
       },
     })
+    expect(sentry.captureMessage).toHaveBeenCalledWith(
+      "Security alert: authentication.anomaly",
+    )
+    expect(sentry.setFingerprint).toHaveBeenCalledWith([
+      "security",
+      "authentication.anomaly",
+      "all",
+    ])
   })
 
   it("creates an immediate grouped issue for cron authorization denial", () => {

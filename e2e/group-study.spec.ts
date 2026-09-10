@@ -17,6 +17,8 @@ async function register(page: Page, name: string) {
   await page
     .getByLabel("Password", { exact: true })
     .fill("correct-horse-battery-staple")
+  await page.locator("#termsAccepted").check()
+  await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page).toHaveURL(/\/today$/u)
   await page.goto("/timer")

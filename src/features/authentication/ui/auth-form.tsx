@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useEffect, useState } from "react"
+import { useActionState, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Eye, EyeOff } from "lucide-react"
 
@@ -14,8 +14,6 @@ import {
 } from "@/features/authentication/ui/google-auth-button"
 import { EmailVerificationPanel } from "@/features/authentication/ui/email-verification-panel"
 import { TurnstileWidget } from "@/features/authentication/ui/turnstile-widget"
-import { requestAutomaticPushPermission } from "@/features/reminders/components/automatic-push-enrollment"
-import { ReportProblemButton } from "@/components/system/sentry-feedback-widget"
 import type { AuthNotice } from "@/features/authentication/ui/auth-experience"
 
 const loadingMessages = [
@@ -70,6 +68,14 @@ export function AuthForm({
   )
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [privacyNoticeAcknowledged, setPrivacyNoticeAcknowledged] =
+    useState(false)
+  const [agreementReviewRequested, setAgreementReviewRequested] =
+    useState(false)
+  const agreementsRef = useRef<HTMLDivElement>(null)
+  const termsCheckboxRef = useRef<HTMLInputElement>(null)
+  const privacyCheckboxRef = useRef<HTMLInputElement>(null)
   const [passwordVisible, setPasswordVisible] = useState(false)
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
   const [captchaVerified, setCaptchaVerified] = useState(!turnstileSiteKey)
@@ -83,6 +89,10 @@ export function AuthForm({
     registering && state?.ok && state.data.verificationRequired
       ? (state.data.email ?? email)
       : null
+  const registrationAgreementsAccepted =
+    termsAccepted && privacyNoticeAcknowledged
+  const agreementPromptVisible =
+    registering && agreementReviewRequested && !registrationAgreementsAccepted
 
   useEffect(() => {
     if (!pending) {
@@ -95,6 +105,23 @@ export function AuthForm({
 
     return () => window.clearInterval(timer)
   }, [pending])
+
+  function switchMode(nextMode: "login" | "register") {
+    if (nextMode === "login") setAgreementReviewRequested(false)
+    onSwitchMode?.(nextMode)
+  }
+
+  function requestRegistrationAgreementReview() {
+    setAgreementReviewRequested(true)
+    agreementsRef.current?.scrollIntoView?.({
+      behavior: "smooth",
+      block: "center",
+    })
+    const firstUncheckedCheckbox = termsAccepted
+      ? privacyCheckboxRef.current
+      : termsCheckboxRef.current
+    firstUncheckedCheckbox?.focus({ preventScroll: true })
+  }
 
   if (verificationEmail) {
     return (
@@ -149,7 +176,7 @@ export function AuthForm({
             aria-pressed={!registering}
             className="auth__tab"
             data-active={!registering}
-            onClick={() => onSwitchMode?.("login")}
+            onClick={() => switchMode("login")}
             type="button"
           >
             Sign in
@@ -158,7 +185,7 @@ export function AuthForm({
             aria-pressed={registering}
             className="auth__tab"
             data-active={registering}
-            onClick={() => onSwitchMode?.("register")}
+            onClick={() => switchMode("register")}
             type="button"
           >
             Register
@@ -170,6 +197,8 @@ export function AuthForm({
           mode={registering ? "register" : "login"}
           nextPath={nextPath}
           oauthError={oauthError}
+          registrationAllowed={registrationAgreementsAccepted}
+          onRegistrationAgreementRequired={requestRegistrationAgreementReview}
         />
 
         <div className="auth__divider" role="separator">
@@ -191,12 +220,7 @@ export function AuthForm({
           action={formAction}
           className="auth__form"
           noValidate
-          onSubmit={(event) => {
-            setMessageIndex(0)
-            if (registering && event.currentTarget.checkValidity()) {
-              requestAutomaticPushPermission()
-            }
-          }}
+          onSubmit={() => setMessageIndex(0)}
         >
           <input name="next" type="hidden" value={nextPath} />
 
@@ -314,6 +338,112 @@ export function AuthForm({
             />
           ) : null}
 
+          {registering ? (
+            <div
+              className={
+                agreementPromptVisible
+                  ? "auth__agreements auth__agreements--error"
+                  : "auth__agreements"
+              }
+              ref={agreementsRef}
+            >
+              <label className="auth__agreement" htmlFor="termsAccepted">
+                <input
+                  aria-describedby={
+                    [
+                      fieldErrors?.termsAccepted ? "termsAccepted-error" : null,
+                      agreementPromptVisible
+                        ? "registration-agreement-prompt"
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  aria-invalid={Boolean(
+                    fieldErrors?.termsAccepted || agreementPromptVisible,
+                  )}
+                  checked={termsAccepted}
+                  disabled={pending}
+                  id="termsAccepted"
+                  name="termsAccepted"
+                  onChange={(event) => {
+                    const accepted = event.target.checked
+                    setTermsAccepted(accepted)
+                    if (accepted && privacyNoticeAcknowledged) {
+                      setAgreementReviewRequested(false)
+                    }
+                  }}
+                  ref={termsCheckboxRef}
+                  required
+                  type="checkbox"
+                />
+                <span>
+                  I confirm I am 18 or older and accept the{" "}
+                  <Link href="/terms">Terms of Service</Link>.
+                </span>
+              </label>
+              <FieldError
+                id="termsAccepted-error"
+                messages={fieldErrors?.termsAccepted}
+              />
+
+              <label
+                className="auth__agreement"
+                htmlFor="privacyNoticeAcknowledged"
+              >
+                <input
+                  aria-describedby={
+                    [
+                      fieldErrors?.privacyNoticeAcknowledged
+                        ? "privacyNoticeAcknowledged-error"
+                        : null,
+                      agreementPromptVisible
+                        ? "registration-agreement-prompt"
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  aria-invalid={Boolean(
+                    fieldErrors?.privacyNoticeAcknowledged ||
+                    agreementPromptVisible,
+                  )}
+                  checked={privacyNoticeAcknowledged}
+                  disabled={pending}
+                  id="privacyNoticeAcknowledged"
+                  name="privacyNoticeAcknowledged"
+                  onChange={(event) => {
+                    const acknowledged = event.target.checked
+                    setPrivacyNoticeAcknowledged(acknowledged)
+                    if (acknowledged && termsAccepted) {
+                      setAgreementReviewRequested(false)
+                    }
+                  }}
+                  ref={privacyCheckboxRef}
+                  required
+                  type="checkbox"
+                />
+                <span>
+                  I have read the <Link href="/privacy">Privacy Notice</Link>,
+                  including how my account and task data are used.
+                </span>
+              </label>
+              <FieldError
+                id="privacyNoticeAcknowledged-error"
+                messages={fieldErrors?.privacyNoticeAcknowledged}
+              />
+              {agreementPromptVisible ? (
+                <p
+                  className="auth__agreement-prompt"
+                  id="registration-agreement-prompt"
+                  role="alert"
+                >
+                  Please review and accept the terms to continue.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           {state ? (
             <div
               className={state.ok ? "auth__hint" : "auth__error"}
@@ -325,7 +455,11 @@ export function AuthForm({
 
           <button
             className="auth__submit"
-            disabled={pending || !captchaVerified}
+            disabled={
+              pending ||
+              !captchaVerified ||
+              (registering && !registrationAgreementsAccepted)
+            }
             type="submit"
           >
             {pending
@@ -334,24 +468,9 @@ export function AuthForm({
                 ? "Create"
                 : "Enter"}
           </button>
-
-          {registering ? (
-            <p className="auth__legal">
-              By creating an account, you agree to Traketo&apos;s{" "}
-              <Link href="/terms">Terms of Service</Link>,{" "}
-              <Link href="/privacy">Privacy Policy</Link>, and cookie usage.
-            </p>
-          ) : null}
-
           {!registering ? (
             <div className="auth__help-footer">
               <span>Having trouble signing in?</span>{" "}
-              <ReportProblemButton className="auth__help-link cursor-pointer border-0 bg-transparent p-0">
-                Report a problem
-              </ReportProblemButton>
-              <span aria-hidden="true" className="mx-1.5 opacity-50">
-                ·
-              </span>
               <Link className="auth__help-link" href="/contact">
                 Contact us
               </Link>

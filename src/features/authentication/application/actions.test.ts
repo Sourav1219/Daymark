@@ -16,6 +16,7 @@ const {
   signInEmail,
   signOut,
   signUpEmail,
+  updateRegistrationAcceptance,
   verifyEmailOTP,
 } = vi.hoisted(() => ({
   cookieStore: { set: vi.fn(), get: vi.fn() },
@@ -31,6 +32,7 @@ const {
   signInEmail: vi.fn(),
   signOut: vi.fn(),
   signUpEmail: vi.fn(),
+  updateRegistrationAcceptance: vi.fn(),
   verifyEmailOTP: vi.fn(),
 }))
 
@@ -50,6 +52,7 @@ vi.mock("@/lib/rate-limit/rate-limiter", () => ({ enforceRateLimit }))
 import {
   loginAction,
   logoutAction,
+  prepareGoogleRegistrationAction,
   registerAction,
   requestPasswordResetAction,
   resendVerificationAction,
@@ -62,6 +65,11 @@ const authenticationDatabase = {
   select: () => ({
     from: () => ({
       where: () => ({ limit: findExistingAccount }),
+    }),
+  }),
+  update: () => ({
+    set: (values: unknown) => ({
+      where: () => updateRegistrationAcceptance(values),
     }),
   }),
 }
@@ -78,6 +86,8 @@ function registrationForm() {
   form.set("email", "person@example.test")
   form.set("name", "Person")
   form.set("password", "correct-horse-battery-staple")
+  form.set("privacyNoticeAcknowledged", "on")
+  form.set("termsAccepted", "on")
   return form
 }
 
@@ -105,7 +115,9 @@ describe("registerAction", () => {
     signUpEmail.mockResolvedValueOnce({ user: { id: "new-user" } })
     const created = await register()
 
-    findExistingAccount.mockResolvedValueOnce([{ emailVerified: false }])
+    findExistingAccount.mockResolvedValueOnce([
+      { emailVerified: false, id: "existing-user" },
+    ])
     signUpEmail.mockResolvedValueOnce({ user: { id: "synthetic-user" } })
     const existing = await register()
 
@@ -127,11 +139,46 @@ describe("registerAction", () => {
         },
       }),
     )
-    expect(cookieStore.set).toHaveBeenCalledWith(
-      "traketo_cookie_consent",
-      "v1.preferences",
-      expect.objectContaining({ path: "/" }),
+    expect(updateRegistrationAcceptance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ageRequirementVersion: "2026-09-10",
+        privacyNoticeVersion: "2026-08-28",
+        termsVersion: "2026-08-28",
+      }),
     )
+    expect(cookieStore.set).not.toHaveBeenCalled()
+  })
+
+  it("rejects registration when either required agreement is missing", async () => {
+    const form = registrationForm()
+    form.delete("privacyNoticeAcknowledged")
+
+    await expect(registerAction(null, form)).resolves.toMatchObject({
+      error: {
+        code: "VALIDATION_ERROR",
+        fieldErrors: { privacyNoticeAcknowledged: expect.any(Array) },
+      },
+      ok: false,
+    })
+    expect(signUpEmail).not.toHaveBeenCalled()
+  })
+
+  it("rejects registration without the combined age and terms confirmation", async () => {
+    const form = registrationForm()
+    form.delete("termsAccepted")
+
+    await expect(registerAction(null, form)).resolves.toMatchObject({
+      error: {
+        code: "VALIDATION_ERROR",
+        fieldErrors: {
+          termsAccepted: [
+            "Confirm you are 18 or older and accept the Terms of Service",
+          ],
+        },
+      },
+      ok: false,
+    })
+    expect(signUpEmail).not.toHaveBeenCalled()
   })
 
   it("does not resolve before the normalized response floor", async () => {
@@ -165,6 +212,33 @@ describe("registerAction", () => {
       ok: false,
     })
     expect(cookieStore.set).not.toHaveBeenCalled()
+  })
+})
+
+describe("prepareGoogleRegistrationAction", () => {
+  beforeEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
+
+  it("stores only a short-lived, HTTP-only registration receipt", async () => {
+    await expect(
+      prepareGoogleRegistrationAction({
+        privacyNoticeAcknowledged: true,
+        termsAccepted: true,
+      }),
+    ).resolves.toEqual({ data: { ready: true }, ok: true })
+
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      "traketo_registration_acceptance",
+      expect.any(String),
+      expect.objectContaining({ httpOnly: true, maxAge: 600, path: "/" }),
+    )
+    expect(cookieStore.set).not.toHaveBeenCalledWith(
+      "traketo_cookie_consent",
+      expect.anything(),
+      expect.anything(),
+    )
   })
 })
 
@@ -341,11 +415,7 @@ describe("verifyEmailCodeAction", () => {
         body: { email: "person@example.test", otp: "123456" },
       }),
     )
-    expect(cookieStore.set).toHaveBeenCalledWith(
-      "traketo_cookie_consent",
-      "v1.preferences",
-      expect.objectContaining({ path: "/" }),
-    )
+    expect(cookieStore.set).not.toHaveBeenCalled()
     expect(redirect).toHaveBeenCalledWith("/quests")
   })
 

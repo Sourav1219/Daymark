@@ -1,12 +1,26 @@
 "use client"
 
-import { useActionState, useEffect, useState } from "react"
-import { CheckCircle2, LockKeyhole, Mail, UserRound } from "lucide-react"
+import Link from "next/link"
+import { useActionState, useCallback, useEffect, useState } from "react"
+import {
+  ArrowRight,
+  CheckCircle2,
+  Mail,
+  MailCheck,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react"
 
 import { MutationSubmitButton } from "@/components/system/mutation-submit-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { updateProfileNameAction } from "@/features/authentication/application/account-actions"
+import {
+  type EmailChangeRequestActionState,
+  type EmailChangeVerificationActionState,
+  requestEmailChangeAction,
+  updateProfileNameAction,
+  verifyEmailChangeAction,
+} from "@/features/authentication/application/account-actions"
 import type { ProfileUpdateKind } from "@/features/authentication/ui/profile-update-popup"
 
 const whitespacePattern = /\s+/u
@@ -45,17 +59,16 @@ export function AccountSettingsForms({
 }>) {
   return (
     <div className="profile-edit-panels">
-      <ProfileNamePanel email={email} name={name} onUpdated={onUpdated} />
+      <ProfileNamePanel name={name} onUpdated={onUpdated} />
+      <EmailChangePanel currentEmail={email} onUpdated={onUpdated} />
     </div>
   )
 }
 
 function ProfileNamePanel({
-  email,
   name,
   onUpdated,
 }: Readonly<{
-  email: string
   name: string
   onUpdated: (kind: ProfileUpdateKind) => void
 }>) {
@@ -123,25 +136,6 @@ function ProfileNamePanel({
           />
         </div>
 
-        <div className="profile-edit-field">
-          <Label>Email address</Label>
-          <div className="profile-edit-email">
-            <span>
-              <Mail aria-hidden="true" />
-            </span>
-            <div>
-              <small>Sign-in identity</small>
-              <strong>{email}</strong>
-            </div>
-            <span className="profile-edit-email__lock">
-              <LockKeyhole aria-hidden="true" /> Locked
-            </span>
-          </div>
-          <p className="profile-edit-help">
-            Email changes are disabled to protect your account identity.
-          </p>
-        </div>
-
         {state && !state.ok && !state.error.fieldErrors ? (
           <p className="profile-edit-alert" role="alert">
             {state.error.message}
@@ -157,6 +151,206 @@ function ProfileNamePanel({
           />
         </footer>
       </form>
+    </article>
+  )
+}
+
+function EmailChangePanel({
+  currentEmail,
+  onUpdated,
+}: Readonly<{
+  currentEmail: string
+  onUpdated: (kind: ProfileUpdateKind) => void
+}>) {
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null)
+  const [code, setCode] = useState("")
+  const requestEmail = useCallback(
+    async (previous: EmailChangeRequestActionState, formData: FormData) => {
+      const result = await requestEmailChangeAction(previous, formData)
+      if (result?.ok) setPendingEmail(result.data.newEmail)
+      return result
+    },
+    [],
+  )
+  const verifyEmail = useCallback(
+    async (
+      previous: EmailChangeVerificationActionState,
+      formData: FormData,
+    ) => {
+      const result = await verifyEmailChangeAction(previous, formData)
+      if (result?.ok) {
+        setCode("")
+        onUpdated("email")
+      }
+      return result
+    },
+    [onUpdated],
+  )
+  const [requestState, requestAction] = useActionState(requestEmail, null)
+  const [verificationState, verificationAction] = useActionState(
+    verifyEmail,
+    null,
+  )
+  const requestErrors =
+    requestState && !requestState.ok
+      ? requestState.error.fieldErrors
+      : undefined
+  const verificationErrors =
+    verificationState && !verificationState.ok
+      ? verificationState.error.fieldErrors
+      : undefined
+
+  return (
+    <article className="profile-edit-card profile-edit-card--email">
+      <header className="profile-edit-card__header">
+        <span className="profile-edit-card__icon">
+          <MailCheck aria-hidden="true" />
+        </span>
+        <div>
+          <small>Verified sign-in identity</small>
+          <h3>Email address</h3>
+          <p>
+            Your current email remains active until the new one is verified.
+          </p>
+        </div>
+      </header>
+
+      <div className="profile-edit-email">
+        <span>
+          <Mail aria-hidden="true" />
+        </span>
+        <div>
+          <small>Current email</small>
+          <strong>{currentEmail}</strong>
+        </div>
+        <span className="profile-edit-email__lock profile-edit-email__lock--verified">
+          <ShieldCheck aria-hidden="true" /> Verified
+        </span>
+      </div>
+
+      {pendingEmail ? (
+        <div className="profile-email-change-flow">
+          <div className="profile-email-change-status" role="status">
+            <MailCheck aria-hidden="true" />
+            <span>
+              <strong>Check your new inbox</strong>
+              <small>We sent a 6-digit code to {pendingEmail}.</small>
+            </span>
+          </div>
+          <form
+            action={verificationAction}
+            className="profile-edit-form"
+            noValidate
+          >
+            <input name="newEmail" type="hidden" value={pendingEmail} />
+            <div className="profile-edit-field">
+              <Label htmlFor="profile-email-code">Verification code</Label>
+              <input
+                aria-describedby="profile-email-code-help"
+                aria-invalid={Boolean(verificationErrors?.code)}
+                autoComplete="one-time-code"
+                className="profile-edit-input profile-email-code"
+                id="profile-email-code"
+                inputMode="numeric"
+                maxLength={6}
+                name="code"
+                onChange={(event) =>
+                  setCode(event.target.value.replace(/\D/gu, "").slice(0, 6))
+                }
+                pattern="[0-9]{6}"
+                placeholder="000000"
+                required
+                value={code}
+              />
+              <p className="profile-edit-help" id="profile-email-code-help">
+                The code expires in 10 minutes and can be used once.
+              </p>
+              <FieldError
+                id="profile-email-code-error"
+                messages={verificationErrors?.code}
+              />
+            </div>
+            {verificationState &&
+            !verificationState.ok &&
+            !verificationState.error.fieldErrors ? (
+              <p className="profile-edit-alert" role="alert">
+                {verificationState.error.message}
+              </p>
+            ) : null}
+            <footer className="profile-edit-actions">
+              <button
+                className="profile-email-change-link"
+                onClick={() => {
+                  setPendingEmail(null)
+                  setCode("")
+                }}
+                type="button"
+              >
+                Use a different email
+              </button>
+              <MutationSubmitButton
+                className="profile-edit-submit profile-edit-submit--email"
+                disabled={code.length !== 6}
+                idleLabel="Verify and update"
+                pendingLabel="Verifying"
+              />
+            </footer>
+          </form>
+          <form action={requestAction} className="profile-email-resend">
+            <input name="newEmail" type="hidden" value={pendingEmail} />
+            <span>Didn’t receive it?</span>
+            <MutationSubmitButton
+              className="profile-email-resend__button"
+              idleLabel="Resend code"
+              pendingLabel="Sending"
+            />
+          </form>
+        </div>
+      ) : (
+        <form action={requestAction} className="profile-edit-form" noValidate>
+          <div className="profile-edit-field">
+            <Label htmlFor="profile-new-email">New email address</Label>
+            <Input
+              aria-describedby="profile-new-email-help"
+              aria-invalid={Boolean(requestErrors?.newEmail)}
+              autoComplete="email"
+              className="profile-edit-input"
+              id="profile-new-email"
+              name="newEmail"
+              placeholder="name@example.com"
+              required
+              type="email"
+            />
+            <p className="profile-edit-help" id="profile-new-email-help">
+              We will send a verification code before changing your sign-in.
+            </p>
+            <FieldError
+              id="profile-new-email-error"
+              messages={requestErrors?.newEmail}
+            />
+          </div>
+          {requestState &&
+          !requestState.ok &&
+          !requestState.error.fieldErrors ? (
+            <p className="profile-edit-alert" role="alert">
+              {requestState.error.message}
+            </p>
+          ) : null}
+          <footer className="profile-edit-actions">
+            <Link
+              className="profile-email-correction-link"
+              href="/privacy?tab=rights&request=correction"
+            >
+              Request another correction <ArrowRight aria-hidden="true" />
+            </Link>
+            <MutationSubmitButton
+              className="profile-edit-submit profile-edit-submit--email"
+              idleLabel="Send verification code"
+              pendingLabel="Sending code"
+            />
+          </footer>
+        </form>
+      )}
     </article>
   )
 }

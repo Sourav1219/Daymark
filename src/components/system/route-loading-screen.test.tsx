@@ -50,6 +50,14 @@ describe("RouteLoadingScreen", () => {
     ["/settings", "Loading Settings", "[data-slot='card']"],
     ["/gates", "Loading Lists", "[data-slot='card']"],
     ["/contact", "Loading Contact us", ".contact-form"],
+    ["/about", "Loading About Traketo", ".about-features-section"],
+    ["/privacy", "Loading Privacy and Data Centre", ".privacy-inventory-card"],
+    ["/terms", "Loading Terms of Service", ".terms-pillars-banner"],
+    [
+      "/settings/privacy-data",
+      "Loading Privacy and Data Centre",
+      ".privacy-inventory-card",
+    ],
     ["/app/workspaces/workspace-1", "Loading workspace", "[data-slot='card']"],
   ])(
     "keeps the %s fallback on the destination page geometry",

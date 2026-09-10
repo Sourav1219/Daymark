@@ -50,6 +50,8 @@ test("runs, pauses, resumes, edits, isolates history, and stops on close", async
   await page.getByLabel("Name").fill("Timer Operator")
   await page.getByLabel("Email").fill(email)
   await page.getByLabel("Password", { exact: true }).fill(password)
+  await page.locator("#termsAccepted").check()
+  await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page).toHaveURL(/\/today$/u)
 

@@ -1213,7 +1213,12 @@
     border-radius: 0.75rem;
   }
   .task-classification__panel .home-choice-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+  .task-classification__panel .home-choice-grid button {
+    font-size: 0.68rem;
+    padding: 0.35rem 0.2rem;
   }
   .home-deleted-row {
     gap: 0.55rem;

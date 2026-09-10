@@ -914,6 +914,18 @@ describe("Quest organisation controls", () => {
     expect(screen.getByRole("group", { name: "Task type" })).toBeVisible()
     expect(screen.queryByRole("group", { name: "Effort" })).toBeNull()
 
+    const typeGroup = screen.getByRole("group", { name: "Task type" })
+    const typeOptions = typeGroup.querySelector(
+      ".quest-classification__options--type",
+    )
+    expect(typeOptions?.children).toHaveLength(4)
+
+    const priorityGroup = screen.getByRole("group", { name: "Priority" })
+    const priorityOptions = priorityGroup.querySelector(
+      ".quest-priority__options",
+    )
+    expect(priorityOptions?.children).toHaveLength(4)
+
     await user.click(screen.getByLabelText("Work"))
     expect(screen.getByLabelText("Work")).toBeChecked()
 

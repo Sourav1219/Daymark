@@ -13,10 +13,26 @@ const actions = vi.hoisted(() => ({
 
 vi.mock("@/features/authentication/application/actions", () => actions)
 vi.mock("@/features/authentication/ui/google-auth-button", () => ({
-  GoogleAuthButton: () => null,
-}))
-vi.mock("@/features/reminders/components/automatic-push-enrollment", () => ({
-  requestAutomaticPushPermission: vi.fn(),
+  GoogleAuthButton: ({
+    mode,
+    registrationAllowed,
+    onRegistrationAgreementRequired,
+  }: {
+    mode: "continue" | "login" | "register"
+    registrationAllowed?: boolean
+    onRegistrationAgreementRequired?: () => void
+  }) => (
+    <button
+      onClick={() => {
+        if (mode === "register" && !registrationAllowed) {
+          onRegistrationAgreementRequired?.()
+        }
+      }}
+      type="button"
+    >
+      {mode === "register" ? "Sign up with Google" : "Sign in with Google"}
+    </button>
+  ),
 }))
 
 describe("AuthForm password visibility", () => {
@@ -71,7 +87,8 @@ describe("AuthForm password visibility", () => {
     },
   )
 
-  it("shows Contact us link only on sign in mode and hides it on sign up mode", () => {
+  it("shows sign-in help and separate required registration agreements", async () => {
+    const user = userEvent.setup()
     const { rerender } = render(
       <AuthForm
         googleAuthConfigured={false}
@@ -85,10 +102,12 @@ describe("AuthForm password visibility", () => {
     const contactLink = screen.getByRole("link", { name: /Contact us/i })
     expect(contactLink).toBeInTheDocument()
     expect(contactLink).toHaveAttribute("href", "/contact")
+    expect(screen.queryByText(/Report a problem/i)).not.toBeInTheDocument()
     expect(screen.getByText(/Having trouble signing in\?/i)).toBeInTheDocument()
     expect(
       screen.queryByText(/By creating an account, you agree to Traketo/i),
     ).not.toBeInTheDocument()
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument()
 
     rerender(
       <AuthForm
@@ -107,7 +126,39 @@ describe("AuthForm password visibility", () => {
       screen.queryByText(/Having trouble signing in\?/i),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByText(/By creating an account, you agree to Traketo/i),
-    ).toBeInTheDocument()
+      screen.queryByText(/Your data, in plain language/i),
+    ).not.toBeInTheDocument()
+    const terms = screen.getByRole("checkbox", {
+      name: /I confirm I am 18 or older and accept the Terms of Service/i,
+    })
+    const privacy = screen.getByRole("checkbox", {
+      name: /I have read the Privacy Notice/i,
+    })
+    const create = screen.getByRole("button", { name: "Create" })
+    const form = create.closest("form")
+
+    expect(screen.getAllByRole("checkbox")).toHaveLength(2)
+    expect(terms).toBeRequired()
+    expect(privacy).toBeRequired()
+    expect(form).toContainElement(terms)
+    expect(form).toContainElement(privacy)
+    expect(create).toBeDisabled()
+    await user.click(
+      screen.getByRole("button", { name: "Sign up with Google" }),
+    )
+    expect(terms).toHaveFocus()
+    expect(
+      screen.getByText("Please review and accept the terms to continue."),
+    ).toBeVisible()
+    expect(terms.closest(".auth__agreements")).toHaveClass(
+      "auth__agreements--error",
+    )
+    await user.click(terms)
+    expect(create).toBeDisabled()
+    await user.click(privacy)
+    expect(create).toBeEnabled()
+    expect(
+      screen.queryByText("Please review and accept the terms to continue."),
+    ).not.toBeInTheDocument()
   })
 })

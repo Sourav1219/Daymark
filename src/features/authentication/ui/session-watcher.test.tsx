@@ -54,7 +54,7 @@ describe("SessionWatcher", () => {
 
     vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 401 }))
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(5 * 60 * 1_000)
+      await vi.advanceTimersByTimeAsync(10 * 60 * 1_000)
     })
 
     expect(fetch).toHaveBeenCalledTimes(2)

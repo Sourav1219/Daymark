@@ -9,14 +9,23 @@ const authClient = vi.hoisted(() => ({
     social: vi.fn(),
   },
 }))
+const prepareGoogleRegistrationAction = vi.hoisted(() => vi.fn())
 
 vi.mock("@/features/authentication/client/auth-client", () => ({
   authClient,
+}))
+vi.mock("@/features/authentication/application/actions", () => ({
+  prepareGoogleRegistrationAction,
 }))
 
 describe("GoogleAuthButton", () => {
   beforeEach(() => {
     authClient.signIn.social.mockReset()
+    prepareGoogleRegistrationAction.mockReset()
+    prepareGoogleRegistrationAction.mockResolvedValue({
+      data: { ready: true },
+      ok: true,
+    })
   })
 
   afterEach(() => {
@@ -85,6 +94,32 @@ describe("GoogleAuthButton", () => {
     )
   })
 
+  it("stays clickable but blocks registration OAuth until agreements are accepted", async () => {
+    const onRegistrationAgreementRequired = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <GoogleAuthButton
+        configured
+        mode="register"
+        nextPath="/today"
+        oauthError={null}
+        onRegistrationAgreementRequired={onRegistrationAgreementRequired}
+      />,
+    )
+
+    const button = screen.getByRole("button", {
+      name: "Sign up with Google",
+    })
+    expect(button).toBeEnabled()
+
+    await user.click(button)
+
+    expect(onRegistrationAgreementRequired).toHaveBeenCalledOnce()
+    expect(prepareGoogleRegistrationAction).not.toHaveBeenCalled()
+    expect(authClient.signIn.social).not.toHaveBeenCalled()
+  })
+
   it("explicitly requests account creation from the registration form", async () => {
     authClient.signIn.social.mockResolvedValue({ data: {}, error: null })
     const user = userEvent.setup()
@@ -95,6 +130,7 @@ describe("GoogleAuthButton", () => {
         mode="register"
         nextPath="/today"
         oauthError={null}
+        registrationAllowed
       />,
     )
 
@@ -109,6 +145,10 @@ describe("GoogleAuthButton", () => {
         requestSignUp: true,
       }),
     )
+    expect(prepareGoogleRegistrationAction).toHaveBeenCalledWith({
+      privacyNoticeAcknowledged: true,
+      termsAccepted: true,
+    })
   })
 
   it("directs unknown Google users to register first", () => {

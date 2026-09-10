@@ -16,6 +16,7 @@ import { getQuestList } from "@/features/quests/queries/quest-query-service"
 import { emailDeliveryEnabled } from "@/features/reminders/delivery/resend-reminder-provider"
 import { ReminderManager } from "@/features/reminders/components/reminder-manager"
 import { ReminderInboxPanel } from "@/features/reminders/components/notification-menu"
+import { PushNotificationControl } from "@/features/reminders/components/push-notification-control"
 import {
   getReminderInbox,
   getReminderList,
@@ -24,11 +25,13 @@ import { getUserSettings } from "@/features/reminders/queries/user-settings-quer
 import { PwaInstallCard } from "@/features/offline/components/pwa-install-card"
 import { OfflineStorageControl } from "@/features/offline/components/offline-storage-control"
 import { CookieSettingsButton } from "@/features/privacy/ui/cookie-consent-provider"
+import { readServerEnv } from "@/lib/env/server"
 
 export const metadata: Metadata = { title: "Settings" }
 
 export default async function SettingsPage() {
   const access = await requireWorkspaceAccess()
+  const env = readServerEnv()
   const now = new Date()
   const [settings, reminders, quests, reminderInbox] = await Promise.all([
     getUserSettings(access),
@@ -94,12 +97,17 @@ export default async function SettingsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <ReminderManager
-                emailDeliveryEnabled={emailDeliveryEnabled()}
-                quests={quests.map(({ id, title }) => ({ id, title }))}
-                reminders={reminders}
-                timezone={settings.timezone}
-              />
+              <div className="grid gap-6">
+                <PushNotificationControl
+                  publicKey={env.VAPID_PUBLIC_KEY ?? null}
+                />
+                <ReminderManager
+                  emailDeliveryEnabled={emailDeliveryEnabled()}
+                  quests={quests.map(({ id, title }) => ({ id, title }))}
+                  reminders={reminders}
+                  timezone={settings.timezone}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -128,13 +136,13 @@ export default async function SettingsPage() {
               <div className="flex items-center gap-3">
                 <ShieldCheck
                   aria-hidden="true"
-                  className="size-5 text-system-blue"
+                  className="size-5 text-emerald-600"
                 />
                 <div>
-                  <CardTitle>Legal and privacy</CardTitle>
+                  <CardTitle>Privacy &amp; Data Centre</CardTitle>
                   <CardDescription>
-                    Review how Traketo handles your data and the rules for using
-                    the service.
+                    Manage your data inventory, consent preferences, data
+                    archives, statutory rights requests, and digital nominees.
                   </CardDescription>
                 </div>
               </div>
@@ -142,18 +150,18 @@ export default async function SettingsPage() {
             <CardContent>
               <div className="flex flex-wrap items-center gap-3">
                 <Link
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                  href="/privacy"
+                >
+                  <ShieldCheck aria-hidden="true" className="size-4" />
+                  Open Privacy &amp; Data Centre
+                </Link>
+                <Link
                   className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border-soft bg-background px-4 py-2 font-semibold text-system-blue transition-colors hover:bg-system-blue/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-system-blue"
                   href="/terms"
                 >
                   <FileText aria-hidden="true" className="size-4" />
                   Terms of Service
-                </Link>
-                <Link
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border-soft bg-background px-4 py-2 font-semibold text-system-blue transition-colors hover:bg-system-blue/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-system-blue"
-                  href="/privacy"
-                >
-                  <ShieldCheck aria-hidden="true" className="size-4" />
-                  Privacy Policy
                 </Link>
                 <CookieSettingsButton />
               </div>

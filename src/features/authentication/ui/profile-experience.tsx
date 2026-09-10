@@ -33,6 +33,7 @@ import {
 import { SecurityDataPanel } from "@/features/authentication/ui/security-data-panel"
 import { OfflineLogoutButton } from "@/features/offline/components/offline-logout-button"
 import { ReportProblemButton } from "@/components/system/sentry-feedback-widget"
+import { ProfileCookieSettingsButton } from "@/features/privacy/ui/cookie-consent-provider"
 
 type ProfileExperienceProps = Readonly<{
   currentSessionId: string | null
@@ -42,6 +43,7 @@ type ProfileExperienceProps = Readonly<{
   joined: string
   name: string
   role: string
+  pushPublicKey?: string | null
   workspaceName: string
 }>
 
@@ -64,6 +66,7 @@ export function ProfileExperience({
   initialSessions,
   joined,
   name,
+  pushPublicKey = null,
   role,
   workspaceName,
 }: ProfileExperienceProps) {
@@ -131,7 +134,7 @@ export function ProfileExperience({
             <p>
               <Mail aria-hidden="true" />
               <span>{email}</span>
-              <LockKeyhole aria-label="Email cannot be edited" />
+              <LockKeyhole aria-label="Verified sign-in email" />
             </p>
           </div>
         </div>
@@ -163,7 +166,7 @@ export function ProfileExperience({
             <div>
               <span>Profile settings</span>
               <h2 id="profile-editor-heading">Edit your profile</h2>
-              <p>Update your display name.</p>
+              <p>Update your display name or verified sign-in email.</p>
             </div>
             <Pencil aria-hidden="true" />
           </div>
@@ -215,7 +218,7 @@ export function ProfileExperience({
           <div>
             <small>Account settings</small>
             <strong>Security &amp; data</strong>
-            <p>Sessions, data export, and account deletion</p>
+            <p>Active sessions, consent ledger, and data controls</p>
           </div>
           <span className="profile-security-settings__count">
             {initialSessions.length}{" "}
@@ -232,6 +235,7 @@ export function ProfileExperience({
               currentSessionId={currentSessionId}
               hasPassword={hasPassword}
               initialSessions={initialSessions}
+              pushPublicKey={pushPublicKey}
             />
           ) : null}
         </div>
@@ -255,7 +259,7 @@ export function ProfileExperience({
           aria-label="Help and information"
           className="profile-help-settings__content"
         >
-          <ReportProblemButton className="profile-help-settings__action profile-help-settings__action--report">
+          <ReportProblemButton className="profile-help-settings__action">
             <span>
               <MessageSquareWarning aria-hidden="true" />
             </span>
@@ -268,6 +272,7 @@ export function ProfileExperience({
           <Link
             className="profile-help-settings__action"
             href={"/contact" as Route}
+            scroll={false}
           >
             <span>
               <MessageCircleMore aria-hidden="true" />
@@ -281,6 +286,7 @@ export function ProfileExperience({
           <Link
             className="profile-help-settings__action"
             href={"/about" as Route}
+            scroll={false}
           >
             <span>
               <Info aria-hidden="true" />
@@ -291,17 +297,26 @@ export function ProfileExperience({
             </div>
             <ChevronRight aria-hidden="true" />
           </Link>
-          <Link className="profile-help-settings__action" href="/privacy">
+          <Link
+            className="profile-help-settings__action"
+            href={"/privacy" as Route}
+            scroll={false}
+          >
             <span>
               <ShieldCheck aria-hidden="true" />
             </span>
             <div>
-              <strong>Privacy Policy</strong>
-              <small>How your information is handled</small>
+              <strong>Privacy &amp; Data Centre</strong>
+              <small>Policy, data inventory, consents &amp; rights</small>
             </div>
             <ChevronRight aria-hidden="true" />
           </Link>
-          <Link className="profile-help-settings__action" href="/terms">
+          <ProfileCookieSettingsButton />
+          <Link
+            className="profile-help-settings__action"
+            href={"/terms" as Route}
+            scroll={false}
+          >
             <span>
               <FileText aria-hidden="true" />
             </span>

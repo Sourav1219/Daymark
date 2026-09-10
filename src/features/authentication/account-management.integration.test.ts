@@ -273,19 +273,19 @@ integrationDescribe("account security and data lifecycle", () => {
     const owner = await createUser(database, "Ada Lovelace")
     await seedWorkspaceContent(database, owner.access)
 
-    const payload = await buildAccountExport(database, owner.access, {
-      email: "ada@example.com",
-      name: "Ada Lovelace",
-    })
+    const payload = await buildAccountExport(database, owner.access)
 
     expect(() => JSON.stringify(payload)).not.toThrow()
     expect(payload.account).toMatchObject({
-      email: "ada@example.com",
+      email: expect.stringMatching(/^acct-.+@example\.com$/u),
       name: "Ada Lovelace",
     })
     const tasks = payload.tasks as ReadonlyArray<{ title: string }>
     expect(tasks[0]?.title).toBe("Purge candidate")
-    expect(payload.progression).toMatchObject({ hunterLevel: 2 })
+    expect(payload.progression).toEqual(
+      expect.arrayContaining([expect.objectContaining({ hunterLevel: 2 })]),
+    )
+    expect(payload.securityExclusions).toEqual(expect.any(Array))
   })
 
   it("purges the account and every owned record while preserving others", async () => {

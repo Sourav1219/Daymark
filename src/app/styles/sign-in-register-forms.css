@@ -482,6 +482,69 @@ Sign-in / Register forms — same clean app-width column as the
   color: #fff;
 }
 
+.auth__agreements {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  transition:
+    border-color 0.18s var(--ease-system),
+    background 0.18s var(--ease-system);
+}
+
+.auth__agreements--error {
+  border-color: var(--app-red);
+  background: color-mix(in oklch, var(--app-red) 6%, transparent);
+}
+
+.auth__agreement {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  color: var(--app-text-sub);
+  cursor: pointer;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.auth__agreement input {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  margin: 0.1rem 0 0;
+  accent-color: var(--accent-blue);
+}
+
+.auth__agreement input:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+.auth__agreement input:disabled {
+  cursor: wait;
+}
+
+.auth__agreement a {
+  color: var(--accent-blue);
+  font-weight: 750;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12rem;
+}
+
+.auth__agreement + .auth__field-error {
+  margin: -0.25rem 0 0 1.6rem;
+}
+
+.auth__agreement-prompt {
+  margin: 0;
+  color: var(--app-red);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
 .auth__google-group {
   display: grid;
   gap: 0.55rem;
@@ -772,29 +835,6 @@ Sign-in / Register forms — same clean app-width column as the
     transform 0.12s var(--ease-system),
     filter 0.15s,
     background 0.15s;
-}
-
-.auth__legal {
-  max-width: 38ch;
-  margin: 0.05rem auto 0;
-  color: var(--app-text-muted);
-  font-size: 0.68rem;
-  line-height: 1.45;
-  text-align: center;
-}
-
-.auth__legal a {
-  color: var(--accent-blue);
-  font-weight: 750;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.13rem;
-}
-
-.auth__legal a:focus-visible {
-  border-radius: 3px;
-  outline: 2px solid var(--accent-blue);
-  outline-offset: 2px;
 }
 
 .auth__submit:hover:not(:disabled) {

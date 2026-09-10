@@ -3,17 +3,21 @@ import {
   ArrowRight,
   BellRing,
   CalendarClock,
-  ChevronDown,
+  CheckSquare,
   Clock3,
+  Database,
   Download,
+  FileCheck2,
   FileText,
   Inbox,
   LockKeyhole,
   Mail,
-  MessageCircleMore,
   PanelsTopLeft,
+  Scale,
   Send,
   ShieldCheck,
+  Sparkles,
+  UserCheck,
 } from "lucide-react"
 
 import { LoadingPlaceholder } from "@/components/system/loading-placeholder"
@@ -109,61 +113,83 @@ export function SettingsLoadingState() {
 
 export function ContactLoadingState() {
   return (
-    <main className="contact-shell">
-      <div className="contact-frame">
-        <div
+    <div className="app-stage contact-shell">
+      <div className="device-frame contact-frame" id="app-device-viewport">
+        <main
           aria-label="Loading Contact us"
           className="contact-page exact-route-loading"
+          id="main-content"
           role="status"
+          tabIndex={0}
         >
           <span className="sr-only">Loading Contact us</span>
-          <header className="contact-header">
-            <BackButton aria-label="Back to profile" fallbackHref="/profile">
+          <header className="contact-nav-header">
+            <BackButton
+              aria-label="Back to profile"
+              className="contact-back-btn"
+              fallbackHref="/profile"
+            >
               <ArrowLeft />
             </BackButton>
-            <div>
-              <span>Help &amp; support</span>
-              <h1>Contact us</h1>
+            <div className="contact-nav-title">
+              <span className="contact-nav-wordmark">Traketo Support</span>
             </div>
-            <span aria-hidden="true" />
+            <div className="contact-status-chip">
+              <span aria-hidden="true" className="contact-status-dot" />
+              <span>Replies in 24h</span>
+            </div>
           </header>
-          <section className="contact-hero">
-            <span className="contact-hero__orb" />
-            <span className="contact-hero__icon">
-              <MessageCircleMore />
-            </span>
-            <div>
-              <span>We’re here to help</span>
-              <h2>What can we help with?</h2>
-              <p>
-                Choose a topic and tell us what happened. Your email app will
-                open with everything ready for you to review and send.
+
+          <section className="contact-hero-banner">
+            <div aria-hidden="true" className="contact-hero-banner__glow" />
+            <div className="contact-hero-banner__content">
+              <div className="contact-hero-banner__badge">
+                <Sparkles aria-hidden="true" />
+                <span>Help &amp; Support</span>
+              </div>
+              <h1 className="contact-hero-banner__title">Contact us</h1>
+              <p className="contact-hero-banner__desc">
+                Have a question, feedback, or need assistance? Select a topic
+                and we’ll get you in touch with the right team.
               </p>
             </div>
           </section>
+
           <div aria-hidden="true" className="contact-form">
             <div className="contact-form__heading">
               <div>
-                <span>Message details</span>
-                <h2>Start a conversation</h2>
+                <div className="contact-form__meta">
+                  <span className="contact-section-step">Step 2</span>
+                  <span className="contact-form__topic-tag">
+                    Topic: <strong>Account &amp; sign-in</strong>
+                  </span>
+                </div>
+                <h2>Your message details</h2>
               </div>
               <Mail />
             </div>
             <label className="contact-field">
-              <span>What do you need help with?</span>
-              <span className="contact-select-wrap">
-                <select disabled>
-                  <option>Account &amp; sign-in</option>
-                </select>
-                <ChevronDown />
-              </span>
+              <span>Your name</span>
+              <input
+                disabled
+                placeholder="What should we call you?"
+                type="text"
+              />
+            </label>
+            <label className="contact-field">
+              <span>Your email address</span>
+              <input
+                disabled
+                placeholder="Where should we reply?"
+                type="email"
+              />
             </label>
             <label className="contact-field">
               <span>How can we help?</span>
               <textarea
                 disabled
                 placeholder="Share the details, what you expected, and anything you already tried…"
-                rows={7}
+                rows={6}
               />
               <small>0/2000 characters</small>
             </label>
@@ -178,9 +204,334 @@ export function ContactLoadingState() {
               review your message as soon as possible.
             </p>
           </aside>
-        </div>
+        </main>
       </div>
-    </main>
+    </div>
+  )
+}
+
+export function AboutLoadingState() {
+  return (
+    <div className="app-stage about-shell">
+      <div className="device-frame about-frame" id="app-device-viewport">
+        <main
+          aria-label="Loading About Traketo"
+          className="about-page exact-route-loading"
+          id="main-content"
+          role="status"
+          tabIndex={0}
+        >
+          <span className="sr-only">Loading About Traketo</span>
+          <header className="about-nav-header">
+            <BackButton
+              aria-label="Back to profile"
+              className="about-back-btn"
+              fallbackHref="/profile"
+            >
+              <ArrowLeft />
+            </BackButton>
+            <div className="about-nav-title">
+              <span className="about-nav-wordmark">About Traketo</span>
+            </div>
+            <div className="about-status-chip">
+              <span aria-hidden="true" className="about-status-dot" />
+              <span>Calm Focus</span>
+            </div>
+          </header>
+
+          <section className="about-hero-banner">
+            <div aria-hidden="true" className="about-hero-banner__glow" />
+            <div className="about-hero-banner__content">
+              <div className="about-hero-banner__badge">
+                <Sparkles aria-hidden="true" />
+                <span>Our Story &amp; Purpose</span>
+              </div>
+              <div className="about-hero-banner__main">
+                <div>
+                  <h1 className="about-hero-banner__title">
+                    A calmer way to make progress.
+                  </h1>
+                  <p className="about-hero-banner__desc">
+                    Traketo brings planning, focus sessions, reminders, and
+                    shared study into one thoughtful space—so your day feels
+                    doable, not crowded.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            aria-label="Core features"
+            className="about-features-section"
+          >
+            <div className="about-section-label">
+              <span className="about-section-step">Step 1</span>
+              <h2>Designed for real life</h2>
+            </div>
+            <div className="about-features-grid">
+              <div className="about-feature-card about-feature-card--blue">
+                <span className="about-feature-card__icon">
+                  <CheckSquare />
+                </span>
+                <div className="about-feature-card__text">
+                  <strong>Plan clearly</strong>
+                  <small>Turn busy days into clear next steps.</small>
+                </div>
+              </div>
+              <div className="about-feature-card about-feature-card--purple">
+                <span className="about-feature-card__icon">
+                  <Clock3 />
+                </span>
+                <div className="about-feature-card__text">
+                  <strong>Focus calmly</strong>
+                  <small>Give important work your full attention.</small>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  )
+}
+
+export function PrivacyLoadingState() {
+  return (
+    <div className="app-stage privacy-shell">
+      <div className="device-frame privacy-frame" id="app-device-viewport">
+        <main
+          aria-label="Loading Privacy Policy"
+          className="privacy-page exact-route-loading"
+          id="main-content"
+          role="status"
+          tabIndex={0}
+        >
+          <span className="sr-only">Loading Privacy Policy</span>
+          <header className="privacy-nav-header">
+            <BackButton
+              aria-label="Back to profile"
+              className="privacy-back-btn"
+              fallbackHref="/profile"
+            >
+              <ArrowLeft />
+            </BackButton>
+            <div className="privacy-nav-title">
+              <span className="privacy-nav-wordmark">Privacy Policy</span>
+            </div>
+            <div className="privacy-status-chip">
+              <span aria-hidden="true" className="privacy-status-dot" />
+              <span>Effective Aug 2026</span>
+            </div>
+          </header>
+
+          <section className="privacy-hero-banner">
+            <div aria-hidden="true" className="privacy-hero-banner__glow" />
+            <div className="privacy-hero-banner__content">
+              <div className="privacy-hero-meta">
+                <span className="privacy-hero-badge">
+                  <ShieldCheck />
+                  <span>Privacy &amp; Data Protection</span>
+                </span>
+                <span className="privacy-hero-date">Effective 28 Aug 2026</span>
+              </div>
+              <h1 className="privacy-hero-banner__title">Privacy Policy</h1>
+              <p className="privacy-hero-banner__desc">
+                This policy explains what Traketo collects, why it is needed,
+                and the choices you have over your information.
+              </p>
+            </div>
+          </section>
+
+          <section
+            aria-label="Core privacy promises"
+            className="privacy-guarantees-banner"
+          >
+            <div className="privacy-guarantees-title">
+              <ShieldCheck />
+              <span>Our Privacy Guarantees</span>
+            </div>
+            <div className="privacy-guarantees-grid">
+              <div className="privacy-guarantee-card privacy-guarantee-card--green">
+                <span className="privacy-guarantee-card__icon">
+                  <ShieldCheck />
+                </span>
+                <div className="privacy-guarantee-card__text">
+                  <strong>Zero data selling</strong>
+                  <small>No third-party advertising or profiling.</small>
+                </div>
+              </div>
+              <div className="privacy-guarantee-card privacy-guarantee-card--blue">
+                <span className="privacy-guarantee-card__icon">
+                  <LockKeyhole />
+                </span>
+                <div className="privacy-guarantee-card__text">
+                  <strong>Encrypted storage</strong>
+                  <small>Hashed credentials &amp; encrypted data.</small>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  )
+}
+
+export function TermsLoadingState() {
+  return (
+    <div
+      aria-label="Loading Terms of Service"
+      className="app-stage terms-shell exact-route-loading"
+      role="status"
+    >
+      <div className="device-frame terms-frame" id="app-device-viewport">
+        <main className="terms-page" id="main-content" tabIndex={0}>
+          <header className="terms-nav-header">
+            <BackButton
+              aria-label="Back"
+              className="terms-back-btn"
+              fallbackHref="/profile"
+            >
+              <ArrowLeft />
+            </BackButton>
+            <div className="terms-nav-title">
+              <span className="terms-nav-wordmark">Terms of Service</span>
+            </div>
+            <div className="terms-status-chip">
+              <span aria-hidden="true" className="terms-status-dot" />
+              <span>Agreement Active</span>
+            </div>
+          </header>
+
+          <section className="terms-hero-banner">
+            <div aria-hidden="true" className="terms-hero-banner__glow" />
+            <div className="terms-hero-banner__content">
+              <div className="terms-hero-meta">
+                <span className="terms-hero-badge">
+                  <Scale />
+                  <span>User Agreement</span>
+                </span>
+                <span className="terms-hero-date">Effective 26 Aug 2026</span>
+              </div>
+              <h1 className="terms-hero-banner__title">Terms of Service</h1>
+              <p className="terms-hero-banner__desc">
+                These terms set the ground rules for using Traketo and explain
+                the responsibilities shared between you and the service.
+              </p>
+            </div>
+          </section>
+
+          <section
+            aria-label="Core agreement principles"
+            className="terms-pillars-banner"
+          >
+            <div className="terms-pillars-title">
+              <FileCheck2 />
+              <span>The Ground Rules at a Glance</span>
+            </div>
+            <div className="terms-pillars-grid">
+              <div className="terms-pillar-card terms-pillar-card--blue">
+                <div className="terms-pillar-card__icon">
+                  <UserCheck />
+                </div>
+                <div className="terms-pillar-card__text">
+                  <strong>You own your work</strong>
+                  <small>
+                    Your tasks and files remain yours. We only process data to
+                    run the app.
+                  </small>
+                </div>
+              </div>
+              <div className="terms-pillar-card terms-pillar-card--indigo">
+                <div className="terms-pillar-card__icon">
+                  <ShieldCheck />
+                </div>
+                <div className="terms-pillar-card__text">
+                  <strong>Fair &amp; safe conduct</strong>
+                  <small>
+                    No abuse, security exploits, or harmful scraping.
+                  </small>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  )
+}
+
+export function PrivacyCentreLoadingState() {
+  return (
+    <div
+      aria-label="Loading Privacy and Data Centre"
+      className="app-stage privacy-centre-shell exact-route-loading"
+      role="status"
+    >
+      <div
+        className="device-frame privacy-centre-frame"
+        id="app-device-viewport"
+      >
+        <main className="privacy-centre-page" id="main-content" tabIndex={0}>
+          <header className="privacy-centre-nav-header">
+            <BackButton
+              aria-label="Back"
+              className="privacy-centre-back-btn"
+              fallbackHref="/settings"
+            >
+              <ArrowLeft />
+            </BackButton>
+            <div className="privacy-centre-nav-title">
+              <span className="privacy-centre-nav-wordmark">
+                Privacy &amp; Data Centre
+              </span>
+            </div>
+            <div className="privacy-centre-status-chip">
+              <span aria-hidden="true" className="privacy-centre-status-dot" />
+              <span>Shield Active</span>
+            </div>
+          </header>
+
+          <section className="privacy-centre-hero">
+            <div aria-hidden="true" className="privacy-centre-hero__glow" />
+            <div className="privacy-centre-hero__content">
+              <div className="privacy-centre-hero__meta">
+                <span className="privacy-centre-hero__badge">
+                  <ShieldCheck />
+                  <span>Data Protection &amp; Rights</span>
+                </span>
+                <span className="text-xs font-semibold text-slate-500">
+                  DPDP &amp; GDPR Compliant
+                </span>
+              </div>
+              <h1 className="privacy-centre-hero__title">
+                Privacy &amp; Data Centre
+              </h1>
+              <p className="privacy-centre-hero__desc">
+                Inspect the data Traketo holds, manage optional consent,
+                download your archive, submit privacy requests, and designate a
+                trusted nominee.
+              </p>
+            </div>
+          </section>
+
+          <div className="privacy-inventory-card">
+            <div className="flex items-center gap-3">
+              <div className="privacy-inventory-card__icon privacy-inventory-card__icon--blue">
+                <Database />
+              </div>
+              <div>
+                <strong>Loading data inventory…</strong>
+                <p className="text-xs text-slate-500">
+                  Retrieving held categories
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
   )
 }
 

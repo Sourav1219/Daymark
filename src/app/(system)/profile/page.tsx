@@ -12,10 +12,12 @@ import { and, eq, isNotNull, ne } from "drizzle-orm"
 import { accounts } from "@/db/schema"
 import { listActiveSessionRecords } from "@/features/authentication/repositories/session-management-repository"
 import { getAuthorizedWorkspaceSummary } from "@/features/workspaces/application/get-workspace-summary"
+import { readServerEnv } from "@/lib/env/server"
 
 export const metadata: Metadata = { title: "Profile" }
 
 export default async function ProfilePage() {
+  const env = readServerEnv()
   const [user, access, currentSessionId] = await Promise.all([
     requireUser(),
     requireWorkspaceAccess(),
@@ -59,6 +61,7 @@ export default async function ProfilePage() {
       initialSessions={sessions}
       joined={joined}
       name={user.name}
+      pushPublicKey={env.VAPID_PUBLIC_KEY ?? null}
       role={access.role}
       workspaceName={workspace?.name ?? "Personal workspace"}
     />

@@ -30,6 +30,21 @@ export const users = pgTable(
     emailVerified: boolean("email_verified").default(false).notNull(),
     twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
     image: text("image"),
+    ageRequirementVersion: varchar("age_requirement_version", { length: 32 }),
+    ageConfirmedAt: timestamp("age_confirmed_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    termsVersion: varchar("terms_version", { length: 32 }),
+    termsAcceptedAt: timestamp("terms_accepted_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    privacyNoticeVersion: varchar("privacy_notice_version", { length: 32 }),
+    privacyNoticeAcknowledgedAt: timestamp("privacy_notice_acknowledged_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     ...timestampColumns,
   },
   (table) => [uniqueIndex("users_email_unique").on(table.email)],

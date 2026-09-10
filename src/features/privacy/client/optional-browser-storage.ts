@@ -27,8 +27,12 @@ function consentCookieValue(): string | null {
   return null
 }
 
+export function readCookieConsent() {
+  return parseCookieConsent(consentCookieValue())
+}
+
 export function hasPreferenceStorageConsent(): boolean {
-  return parseCookieConsent(consentCookieValue()) === "preferences"
+  return readCookieConsent() === "preferences"
 }
 
 export function clearOptionalBrowserStorage(): void {

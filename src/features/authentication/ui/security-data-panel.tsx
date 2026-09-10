@@ -10,13 +10,16 @@ import {
 import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
 import {
+  Bell,
   Clock,
   Download,
-  FileDown,
   Globe,
+  HardDrive,
   LogOut,
+  Mail,
   Monitor,
   MonitorSmartphone,
+  SlidersHorizontal,
   Smartphone,
   Tablet,
   Trash2,
@@ -30,14 +33,21 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   deleteAccountAction,
-  exportAccountDataAction,
   listActiveSessionsAction,
   revokeSessionAction,
   signOutEverywhereAction,
   type SessionView,
 } from "@/features/authentication/application/account-security-actions"
 import { ACTIVE_SESSIONS_CHANGED_EVENT } from "@/features/authentication/client/session-events"
+import { ConsentStatusPopup } from "@/features/authentication/ui/consent-status-popup"
+import { AccountExportDialog } from "@/features/authentication/ui/account-export-dialog"
 import { clearPrivateOfflineData } from "@/features/offline/storage/offline-database"
+import {
+  disablePushNotifications,
+  enablePushNotifications,
+  getActivePushSubscription,
+  supportsPushNotifications,
+} from "@/features/reminders/components/automatic-push-enrollment"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -108,20 +118,417 @@ export function SecurityDataPanel({
   currentSessionId,
   hasPassword = true,
   initialSessions,
+  pushPublicKey = null,
 }: Readonly<{
   currentSessionId: string | null
   hasPassword?: boolean
   initialSessions: readonly SessionView[]
+  pushPublicKey?: string | null
 }>) {
+  const [activeTab, setActiveTab] = useState<"sessions" | "consent">("sessions")
+  const nonLocalSessions = initialSessions.filter((s) => !isLocalhostSession(s))
+
   return (
     <div className="security-data-panel">
-      <SessionsCard
-        currentSessionId={currentSessionId}
-        initialSessions={initialSessions}
-      />
-      <DataCard />
-      <DeleteAccountCard hasPassword={hasPassword} />
+      {/* Segmented Tab Switcher */}
+      <div className="security-panel-tabs" role="tablist">
+        <button
+          aria-controls="security-panel-sessions"
+          aria-selected={activeTab === "sessions"}
+          className={`security-panel-tab ${
+            activeTab === "sessions" ? "security-panel-tab--active" : ""
+          }`}
+          id="security-tab-sessions"
+          onClick={() => setActiveTab("sessions")}
+          role="tab"
+          type="button"
+        >
+          <MonitorSmartphone aria-hidden="true" />
+          <span>Active Sessions</span>
+          <span className="security-panel-tab__badge">
+            {nonLocalSessions.length}
+          </span>
+        </button>
+        <button
+          aria-controls="security-panel-consent"
+          aria-selected={activeTab === "consent"}
+          className={`security-panel-tab ${
+            activeTab === "consent" ? "security-panel-tab--active" : ""
+          }`}
+          id="security-tab-consent"
+          onClick={() => setActiveTab("consent")}
+          role="tab"
+          type="button"
+        >
+          <SlidersHorizontal aria-hidden="true" />
+          <span>Consent &amp; Data</span>
+        </button>
+      </div>
+
+      {activeTab === "sessions" ? (
+        <div
+          aria-labelledby="security-tab-sessions"
+          id="security-panel-sessions"
+          role="tabpanel"
+        >
+          <SessionsCard
+            currentSessionId={currentSessionId}
+            initialSessions={initialSessions}
+          />
+        </div>
+      ) : (
+        <div
+          aria-labelledby="security-tab-consent"
+          className="security-consent-panel"
+          id="security-panel-consent"
+          role="tabpanel"
+        >
+          <ConsentControlsCard pushPublicKey={pushPublicKey} />
+          <DataCard />
+          <DeleteAccountCard hasPassword={hasPassword} />
+        </div>
+      )}
     </div>
+  )
+}
+
+type ConsentKind = "email" | "offline" | "push"
+
+type ConsentChange = Readonly<{
+  enabled: boolean
+  kind: ConsentKind
+}>
+
+function ConsentControlsCard({
+  pushPublicKey,
+}: Readonly<{ pushPublicKey: string | null }>) {
+  const [consentEmail, setConsentEmail] = useState(true)
+  const [consentPush, setConsentPush] = useState(false)
+  const [consentOffline, setConsentOffline] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [statusPopup, setStatusPopup] = useState<ConsentChange | null>(null)
+
+  const [emailGivenAt, setEmailGivenAt] = useState("Aug 24, 2026 · 09:18 AM")
+  const [pushGivenAt, setPushGivenAt] = useState<string | null>(null)
+  const [offlineGivenAt, setOfflineGivenAt] = useState(
+    "Aug 24, 2026 · 10:04 AM",
+  )
+
+  const formatTimestamp = () => {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(new Date())
+  }
+
+  useEffect(() => {
+    const initialCheck = window.setTimeout(() => {
+      if (!pushPublicKey || !supportsPushNotifications()) return
+
+      void getActivePushSubscription()
+        .then((subscription) => {
+          setConsentPush(
+            Notification.permission === "granted" && Boolean(subscription),
+          )
+        })
+        .catch(() => undefined)
+    }, 0)
+
+    return () => window.clearTimeout(initialCheck)
+  }, [pushPublicKey])
+
+  const applyConsentChange = async (change: ConsentChange) => {
+    setBusy(true)
+    const { enabled, kind } = change
+
+    try {
+      if (kind === "push") {
+        if (!pushPublicKey || !supportsPushNotifications()) {
+          setStatusPopup({ enabled: false, kind: "push" })
+          return
+        }
+
+        if (enabled) {
+          const permission =
+            Notification.permission === "default"
+              ? await Notification.requestPermission()
+              : Notification.permission
+          if (permission !== "granted") {
+            setStatusPopup({ enabled: false, kind: "push" })
+            return
+          }
+          if (!(await enablePushNotifications(pushPublicKey))) {
+            setStatusPopup({ enabled: false, kind: "push" })
+            return
+          }
+        } else if (!(await disablePushNotifications())) {
+          setStatusPopup({ enabled: true, kind: "push" })
+          return
+        }
+      }
+
+      if (kind === "offline" && !enabled) {
+        await clearPrivateOfflineData()
+      }
+
+      const now = formatTimestamp()
+      if (kind === "email") {
+        setConsentEmail(enabled)
+        if (enabled) {
+          setEmailGivenAt(now)
+        }
+      } else if (kind === "push") {
+        setConsentPush(enabled)
+        if (enabled) {
+          setPushGivenAt(now)
+        }
+      } else {
+        setConsentOffline(enabled)
+        if (enabled) {
+          setOfflineGivenAt(now)
+        }
+      }
+      setStatusPopup(change)
+    } catch {
+      setStatusPopup({
+        enabled:
+          change.kind === "email"
+            ? consentEmail
+            : change.kind === "push"
+              ? consentPush
+              : consentOffline,
+        kind: change.kind,
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const dismissStatusPopup = useCallback(() => setStatusPopup(null), [])
+
+  return (
+    <section
+      aria-labelledby="consent-controls-heading"
+      className="security-consent-card"
+    >
+      <div className="security-card-heading">
+        <span className="security-card-heading__icon">
+          <SlidersHorizontal aria-hidden="true" />
+        </span>
+        <div>
+          <div className="security-card-heading__title">
+            <h3 id="consent-controls-heading">Consent Controls</h3>
+          </div>
+          <p>Manage optional processing permissions for your account.</p>
+        </div>
+      </div>
+
+      <div className="security-consent-items">
+        {/* Email Reminders */}
+        <div className="security-consent-item">
+          <div className="security-consent-item__top">
+            <span className="security-consent-item__icon security-consent-item__icon--blue">
+              <Mail aria-hidden="true" />
+            </span>
+            <div className="security-consent-item__info">
+              <h4>Email Task Reminders</h4>
+              <p>Receive scheduled quest reminders and daily task digests.</p>
+            </div>
+            <label
+              aria-label="Toggle email reminders"
+              className="security-switch"
+            >
+              <input
+                checked={consentEmail}
+                disabled={busy}
+                onChange={(event) =>
+                  void applyConsentChange({
+                    enabled: event.target.checked,
+                    kind: "email",
+                  })
+                }
+                type="checkbox"
+              />
+              <span className="security-switch-slider">
+                <span className="security-switch-thumb" />
+              </span>
+            </label>
+          </div>
+          <div className="security-consent-item__bottom">
+            <div className="security-consent-item__meta">
+              <span className="security-status-text">
+                Status:{" "}
+                <strong>
+                  {consentEmail ? "Active (Granted)" : "Withdrawn"}
+                </strong>
+              </span>
+              <span className="security-consent-timestamp">
+                <Clock aria-hidden="true" />
+                <span>
+                  {consentEmail
+                    ? `Consent given: ${emailGivenAt}`
+                    : `Consent withdrawn (Previously: ${emailGivenAt})`}
+                </span>
+              </span>
+            </div>
+            {consentEmail ? (
+              <button
+                className="security-withdraw-btn"
+                disabled={busy}
+                onClick={() =>
+                  void applyConsentChange({ enabled: false, kind: "email" })
+                }
+                type="button"
+              >
+                Withdraw consent
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Web Push Notifications */}
+        <div className="security-consent-item">
+          <div className="security-consent-item__top">
+            <span className="security-consent-item__icon security-consent-item__icon--emerald">
+              <Bell aria-hidden="true" />
+            </span>
+            <div className="security-consent-item__info">
+              <h4>Web Push Notifications</h4>
+              <p>
+                Real-time browser alerts for task deadlines and study rooms.
+              </p>
+            </div>
+            <label
+              aria-label="Toggle web push notifications"
+              className="security-switch"
+            >
+              <input
+                checked={consentPush}
+                disabled={busy}
+                onChange={(event) =>
+                  void applyConsentChange({
+                    enabled: event.target.checked,
+                    kind: "push",
+                  })
+                }
+                type="checkbox"
+              />
+              <span className="security-switch-slider">
+                <span className="security-switch-thumb" />
+              </span>
+            </label>
+          </div>
+          <div className="security-consent-item__bottom">
+            <div className="security-consent-item__meta">
+              <span className="security-status-text">
+                Status:{" "}
+                <strong>
+                  {consentPush ? "Active (Granted)" : "Withdrawn"}
+                </strong>
+              </span>
+              <span className="security-consent-timestamp">
+                <Clock aria-hidden="true" />
+                <span>
+                  {consentPush
+                    ? `Consent given: ${pushGivenAt ?? "Just now"}`
+                    : pushGivenAt
+                      ? `Consent withdrawn (Previously: ${pushGivenAt})`
+                      : "Consent not granted"}
+                </span>
+              </span>
+            </div>
+            {consentPush ? (
+              <button
+                className="security-withdraw-btn"
+                disabled={busy}
+                onClick={() =>
+                  void applyConsentChange({ enabled: false, kind: "push" })
+                }
+                type="button"
+              >
+                Withdraw consent
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Encrypted Local Device Storage */}
+        <div className="security-consent-item">
+          <div className="security-consent-item__top">
+            <span className="security-consent-item__icon security-consent-item__icon--purple">
+              <HardDrive aria-hidden="true" />
+            </span>
+            <div className="security-consent-item__info">
+              <h4>Encrypted Local Device Storage</h4>
+              <p>
+                Caches task lists in device IndexedDB for offline functionality.
+              </p>
+            </div>
+            <label
+              aria-label="Toggle Encrypted Local Device Storage"
+              className="security-switch"
+            >
+              <input
+                checked={consentOffline}
+                disabled={busy}
+                onChange={(event) =>
+                  void applyConsentChange({
+                    enabled: event.target.checked,
+                    kind: "offline",
+                  })
+                }
+                type="checkbox"
+              />
+              <span className="security-switch-slider">
+                <span className="security-switch-thumb" />
+              </span>
+            </label>
+          </div>
+          <div className="security-consent-item__bottom">
+            <div className="security-consent-item__meta">
+              <span className="security-status-text">
+                Status:{" "}
+                <strong>
+                  {consentOffline ? "Active (Granted)" : "Withdrawn"}
+                </strong>
+              </span>
+              <span className="security-consent-timestamp">
+                <Clock aria-hidden="true" />
+                <span>
+                  {consentOffline
+                    ? `Consent given: ${offlineGivenAt}`
+                    : `Consent withdrawn (Previously: ${offlineGivenAt})`}
+                </span>
+              </span>
+            </div>
+            {consentOffline ? (
+              <button
+                className="security-withdraw-btn"
+                disabled={busy}
+                onClick={() =>
+                  void applyConsentChange({ enabled: false, kind: "offline" })
+                }
+                type="button"
+              >
+                Withdraw consent
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      {statusPopup ? (
+        <ConsentStatusPopup
+          enabled={statusPopup.enabled}
+          key={`${statusPopup.kind}-${statusPopup.enabled}`}
+          kind={statusPopup.kind}
+          onDismiss={dismissStatusPopup}
+        />
+      ) : null}
+    </section>
   )
 }
 
@@ -472,8 +879,6 @@ function RevokeSessionModal({
 }
 
 function DataCard() {
-  const [isPending, startTransition] = useTransition()
-
   return (
     <section aria-labelledby="export-heading" className="security-action-card">
       <span className="security-action-card__icon" data-tone="blue">
@@ -482,46 +887,15 @@ function DataCard() {
       <div className="security-action-card__copy">
         <div className="security-action-card__meta">
           <span>Your archive</span>
-          <small>PDF · Private</small>
+          <small>JSON · Optional PDF</small>
         </div>
         <h3 id="export-heading">Export your data</h3>
-        <p>A polished, readable archive of your Traketo activity.</p>
+        <p>
+          Your account, tasks, sessions, workspaces, sharing and consent
+          records.
+        </p>
       </div>
-      <Button
-        className="security-action-card__button"
-        disabled={isPending}
-        onClick={() =>
-          startTransition(async () => {
-            const result = await exportAccountDataAction()
-            if (!result?.ok) {
-              toast.error(
-                result && !result.ok
-                  ? result.error.message
-                  : "The export could not be created. Try again.",
-              )
-              return
-            }
-            const binary = atob(result.data.pdfBase64)
-            const bytes = Uint8Array.from(binary, (character) =>
-              character.charCodeAt(0),
-            )
-            const blob = new Blob([bytes], {
-              type: "application/pdf",
-            })
-            const url = URL.createObjectURL(blob)
-            const anchor = document.createElement("a")
-            anchor.href = url
-            anchor.download = result.data.filename
-            anchor.click()
-            URL.revokeObjectURL(url)
-          })
-        }
-        type="button"
-        variant="outline"
-      >
-        <FileDown aria-hidden="true" />
-        {isPending ? "Building PDF" : "Download PDF"}
-      </Button>
+      <AccountExportDialog />
     </section>
   )
 }
@@ -575,7 +949,7 @@ function DeleteAccountCard({
   )
 }
 
-function DeleteAccountDialog({
+export function DeleteAccountDialog({
   hasPassword = true,
   onClose,
   onDeleted,

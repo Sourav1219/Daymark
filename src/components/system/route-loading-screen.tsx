@@ -5,9 +5,12 @@ import { usePathname } from "next/navigation"
 
 import { BottomTabBar } from "@/components/shell/bottom-tab-bar"
 import {
+  AboutLoadingState,
   ContactLoadingState,
   GatesLoadingState,
+  PrivacyCentreLoadingState,
   SettingsLoadingState,
+  TermsLoadingState,
   WorkspaceLoadingState,
 } from "@/components/system/management-loading-states"
 import { PageSkeleton } from "@/components/system/page-skeleton"
@@ -19,13 +22,10 @@ import { TodayLoadingState } from "@/features/today/components/today-loading-sta
 
 const publicRoutes = new Set([
   "/",
-  "/about",
   "/forgot-password",
-  "/privacy",
   "/reset-password",
   "/sign-in",
   "/sign-up",
-  "/terms",
   "/verify-email",
   "/~offline",
 ])
@@ -42,7 +42,6 @@ export function SystemRouteLoadingState() {
   if (pathname.startsWith("/profile")) return <ProfileLoadingState />
   if (pathname.startsWith("/settings")) return <SettingsLoadingState />
   if (pathname.startsWith("/gates")) return <GatesLoadingState />
-  if (pathname.startsWith("/contact")) return <ContactLoadingState />
   if (pathname.startsWith("/app/workspaces")) return <WorkspaceLoadingState />
 
   return <PageSkeleton />
@@ -50,6 +49,25 @@ export function SystemRouteLoadingState() {
 
 export function RouteLoadingScreen() {
   const pathname = usePathname()
+
+  if (pathname.startsWith("/contact")) {
+    return <ContactLoadingState />
+  }
+
+  if (pathname.startsWith("/about")) {
+    return <AboutLoadingState />
+  }
+
+  if (
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/settings/privacy-data")
+  ) {
+    return <PrivacyCentreLoadingState />
+  }
+
+  if (pathname.startsWith("/terms")) {
+    return <TermsLoadingState />
+  }
 
   if (publicRoutes.has(pathname)) {
     return <PublicRouteLoading pathname={pathname} />
@@ -91,12 +109,11 @@ function NeutralRouteLoadingScreen() {
 }
 
 function PublicRouteLoading({ pathname }: Readonly<{ pathname: string }>) {
-  const label =
-    pathname.includes("sign")
-      ? "Opening your account"
-      : pathname === "/"
-        ? "Opening Traketo"
-        : "Opening page"
+  const label = pathname.includes("sign")
+    ? "Opening your account"
+    : pathname === "/"
+      ? "Opening Traketo"
+      : "Opening page"
 
   return (
     <main aria-label={label} className="public-route-loading" role="status">

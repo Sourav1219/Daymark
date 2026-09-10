@@ -1,7 +1,6 @@
 "use client"
 
 import type { Route } from "next"
-import Link from "next/link"
 import { ArrowLeft, FileCheck2, ShieldCheck } from "lucide-react"
 import type { ReactNode } from "react"
 
@@ -60,20 +59,6 @@ export function LegalPage({
             </div>
             <h1 className="legal-title">{title}</h1>
             <p className="legal-summary">{summary}</p>
-            <nav aria-label="Legal documents" className="legal-tabs">
-              <Link
-                aria-current={current === "terms" ? "page" : undefined}
-                href="/terms"
-              >
-                Terms
-              </Link>
-              <Link
-                aria-current={current === "privacy" ? "page" : undefined}
-                href="/privacy"
-              >
-                Privacy
-              </Link>
-            </nav>
           </div>
 
           <article className="legal-document">{children}</article>

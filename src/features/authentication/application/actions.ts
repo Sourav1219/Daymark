@@ -7,29 +7,32 @@ import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import {
-  cookieConsentMaxAgeSeconds,
-  cookieConsentName,
-  cookieConsentValues,
-} from "@/features/privacy/domain/cookie-consent"
+  registrationAcceptanceCookieName,
+  registrationAcceptanceHeaderName,
+} from "@/features/authentication/domain/registration-acceptance"
 import { withHealthyAuth } from "@/features/authentication/server/auth"
 import { monitorAuthenticationEmailDelivery } from "@/features/authentication/server/authentication-email-delivery"
+import {
+  createRegistrationAcceptanceToken,
+  readRegistrationAcceptance,
+  registrationAcceptanceUserFields,
+} from "@/features/authentication/server/registration-acceptance"
 import { users } from "@/db/schema"
 import {
   emailVerificationCodeSchema,
   emailRequestSchema,
   loginSchema,
   passwordResetSchema,
+  registrationAgreementSelectionSchema,
   registrationSchema,
   safeRedirectPath,
 } from "@/features/authentication/application/validation"
 import type { ActionFailure, ActionResult } from "@/lib/actions/action-result"
 import { validationFailure } from "@/lib/actions/action-helpers"
 import { logSecurityEvent, logger } from "@/lib/observability/logger"
-import {
-  observeAuthenticationAnomaly,
-  observeRateLimitHit,
-} from "@/lib/observability/metrics"
+import { observeAuthenticationAnomaly } from "@/lib/observability/metrics"
 import { enforceRateLimit } from "@/lib/rate-limit/rate-limiter"
+import { readServerEnv } from "@/lib/env/server"
 
 type AuthActionData = Readonly<{
   email?: string
@@ -48,17 +51,6 @@ function registrationResponse(email: string): NonNullable<AuthActionState> {
     },
     ok: true,
   }
-}
-
-async function grantRegistrationCookieConsent() {
-  const cookieStore = await cookies()
-  cookieStore.set(cookieConsentName, cookieConsentValues.preferences, {
-    httpOnly: false,
-    maxAge: cookieConsentMaxAgeSeconds,
-    path: "/",
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-  })
 }
 
 const minimumAccountResponseMilliseconds = 750
@@ -135,7 +127,6 @@ async function accountRateLimit(email: unknown) {
     ...(identity ? { userId: identity } : {}),
   })
   if (result && !result.success) {
-    observeRateLimitHit("account")
     return rateLimitFailure()
   }
   return null
@@ -151,6 +142,8 @@ export async function registerAction(
     email: formData.get("email"),
     name: formData.get("name"),
     password: formData.get("password"),
+    privacyNoticeAcknowledged: formData.get("privacyNoticeAcknowledged"),
+    termsAccepted: formData.get("termsAccepted"),
   })
 
   if (!parsed.success) {
@@ -163,17 +156,38 @@ export async function registerAction(
   const startedAt = Date.now()
   const callbackURL = safeRedirectPath(formData.get("next"))
   const requestHeaders = await authenticationHeaders(formData)
+  const acceptedAt = new Date()
+  const acceptanceToken = createRegistrationAcceptanceToken(
+    readServerEnv().BETTER_AUTH_SECRET,
+    "email",
+    acceptedAt,
+  )
+  requestHeaders.set(registrationAcceptanceHeaderName, acceptanceToken)
   let infrastructureFailure = false
   try {
     await monitorAuthenticationEmailDelivery(() =>
       withHealthyAuth(async (auth, database) => {
         const [existingAccount] = await database
-          .select({ emailVerified: users.emailVerified })
+          .select({
+            emailVerified: users.emailVerified,
+            id: users.id,
+          })
           .from(users)
           .where(eq(users.email, parsed.data.email))
           .limit(1)
 
         if (existingAccount && !existingAccount.emailVerified) {
+          const acceptance = readRegistrationAcceptance(
+            requestHeaders,
+            readServerEnv().BETTER_AUTH_SECRET,
+            "email",
+          )
+          if (acceptance) {
+            await database
+              .update(users)
+              .set(registrationAcceptanceUserFields(acceptance))
+              .where(eq(users.id, existingAccount.id))
+          }
           await auth.api.sendVerificationOTP({
             body: {
               email: parsed.data.email,
@@ -182,8 +196,12 @@ export async function registerAction(
             headers: requestHeaders,
           })
         } else {
+          const { privacyNoticeAcknowledged, termsAccepted, ...account } =
+            parsed.data
+          void privacyNoticeAcknowledged
+          void termsAccepted
           await auth.api.signUpEmail({
-            body: { ...parsed.data, callbackURL },
+            body: { ...account, callbackURL },
             headers: requestHeaders,
           })
         }
@@ -213,8 +231,32 @@ export async function registerAction(
 
   if (infrastructureFailure) return emailServiceUnavailable()
 
-  await grantRegistrationCookieConsent()
   return registrationResponse(parsed.data.email)
+}
+
+export async function prepareGoogleRegistrationAction(input: unknown) {
+  const parsed = registrationAgreementSelectionSchema.safeParse(input)
+  if (!parsed.success) {
+    return validationFailure(
+      "Accept the required agreements before continuing with Google.",
+      parsed.error.flatten().fieldErrors,
+    )
+  }
+
+  const token = createRegistrationAcceptanceToken(
+    readServerEnv().BETTER_AUTH_SECRET,
+    "google",
+  )
+  const cookieStore = await cookies()
+  cookieStore.set(registrationAcceptanceCookieName, token, {
+    httpOnly: true,
+    maxAge: 10 * 60,
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  })
+
+  return { data: { ready: true }, ok: true } as const
 }
 
 export async function loginAction(
@@ -382,7 +424,6 @@ export async function verifyEmailCodeAction(
     }
   }
 
-  await grantRegistrationCookieConsent()
   redirect(safeRedirectPath(formData.get("next")))
 }
 

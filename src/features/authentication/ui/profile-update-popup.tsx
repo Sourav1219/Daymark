@@ -2,11 +2,16 @@
 
 import { useEffect } from "react"
 import { createPortal } from "react-dom"
-import { Check, Sparkles, UserRound } from "lucide-react"
+import { Check, MailCheck, Sparkles, UserRound } from "lucide-react"
 
-export type ProfileUpdateKind = "name"
+export type ProfileUpdateKind = "email" | "name"
 
 const updateCopy = {
+  email: {
+    eyebrow: "Email verified",
+    heading: "Sign-in updated!",
+    message: "Your verified email is now your Traketo sign-in identity.",
+  },
   name: {
     eyebrow: "Profile refreshed",
     heading: "Looking good!",
@@ -22,7 +27,7 @@ export function ProfileUpdatePopup({
   onDismiss: () => void
 }>) {
   const copy = updateCopy[kind]
-  const Icon = UserRound
+  const Icon = kind === "email" ? MailCheck : UserRound
 
   useEffect(() => {
     const timeout = window.setTimeout(onDismiss, 5_000)

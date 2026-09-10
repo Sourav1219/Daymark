@@ -13,6 +13,8 @@ test("sends a new account directly home without an onboarding overlay", async ({
   await page
     .getByLabel("Password", { exact: true })
     .fill("correct-horse-battery-staple")
+  await page.locator("#termsAccepted").check()
+  await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
 
   await expect(page).toHaveURL(/\/today$/u)

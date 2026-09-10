@@ -21,6 +21,7 @@ type AuthenticationEmail = Readonly<{
 
 type VerificationCodeEmail = Readonly<{
   code: string
+  purpose?: "change-email" | "email-verification" | undefined
   recipientEmail: string
 }>
 
@@ -65,15 +66,16 @@ function emailHtml(input: {
 
 function verificationCodeHtml(input: VerificationCodeEmail): string {
   const code = escapeHtml(input.code)
+  const changingEmail = input.purpose === "change-email"
 
   return [
     '<div style="background:#f4f7fd;padding:32px 16px;font-family:Arial,sans-serif;color:#10213b">',
     '<div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #dce5f5;border-radius:20px;padding:32px">',
     '<p style="margin:0 0 24px;font-size:15px;font-weight:800;letter-spacing:.04em;color:#316df4">Traketo</p>',
-    '<h1 style="font-size:28px;line-height:1.2;margin:0 0 12px">Verify your email</h1>',
-    '<p style="line-height:1.6;margin:0 0 24px;color:#52627a">Enter this code in Traketo to finish creating your account.</p>',
+    `<h1 style="font-size:28px;line-height:1.2;margin:0 0 12px">${changingEmail ? "Verify your new email" : "Verify your email"}</h1>`,
+    `<p style="line-height:1.6;margin:0 0 24px;color:#52627a">${changingEmail ? "Enter this code in Traketo to confirm your new sign-in email." : "Enter this code in Traketo to finish creating your account."}</p>`,
     `<div style="margin:0 0 24px;padding:20px;border:1px solid #cddafa;border-radius:16px;background:#f4f7ff;text-align:center;font-size:34px;font-weight:800;letter-spacing:10px;color:#17305b">${code}</div>`,
-    '<p style="font-size:13px;line-height:1.55;color:#66758f;margin:0">This code expires in 10 minutes and can be used only once. If you did not create a Traketo account, you can safely ignore this email.</p>',
+    `<p style="font-size:13px;line-height:1.55;color:#66758f;margin:0">This code expires in 10 minutes and can be used only once. ${changingEmail ? "If you did not request this email change, do not share the code and you can safely ignore this email." : "If you did not create a Traketo account, you can safely ignore this email."}</p>`,
     "</div></div>",
   ].join("")
 }
@@ -125,7 +127,10 @@ class ResendAuthenticationEmailDelivery implements AuthenticationEmailDelivery {
   }
 
   async sendVerificationCode(input: VerificationCodeEmail) {
-    const subject = `${input.code} is your Traketo verification code`
+    const subject =
+      input.purpose === "change-email"
+        ? `${input.code} confirms your new Traketo email`
+        : `${input.code} is your Traketo verification code`
     const idempotencyKey = createHash("sha256")
       .update(`${subject}:${input.recipientEmail}`)
       .digest("hex")
@@ -135,7 +140,7 @@ class ResendAuthenticationEmailDelivery implements AuthenticationEmailDelivery {
           from: `Traketo <${this.from}>`,
           html: verificationCodeHtml(input),
           subject,
-          text: `Your Traketo verification code is ${input.code}. It expires in 10 minutes and can be used only once.`,
+          text: `Your Traketo ${input.purpose === "change-email" ? "email change" : "verification"} code is ${input.code}. It expires in 10 minutes and can be used only once.`,
           to: input.recipientEmail,
         },
         { idempotencyKey },

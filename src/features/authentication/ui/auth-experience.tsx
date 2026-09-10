@@ -4,7 +4,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
-import { ReportProblemButton } from "@/components/system/sentry-feedback-widget"
 import { AuthForm } from "@/features/authentication/ui/auth-form"
 import type { GoogleOAuthError } from "@/features/authentication/ui/google-auth-button"
 import { WelcomeAvatar } from "@/features/authentication/ui/welcome-avatar"
@@ -120,12 +119,6 @@ export function AuthExperience({
 
           <div className="mt-4 text-center text-xs text-ink-muted">
             <span>Having trouble?</span>{" "}
-            <ReportProblemButton className="cursor-pointer font-semibold text-system-blue underline underline-offset-2 hover:opacity-80">
-              Report a problem
-            </ReportProblemButton>
-            <span aria-hidden="true" className="mx-1.5 opacity-50">
-              ·
-            </span>
             <Link
               className="font-semibold text-system-blue underline underline-offset-2 hover:opacity-80"
               href="/contact"

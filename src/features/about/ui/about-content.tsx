@@ -5,126 +5,203 @@ import type { Route } from "next"
 import Link from "next/link"
 import {
   ArrowLeft,
-  CheckCircle2,
+  Check,
+  CheckSquare,
   Clock3,
-  ListChecks,
+  Repeat,
   ShieldCheck,
+  Sparkles,
   UsersRound,
+  X,
+  Zap,
 } from "lucide-react"
 
 import { WelcomeAvatar } from "@/features/authentication/ui/welcome-avatar"
 import { BackButton } from "@/components/ui/back-button"
 import { useLegalBackHref } from "@/components/legal/legal-shell-context"
 
-const principles = [
+const coreFeatures = [
   {
-    description: "Turn busy days into a clear, manageable next step.",
-    icon: ListChecks,
+    colorClass: "about-feature-card--blue",
+    description:
+      "Turn busy days into clear, manageable next steps with daily queues.",
+    icon: CheckSquare,
     title: "Plan clearly",
   },
   {
-    description: "Give important work your full attention with focus sessions.",
+    colorClass: "about-feature-card--purple",
+    description:
+      "Give important work your full attention with distraction-free timers.",
     icon: Clock3,
     title: "Focus calmly",
   },
   {
-    description: "Stay encouraged through visible progress and shared study.",
+    colorClass: "about-feature-card--emerald",
+    description:
+      "Stay encouraged through co-working spaces and mutual progress.",
     icon: UsersRound,
     title: "Grow together",
+  },
+  {
+    colorClass: "about-feature-card--amber",
+    description:
+      "Repeat cadences and gentle alerts that fit your natural rhythm.",
+    icon: Repeat,
+    title: "Gentle cadence",
+  },
+  {
+    colorClass: "about-feature-card--sky",
+    description:
+      "Zero ads, no third-party data selling, and encrypted local storage.",
+    icon: ShieldCheck,
+    title: "Private by design",
+  },
+  {
+    colorClass: "about-feature-card--rose",
+    description: "Instant fast PWA that works offline everywhere you need it.",
+    icon: Zap,
+    title: "Offline ready",
   },
 ] as const
 
 export function AboutContent() {
   const backHref = useLegalBackHref()
-  const isAuthenticated = backHref === "/profile"
 
   return (
-    <main className="about-shell">
-      <div className="about-frame">
-        <header className="about-header">
-          <BackButton
-            aria-label="Back to Traketo"
-            fallbackHref={backHref as Route}
+    <div className="app-stage about-shell">
+      <div className="device-frame about-frame" id="app-device-viewport">
+        <main className="about-page" id="main-content" tabIndex={0}>
+          {/* Top navigation header: Clean, integrated, native-app top bar */}
+          <header className="about-nav-header">
+            <BackButton
+              aria-label="Back"
+              className="about-back-btn"
+              fallbackHref={backHref as Route}
+            >
+              <ArrowLeft aria-hidden="true" />
+            </BackButton>
+            <div className="about-nav-title">
+              <span className="about-nav-wordmark">About Traketo</span>
+            </div>
+            <div className="about-status-chip">
+              <span aria-hidden="true" className="about-status-dot" />
+              <span>Calm Focus</span>
+            </div>
+          </header>
+
+          {/* Hero section */}
+          <section className="about-hero-banner">
+            <div aria-hidden="true" className="about-hero-banner__glow" />
+            <div className="about-hero-banner__content">
+              <div className="about-hero-banner__badge">
+                <Sparkles aria-hidden="true" />
+                <span>Our Story &amp; Purpose</span>
+              </div>
+              <div className="about-hero-banner__main">
+                <div>
+                  <h1 className="about-hero-banner__title">
+                    A calmer way to make progress.
+                  </h1>
+                  <p className="about-hero-banner__desc">
+                    Traketo brings planning, focus sessions, reminders, and
+                    shared study into one thoughtful space—so your day feels
+                    doable, not crowded.
+                  </p>
+                </div>
+                <div aria-hidden="true" className="about-hero-banner__visual">
+                  <span className="about-hero-banner__halo" />
+                  <WelcomeAvatar className="about-hero-banner__avatar" />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Core Pillars: 6 Interactive Feature Pills */}
+          <section
+            aria-label="Core features"
+            className="about-features-section"
           >
-            <ArrowLeft aria-hidden="true" />
-          </BackButton>
-          <span className="about-wordmark">
-            <span aria-hidden="true" /> Traketo
-          </span>
-          <span>About</span>
-        </header>
+            <div className="about-section-label">
+              <span className="about-section-step">Step 1</span>
+              <h2>Designed for real life</h2>
+            </div>
+            <div className="about-features-grid">
+              {coreFeatures.map(
+                ({ colorClass, description, icon: Icon, title }) => (
+                  <article
+                    className={`about-feature-card ${colorClass}`}
+                    key={title}
+                  >
+                    <span className="about-feature-card__icon">
+                      <Icon aria-hidden="true" />
+                    </span>
+                    <div className="about-feature-card__text">
+                      <strong>{title}</strong>
+                      <small>{description}</small>
+                    </div>
+                  </article>
+                ),
+              )}
+            </div>
+          </section>
 
-        <div className="about-content">
-          <section className="about-hero">
-            <div className="about-hero__copy">
-              <span className="about-kicker">
-                <CheckCircle2 aria-hidden="true" /> Built for real life
+          {/* Philosophy / Why Traketo */}
+          <section aria-label="Why Traketo" className="about-philosophy-card">
+            <div className="about-philosophy-card__header">
+              <div>
+                <span className="about-section-step">Philosophy</span>
+                <h2>Productivity without burnout</h2>
+              </div>
+              <span className="about-philosophy-card__badge-icon">
+                <Sparkles aria-hidden="true" />
               </span>
-              <h1>A calmer way to make progress.</h1>
-              <p>
-                Traketo brings planning, focus, reminders, and shared study into
-                one thoughtful space—so your day feels doable, not crowded.
-              </p>
             </div>
-            <div aria-hidden="true" className="about-hero__visual">
-              <span className="about-hero__halo" />
-              <WelcomeAvatar className="about-hero__avatar" />
+            <div className="about-philosophy-points">
+              <div className="about-philosophy-point about-philosophy-point--cross">
+                <X aria-hidden="true" />
+                <span>No endless notifications or guilt trips</span>
+              </div>
+              <div className="about-philosophy-point about-philosophy-point--cross">
+                <X aria-hidden="true" />
+                <span>No aggressive streaks or toxic gamification</span>
+              </div>
+              <div className="about-philosophy-point about-philosophy-point--check">
+                <Check aria-hidden="true" />
+                <span>Small, sustainable steps with visible clarity</span>
+              </div>
             </div>
-          </section>
-
-          <section aria-labelledby="about-purpose" className="about-purpose">
-            <span>Why Traketo</span>
-            <h2 id="about-purpose">Built around how progress actually works</h2>
-            <p>
-              Small steps become meaningful momentum when they are easy to see,
-              start, and finish.
-            </p>
-
-            <div className="about-principles">
-              {principles.map(({ description, icon: Icon, title }) => (
-                <article key={title}>
-                  <span>
-                    <Icon aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h3>{title}</h3>
-                    <p>{description}</p>
-                  </div>
-                </article>
-              ))}
+            <div className="about-metrics-row">
+              <span className="about-metric-pill">
+                <ShieldCheck aria-hidden="true" /> 100% Ad-Free
+              </span>
+              <span className="about-metric-pill">
+                <Zap aria-hidden="true" /> Offline-First
+              </span>
+              <span className="about-metric-pill">
+                <Clock3 aria-hidden="true" /> Distraction-Free
+              </span>
             </div>
           </section>
 
-          <section className="about-privacy">
-            <span>
+          {/* Trust & Privacy Card */}
+          <section aria-label="Privacy commitment" className="about-trust-card">
+            <span className="about-trust-card__icon">
               <ShieldCheck aria-hidden="true" />
             </span>
-            <div>
-              <small>Our approach</small>
-              <h2>Private by design</h2>
+            <div className="about-trust-card__content">
+              <span className="about-trust-card__badge">Privacy First</span>
+              <h3>Private by design</h3>
               <p>
                 Your tasks and routines are personal. Traketo does not sell
                 personal data or use it for third-party advertising.
               </p>
-            </div>
-          </section>
-
-          {/* Only show sign-up CTA for unauthenticated visitors */}
-          {!isAuthenticated && (
-            <div className="about-actions">
-              <Link className="about-primary-action" href="/sign-up">
-                Get started
+              <Link className="about-trust-card__link" href="/privacy">
+                Privacy &amp; Data Centre &rarr;
               </Link>
             </div>
-          )}
-
-          <footer className="about-footer">
-            <Link href="/terms">Terms</Link>
-            <span aria-hidden="true">·</span>
-            <Link href="/privacy">Privacy</Link>
-          </footer>
-        </div>
+          </section>
+        </main>
       </div>
-    </main>
+    </div>
   )
 }

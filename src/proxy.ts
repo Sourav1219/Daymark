@@ -2,59 +2,9 @@ import { getSessionCookie } from "better-auth/cookies"
 import { NextResponse, type NextRequest } from "next/server"
 
 import { AUTH_COOKIE_PREFIX } from "@/features/authentication/config"
+import { buildContentSecurityPolicy } from "@/lib/security/content-security-policy"
 
-const r2AccountIdPattern = /^[a-f\d]{32}$/iu
-const sentryConnectSources = [
-  "https://*.ingest.sentry.io",
-  "https://*.ingest.us.sentry.io",
-]
-
-function r2ConnectSources(accountId: string | undefined) {
-  if (!accountId || !r2AccountIdPattern.test(accountId)) return []
-
-  const r2Host = `${accountId}.r2.cloudflarestorage.com`
-  return [`https://${r2Host}`, `https://*.${r2Host}`]
-}
-
-export function buildContentSecurityPolicy(
-  nonce: string,
-  options: Readonly<{
-    development?: boolean
-    r2AccountId?: string
-  }> = {},
-) {
-  const development =
-    options.development ?? process.env.NODE_ENV !== "production"
-  const r2Sources = r2ConnectSources(
-    options.r2AccountId ?? process.env.R2_ACCOUNT_ID,
-  )
-  const connectSources = [
-    "'self'",
-    "https://challenges.cloudflare.com",
-    ...sentryConnectSources,
-    ...r2Sources,
-    ...(development ? ["ws:", "wss:"] : []),
-  ]
-
-  return [
-    "base-uri 'self'",
-    "default-src 'self'",
-    "font-src 'self' data:",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-    "img-src 'self' data: blob:",
-    "object-src 'none'",
-    `script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com${development ? " 'unsafe-eval'" : ""}`,
-    development
-      ? "style-src 'self' 'unsafe-inline'"
-      : `style-src 'self' 'nonce-${nonce}'`,
-    ...(!development ? ["style-src-attr 'unsafe-inline'"] : []),
-    `connect-src ${connectSources.join(" ")}`,
-    "frame-src 'self' https://challenges.cloudflare.com",
-    "worker-src 'self' blob:",
-    ...(!development ? ["upgrade-insecure-requests"] : []),
-  ].join("; ")
-}
+export { buildContentSecurityPolicy } from "@/lib/security/content-security-policy"
 
 function nonce() {
   return Buffer.from(crypto.randomUUID()).toString("base64")
@@ -129,8 +79,11 @@ export const config = {
         { key: "next-router-prefetch", type: "header" },
         { key: "purpose", type: "header", value: "prefetch" },
       ],
+      // Only routes that need an optimistic cookie redirect or a nonce-based
+      // dynamic CSP enter the Node.js proxy. Public/static pages and arbitrary
+      // scanner paths are served directly by Next/Vercel's CDN.
       source:
-        "/((?!api|_next/static|_next/image|favicon.ico|serwist/|manifest.webmanifest|dev-cache-cleanup\\.js).*)",
+        "/((?:app(?:/.*)?|today|quests(?:/.*)?|timer|gates|cleared|progress|profile|settings|sign-in|sign-up|reset-password|sign-out|session-expired|unauthorized|contact)?)",
     },
   ],
 }

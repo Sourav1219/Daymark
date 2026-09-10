@@ -1,7 +1,6 @@
 import { SerwistProvider } from "@serwist/turbopack/react"
 import type { Metadata, Viewport } from "next"
 import { cookies, headers } from "next/headers"
-import { connection } from "next/server"
 import Script from "next/script"
 import type { ReactNode } from "react"
 
@@ -10,8 +9,8 @@ import { Baloo_2, Caveat, Inter, Nunito } from "next/font/google"
 import { DevServiceWorkerCleanup } from "@/components/system/dev-service-worker-cleanup"
 import { SentryFeedbackWidget } from "@/components/system/sentry-feedback-widget"
 import {
-  parseCookieConsent,
   cookieConsentName,
+  parseCookieConsent,
 } from "@/features/privacy/domain/cookie-consent"
 import { CookieConsentProvider } from "@/features/privacy/ui/cookie-consent-provider"
 import { cn } from "@/lib/utils"
@@ -82,15 +81,12 @@ type RootLayoutProps = Readonly<{
 }>
 
 export default async function RootLayout({ children }: RootLayoutProps) {
-  // A nonce-based CSP must be rendered per request so Next.js can attach the
-  // proxy-provided nonce to framework scripts and inline styles.
-  await connection()
   const [requestHeaders, cookieStore] = await Promise.all([
     headers(),
     cookies(),
   ])
   const requestNonce = requestHeaders.get("x-nonce") ?? undefined
-  const initialCookieConsent = parseCookieConsent(
+  const initialConsent = parseCookieConsent(
     cookieStore.get(cookieConsentName)?.value,
   )
 
@@ -106,7 +102,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       )}
     >
       <body>
-        <CookieConsentProvider initialConsent={initialCookieConsent}>
+        <CookieConsentProvider initialConsent={initialConsent}>
           {process.env.NODE_ENV !== "production" ? (
             <Script
               nonce={requestNonce}

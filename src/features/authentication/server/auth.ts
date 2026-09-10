@@ -9,11 +9,16 @@ import type { Database } from "@/db/client"
 import { getDatabase, withHealthyDatabase } from "@/db/client"
 import * as schema from "@/db/schema"
 import { AUTH_COOKIE_PREFIX } from "@/features/authentication/config"
+import { registrationAcceptanceCookieName } from "@/features/authentication/domain/registration-acceptance"
 import {
   createAuthenticationEmailDelivery,
   deliverAuthenticationEmail,
   type AuthenticationEmailDelivery,
 } from "@/features/authentication/server/authentication-email-delivery"
+import {
+  readRegistrationAcceptance,
+  registrationAcceptanceUserFields,
+} from "@/features/authentication/server/registration-acceptance"
 import { provisionPersonalWorkspace } from "@/features/workspaces/application/provision-personal-workspace"
 import { readServerEnv } from "@/lib/env/server"
 import { googleAuthEnvFromServerEnv, type ServerEnv } from "@/lib/env/schema"
@@ -49,6 +54,46 @@ export function createAuth(
       schema,
       usePlural: true,
     }),
+    user: {
+      additionalFields: {
+        ageConfirmedAt: {
+          input: false,
+          required: false,
+          returned: false,
+          type: "date",
+        },
+        ageRequirementVersion: {
+          input: false,
+          required: false,
+          returned: false,
+          type: "string",
+        },
+        privacyNoticeAcknowledgedAt: {
+          input: false,
+          required: false,
+          returned: false,
+          type: "date",
+        },
+        privacyNoticeVersion: {
+          input: false,
+          required: false,
+          returned: false,
+          type: "string",
+        },
+        termsAcceptedAt: {
+          input: false,
+          required: false,
+          returned: false,
+          type: "date",
+        },
+        termsVersion: {
+          input: false,
+          required: false,
+          returned: false,
+          type: "string",
+        },
+      },
+    },
     databaseHooks: {
       session: {
         create: {
@@ -70,8 +115,40 @@ export function createAuth(
       },
       user: {
         create: {
-          after: async (user) => {
+          before: async (user, context) => {
+            const source =
+              context?.path === "/sign-up/email"
+                ? "email"
+                : context?.path?.startsWith("/callback/")
+                  ? "google"
+                  : null
+            if (!source) return
+
+            const acceptance = readRegistrationAcceptance(
+              context?.headers,
+              env.BETTER_AUTH_SECRET,
+              source,
+            )
+            if (!acceptance) return false
+
+            return {
+              data: {
+                ...user,
+                ...registrationAcceptanceUserFields(acceptance),
+              },
+            }
+          },
+          after: async (user, context) => {
             await provisionPersonalWorkspace(database, user)
+            if (context?.path?.startsWith("/callback/")) {
+              context.setCookie(registrationAcceptanceCookieName, "", {
+                httpOnly: true,
+                maxAge: 0,
+                path: "/",
+                sameSite: "lax",
+                secure: secureCookies,
+              })
+            }
           },
         },
       },
@@ -127,6 +204,11 @@ export function createAuth(
     // additional rate_limits query on every request through Supavisor.
     rateLimit: { enabled: false },
     session: {
+      // Signed short-lived session data avoids repeating the same database
+      // lookup across closely spaced RSC renders. Better Auth bypasses this
+      // cache for its sensitive account operations; Traketo's explicit session
+      // ping also performs an authoritative read for revocation detection.
+      cookieCache: { enabled: true, maxAge: 60 },
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
     },
@@ -161,14 +243,16 @@ export function createAuth(
         : []),
       emailOTP({
         allowedAttempts: 5,
+        changeEmail: { enabled: true },
         expiresIn: 10 * 60,
         otpLength: 6,
         overrideDefaultEmailVerification: true,
         sendVerificationOTP: async ({ email, otp, type }) => {
-          if (type !== "email-verification") return
+          if (type !== "email-verification" && type !== "change-email") return
           await deliverAuthenticationEmail(() =>
             emailDelivery.sendVerificationCode({
               code: otp,
+              purpose: type,
               recipientEmail: email,
             }),
           )

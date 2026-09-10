@@ -41,6 +41,18 @@ const securePassword = z
     message: "Choose a less predictable password",
   })
 
+const requiredRegistrationAgreement = (message: string) =>
+  z.literal("on", { error: message })
+
+export const registrationAgreementSelectionSchema = z.object({
+  privacyNoticeAcknowledged: z.literal(true, {
+    error: "Read and acknowledge the Privacy Notice",
+  }),
+  termsAccepted: z.literal(true, {
+    error: "Confirm you are 18 or older and accept the Terms of Service",
+  }),
+})
+
 export const registrationSchema = z.object({
   name: z
     .string()
@@ -49,6 +61,12 @@ export const registrationSchema = z.object({
     .max(120, "Name must be 120 characters or fewer"),
   email,
   password: securePassword,
+  privacyNoticeAcknowledged: requiredRegistrationAgreement(
+    "Read and acknowledge the Privacy Notice",
+  ),
+  termsAccepted: requiredRegistrationAgreement(
+    "Confirm you are 18 or older and accept the Terms of Service",
+  ),
 })
 
 export const loginSchema = z.object({
@@ -69,7 +87,6 @@ export const emailVerificationCodeSchema = z.object({
   email,
 })
 
-
 export const passwordResetTokenSchema = z
   .string()
   .min(20, "This password reset link is invalid or expired")
@@ -88,6 +105,15 @@ export const passwordResetSchema = z
 
 export const profileNameSchema = z.object({
   name: registrationSchema.shape.name,
+})
+
+export const emailChangeRequestSchema = z.object({
+  newEmail: email,
+})
+
+export const emailChangeVerificationSchema = z.object({
+  code: emailVerificationCodeSchema.shape.code,
+  newEmail: email,
 })
 
 export const passwordChangeSchema = z

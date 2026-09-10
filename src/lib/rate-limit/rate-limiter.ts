@@ -5,6 +5,7 @@ import { Redis } from "@upstash/redis"
 
 import { readServerEnv } from "@/lib/env/server"
 import { logger } from "@/lib/observability/logger"
+import { observeRateLimitHit } from "@/lib/observability/metrics"
 
 const policies = {
   account: { requests: 10, window: "60 s" },
@@ -152,16 +153,34 @@ export async function enforceRateLimit(
     return null
   }
 
-  return results
+  const strictest = results
     .filter(
       (result): result is PromiseFulfilledResult<RateLimitResult> =>
         result.status === "fulfilled",
     )
     .reduce(
-      (strictest, result) =>
-        !strictest || result.value.remaining < strictest.remaining
-          ? result.value
-          : strictest,
+      (strictest, result) => {
+        const candidate = result.value
+        if (!strictest) return candidate
+        if (strictest.success && !candidate.success) return candidate
+        if (
+          strictest.success === candidate.success &&
+          candidate.remaining < strictest.remaining
+        ) {
+          return candidate
+        }
+        return strictest
+      },
       null as RateLimitResult | null,
     )
+
+  // Observe the request once after both the IP and identity buckets settle.
+  // Reporting at this boundary covers every route/action that uses the shared
+  // limiter and avoids counting one rejected request twice when both buckets
+  // are exhausted.
+  if (strictest && !strictest.success) {
+    observeRateLimitHit(input.policy)
+  }
+
+  return strictest
 }

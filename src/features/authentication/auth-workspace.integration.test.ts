@@ -21,6 +21,8 @@ import {
 } from "@/db/schema"
 import { createAuth, type Auth } from "@/features/authentication/server/auth"
 import type { AuthenticationEmailDelivery } from "@/features/authentication/server/authentication-email-delivery"
+import { createRegistrationAcceptanceToken } from "@/features/authentication/server/registration-acceptance"
+import { registrationAcceptanceHeaderName } from "@/features/authentication/domain/registration-acceptance"
 import { provisionPersonalWorkspace } from "@/features/workspaces/application/provision-personal-workspace"
 import {
   findPersonalWorkspaceAccess,
@@ -31,6 +33,7 @@ import type { ServerEnv } from "@/lib/env/schema"
 import { clearReminderFixtures } from "@/test/clear-reminder-fixtures"
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL
+const integrationAuthSecret = "integration-test-secret-at-least-32-characters"
 const integrationDescribe = testDatabaseUrl
   ? describe.sequential
   : describe.skip
@@ -48,7 +51,7 @@ integrationDescribe("authentication and workspace integration", () => {
 
     database = createDatabase(testDatabaseUrl)
     const env: ServerEnv = {
-      BETTER_AUTH_SECRET: "integration-test-secret-at-least-32-characters",
+      BETTER_AUTH_SECRET: integrationAuthSecret,
       BETTER_AUTH_URL: "https://questly.test",
       DATABASE_URL: testDatabaseUrl,
       NODE_ENV: "production",
@@ -63,6 +66,16 @@ integrationDescribe("authentication and workspace integration", () => {
     }
     auth = createAuth(database, env, emailDelivery)
   })
+
+  function registrationHeaders() {
+    return new Headers({
+      origin: "https://questly.test",
+      [registrationAcceptanceHeaderName]: createRegistrationAcceptanceToken(
+        integrationAuthSecret,
+        "email",
+      ),
+    })
+  }
 
   beforeEach(async () => {
     await clearReminderFixtures(database)
@@ -90,13 +103,34 @@ integrationDescribe("authentication and workspace integration", () => {
         name: "Ada Lovelace",
         password: "correct-horse-battery-staple",
       },
-      headers: new Headers({ origin: "https://questly.test" }),
+      headers: registrationHeaders(),
       returnHeaders: true,
     })
     const setCookie = registration.headers.get("set-cookie") ?? ""
 
     expect(setCookie).not.toContain("session_token")
     expect(verificationCodes).toHaveLength(1)
+
+    const [acceptance] = await database
+      .select({
+        ageConfirmedAt: users.ageConfirmedAt,
+        ageRequirementVersion: users.ageRequirementVersion,
+        privacyNoticeAcknowledgedAt: users.privacyNoticeAcknowledgedAt,
+        privacyNoticeVersion: users.privacyNoticeVersion,
+        termsAcceptedAt: users.termsAcceptedAt,
+        termsVersion: users.termsVersion,
+      })
+      .from(users)
+      .where(eq(users.id, registration.response.user.id))
+      .limit(1)
+    expect(acceptance).toMatchObject({
+      ageConfirmedAt: expect.any(Date),
+      ageRequirementVersion: "2026-09-10",
+      privacyNoticeAcknowledgedAt: expect.any(Date),
+      privacyNoticeVersion: "2026-08-28",
+      termsAcceptedAt: expect.any(Date),
+      termsVersion: "2026-08-28",
+    })
 
     const access = await findPersonalWorkspaceAccess(
       database,
@@ -244,7 +278,7 @@ integrationDescribe("authentication and workspace integration", () => {
         name: "Records User",
         password: "correct-horse-battery-staple",
       },
-      headers: new Headers({ origin: "https://questly.test" }),
+      headers: registrationHeaders(),
     })
 
     await expect(database.select().from(accounts)).resolves.toHaveLength(1)

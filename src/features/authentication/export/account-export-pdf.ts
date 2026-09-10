@@ -145,7 +145,9 @@ function drawWrapped(
 }
 
 function drawSectionTitle(state: PdfState, title: string, count?: number) {
-  ensureSpace(state, 42)
+  // Reserve enough room for the heading, divider, and at least one content
+  // line so a section title is never orphaned against the footer.
+  ensureSpace(state, 64)
   state.y -= 10
   state.page.drawText(title.toUpperCase(), {
     color: blue,
@@ -253,7 +255,7 @@ export async function buildAccountExportPdf(
     size: 9,
     x: margin + 18,
   })
-  state.y -= 5
+  state.y -= 17
   drawWrapped(state, "Your Traketo archive", {
     font: bold,
     maxWidth: contentWidth - 36,
@@ -262,7 +264,7 @@ export async function buildAccountExportPdf(
   })
   drawWrapped(
     state,
-    "A readable snapshot of your account, workspace, tasks, focus history, reminders, and progression.",
+    "A readable companion to your complete JSON archive, covering your account, work, sessions, sharing, and consent records.",
     {
       color: muted,
       maxWidth: contentWidth - 36,
@@ -273,7 +275,9 @@ export async function buildAccountExportPdf(
   state.y -= 28
 
   const account = record(payload.account) ?? {}
-  const workspace = record(payload.workspace) ?? {}
+  const metadata = record(payload.exportMetadata) ?? {}
+  const workspaceRows = array(payload.workspaces)
+  const firstWorkspace = record(workspaceRows[0]) ?? {}
   drawSectionTitle(state, "Export details")
   drawWrapped(state, `Account: ${summaryValue(account.name)}`, {
     font: bold,
@@ -283,27 +287,37 @@ export async function buildAccountExportPdf(
     color: muted,
     size: 8.5,
   })
-  drawWrapped(state, `Workspace: ${summaryValue(workspace.name)}`, {
+  drawWrapped(state, `Workspaces: ${workspaceRows.length}`, {
     color: muted,
     size: 8.5,
   })
-  drawWrapped(state, `Timezone: ${summaryValue(workspace.timezone)}`, {
-    color: muted,
-    size: 8.5,
-  })
-  drawWrapped(state, `Exported: ${summaryValue(account.exportedAt)}`, {
+  drawWrapped(
+    state,
+    `Primary timezone: ${summaryValue(firstWorkspace.timezone)}`,
+    {
+      color: muted,
+      size: 8.5,
+    },
+  )
+  drawWrapped(state, `Exported: ${summaryValue(metadata.exportedAt)}`, {
     color: muted,
     size: 8.5,
   })
   state.y -= 8
 
   const sectionLabels: readonly [string, string][] = [
+    ["workspaces", "Workspaces"],
+    ["sessions", "Sign-in sessions"],
     ["tasks", "Tasks"],
     ["gates", "Lists"],
     ["labels", "Labels"],
     ["reminders", "Reminders"],
-    ["timerSessions", "Focus sessions"],
-    ["groupStudyParticipations", "Group study participation"],
+    ["focusSessions", "Focus sessions"],
+    ["sharedGroups", "Shared study groups"],
+    ["sharedGroupParticipations", "Shared group participation"],
+    ["sharedGroupActivity", "Shared group activity"],
+    ["consentHistory", "Consent history"],
+    ["progression", "Progression"],
     ["attachments", "Attachments"],
     ["activityEvents", "Activity"],
     ["xpLedger", "Progression ledger"],
@@ -318,12 +332,6 @@ export async function buildAccountExportPdf(
     })
   }
 
-  const progression = record(payload.progression)
-  if (progression) {
-    drawSectionTitle(state, "Progression")
-    drawRecord(state, progression, 0)
-  }
-
   for (const [key, label] of sectionLabels) {
     const rows = array(payload[key])
     drawSectionTitle(state, label, rows.length)
@@ -336,6 +344,38 @@ export async function buildAccountExportPdf(
     }
     rows.forEach((item, index) => drawRecord(state, item, index))
   }
+
+  const sharingInformation = record(payload.sharingInformation) ?? {}
+  const sharingSections: readonly [string, string][] = [
+    ["workspaceMemberships", "Workspace membership and sharing roles"],
+    ["sharedGroupJoinRequests", "Shared group join requests"],
+    ["sharedGroupBlocks", "Shared group access restrictions"],
+  ]
+  for (const [key, label] of sharingSections) {
+    const rows = array(sharingInformation[key])
+    drawSectionTitle(state, label, rows.length)
+    if (rows.length === 0) {
+      drawWrapped(state, "No records in this section.", {
+        color: muted,
+        size: 8,
+      })
+      continue
+    }
+    rows.forEach((item, index) => drawRecord(state, item, index))
+  }
+
+  const contentNotes = array(metadata.contentNotes)
+  drawSectionTitle(state, "Archive notes")
+  contentNotes.forEach((note, index) =>
+    drawWrapped(state, `${index + 1}. ${summaryValue(note)}`, {
+      color: muted,
+      size: 8,
+    }),
+  )
+
+  const securityExclusions = array(payload.securityExclusions)
+  drawSectionTitle(state, "Sensitive security data intentionally excluded")
+  securityExclusions.forEach((item, index) => drawRecord(state, item, index))
 
   const pages = document.getPages()
   pages.forEach((page, index) => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { useEffect, useState, useSyncExternalStore, useTransition } from "react"
 import {
   Ban,
   Check,
@@ -8,6 +8,8 @@ import {
   Copy,
   Crown,
   DoorOpen,
+  Eye,
+  EyeOff,
   Lock,
   LockOpen,
   Pause,
@@ -44,6 +46,10 @@ import type {
   GroupStudyParticipantView,
   GroupStudySessionView,
 } from "@/features/timer/domain/types"
+import {
+  GroupStudyPrivacyPopup,
+  type GroupStudyPrivacyNotice,
+} from "@/features/timer/components/group-study-privacy-popup"
 import { formatDate, formatTimeFull } from "@/lib/formatting/date"
 
 function formatParticipantClock(
@@ -107,6 +113,47 @@ function formatCompactDuration(durationMs: number) {
   return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`
 }
 
+const privacyModeStorageKey = "traketo:group-study-privacy-mode"
+const privacyModeChangedEvent = "traketo:group-study-privacy-mode-change"
+
+let inMemoryPrivacyMode: boolean | null = null
+
+function subscribeToPrivacyMode(onChange: () => void) {
+  window.addEventListener(privacyModeChangedEvent, onChange)
+  window.addEventListener("storage", onChange)
+  return () => {
+    window.removeEventListener(privacyModeChangedEvent, onChange)
+    window.removeEventListener("storage", onChange)
+  }
+}
+
+function getClientPrivacyMode(): boolean {
+  if (inMemoryPrivacyMode !== null) return inMemoryPrivacyMode
+  try {
+    return window.localStorage.getItem(privacyModeStorageKey) === "true"
+  } catch {
+    return false
+  }
+}
+
+function setClientPrivacyMode(value: boolean): void {
+  inMemoryPrivacyMode = value
+  try {
+    window.localStorage.setItem(privacyModeStorageKey, String(value))
+  } catch {
+    // Ignore localStorage access errors
+  }
+  try {
+    window.dispatchEvent(new Event(privacyModeChangedEvent))
+  } catch {
+    // Ignore dispatch errors
+  }
+}
+
+function getServerPrivacyMode(): boolean {
+  return false
+}
+
 export function GroupStudyPanel({
   hasActiveTimer,
   nowMs,
@@ -130,26 +177,35 @@ export function GroupStudyPanel({
   const [participantLimit, setParticipantLimit] = useState<number | string>(8)
   const [joinCode, setJoinCode] = useState("")
   const [copied, setCopied] = useState(false)
+  const privacyMode = useSyncExternalStore(
+    subscribeToPrivacyMode,
+    getClientPrivacyMode,
+    getServerPrivacyMode,
+  )
+  const [privacyNotice, setPrivacyNotice] =
+    useState<GroupStudyPrivacyNotice | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  // Version-diff polling: fetch the lightweight group-poll endpoint while the
-  // tab is visible. Stable rooms back off so they do not compete with page
-  // rendering for database capacity.
-  // Only call router.refresh() when the room version actually changes, reducing
-  // unnecessary full-page renders.
+  function togglePrivacyMode() {
+    const next = !getClientPrivacyMode()
+    setClientPrivacyMode(next)
+    setPrivacyNotice({ enabled: next })
+  }
+
+  // Prefer the realtime stream and start bounded polling only when that stream
+  // cannot connect. Running both at once duplicated auth, rate-limit, and
+  // database work every 5–15 seconds for every participant.
   useEffect(() => {
     if (!sharedSession) return
     let lastVersion = sharedSession.version
     let lastParticipantCount = sharedSession.participants.length
     let stableCount = 0
-
-    const events = new EventSource(
-      `/api/timer/group-events?roomId=${encodeURIComponent(sharedSession.id)}`,
-    )
-    events.addEventListener("room-changed", () => {
-      stableCount = 0
-      router.refresh()
-    })
+    let pollingFallback = false
+    let stopped = false
+    let timeout: number | undefined
+    let connectionTimeout: number | undefined
+    let reconnectTimeout: number | undefined
+    let events: EventSource | undefined
 
     const poll = async () => {
       if (document.visibilityState !== "visible") return
@@ -192,27 +248,71 @@ export function GroupStudyPanel({
     }
 
     // Start responsively, then back off once the room is stable.
-    const getInterval = () => (stableCount >= 2 ? 15_000 : 5_000)
-    let timeout: number
+    const getInterval = () => (stableCount >= 2 ? 30_000 : 5_000)
     const schedule = () => {
+      if (stopped || !pollingFallback) return
+      if (timeout) window.clearTimeout(timeout)
       timeout = window.setTimeout(
         async () => {
           await poll()
           schedule()
         },
-        document.visibilityState === "visible" ? getInterval() : 15_000,
+        document.visibilityState === "visible" ? getInterval() : 30_000,
       )
     }
-    schedule()
+    const connectEvents = () => {
+      if (stopped) return
+      const nextEvents = new EventSource(
+        `/api/timer/group-events?roomId=${encodeURIComponent(sharedSession.id)}`,
+      )
+      events = nextEvents
+      nextEvents.onopen = () => {
+        if (connectionTimeout) window.clearTimeout(connectionTimeout)
+        pollingFallback = false
+        if (timeout) window.clearTimeout(timeout)
+      }
+      nextEvents.addEventListener("room-changed", () => {
+        stableCount = 0
+        router.refresh()
+      })
+      nextEvents.onerror = () => {
+        if (connectionTimeout) window.clearTimeout(connectionTimeout)
+        // Replace EventSource's one-second reconnect loop with a bounded retry.
+        // A 204 response means realtime is intentionally unavailable and is
+        // terminal; transient/network closures are retried after one minute.
+        const shouldReconnect = nextEvents.readyState !== EventSource.CLOSED
+        nextEvents.close()
+        if (!pollingFallback && !stopped) {
+          pollingFallback = true
+          void poll().finally(schedule)
+        }
+        if (shouldReconnect && !stopped) {
+          reconnectTimeout = window.setTimeout(connectEvents, 60_000)
+        }
+      }
+      connectionTimeout = window.setTimeout(() => {
+        if (nextEvents.readyState === EventSource.OPEN || stopped) return
+        nextEvents.close()
+        if (!pollingFallback) {
+          pollingFallback = true
+          void poll().finally(schedule)
+        }
+        reconnectTimeout = window.setTimeout(connectEvents, 60_000)
+      }, 5_000)
+    }
+    connectEvents()
     const handleVisibilityChange = () => {
-      window.clearTimeout(timeout)
+      if (timeout) window.clearTimeout(timeout)
       if (document.visibilityState === "visible") stableCount = 0
       schedule()
     }
     document.addEventListener("visibilitychange", handleVisibilityChange)
     return () => {
-      events.close()
-      window.clearTimeout(timeout)
+      stopped = true
+      events?.close()
+      if (timeout) window.clearTimeout(timeout)
+      if (connectionTimeout) window.clearTimeout(connectionTimeout)
+      if (reconnectTimeout) window.clearTimeout(reconnectTimeout)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
   }, [router, sharedSession])
@@ -284,9 +384,34 @@ export function GroupStudyPanel({
           <p>Study together</p>
           <h2 id="group-study-heading">Group Study</h2>
         </div>
-        <span className="group-study__heading-icon" aria-hidden="true">
-          <Users />
-        </span>
+        <div className="group-study__heading-actions">
+          <button
+            aria-label={
+              privacyMode
+                ? "Disable privacy mode: reveal subjects"
+                : "Enable privacy mode: mask subjects as Focusing"
+            }
+            aria-pressed={privacyMode}
+            className={`group-study-privacy-toggle ${privacyMode ? "group-study-privacy-toggle--active" : ""}`}
+            onClick={togglePrivacyMode}
+            title={
+              privacyMode
+                ? "Privacy mode: showing 'Focusing' instead of subjects (click to reveal)"
+                : "Privacy mode: mask subjects as 'Focusing'"
+            }
+            type="button"
+          >
+            {privacyMode ? (
+              <EyeOff aria-hidden="true" />
+            ) : (
+              <Eye aria-hidden="true" />
+            )}
+            <span>{privacyMode ? "Masked: Focusing" : "Privacy mode"}</span>
+          </button>
+          <span className="group-study__heading-icon" aria-hidden="true">
+            <Users />
+          </span>
+        </div>
       </div>
 
       {sharedSession ? (
@@ -295,6 +420,8 @@ export function GroupStudyPanel({
           key={`${sharedSession.id}:${sharedSession.version}`}
           nowMs={nowMs}
           onCopy={copyCode}
+          onTogglePrivacyMode={togglePrivacyMode}
+          privacyMode={privacyMode}
           session={sharedSession}
           timezone={timezone}
         />
@@ -450,7 +577,18 @@ export function GroupStudyPanel({
       )}
 
       {sharedHistory.length > 0 ? (
-        <GroupStudyHistory history={sharedHistory} timezone={timezone} />
+        <GroupStudyHistory
+          history={sharedHistory}
+          privacyMode={privacyMode}
+          timezone={timezone}
+        />
+      ) : null}
+
+      {privacyNotice ? (
+        <GroupStudyPrivacyPopup
+          notice={privacyNotice}
+          onDismiss={() => setPrivacyNotice(null)}
+        />
       ) : null}
     </section>
   )
@@ -458,9 +596,11 @@ export function GroupStudyPanel({
 
 function GroupStudyHistory({
   history,
+  privacyMode,
   timezone,
 }: Readonly<{
   history: readonly GroupStudyHistoryView[]
+  privacyMode: boolean
   timezone: string
 }>) {
   return (
@@ -482,7 +622,14 @@ function GroupStudyHistory({
               <div>
                 <strong>{room.name}</strong>
                 <p>
-                  {room.subject} · {formatHistoryDate(room.joinedAt, timezone)}
+                  <span
+                    className={
+                      privacyMode ? "group-study-room__subject--masked" : ""
+                    }
+                  >
+                    {privacyMode ? "Focusing" : room.subject}
+                  </span>{" "}
+                  · {formatHistoryDate(room.joinedAt, timezone)}
                 </p>
               </div>
               <small>
@@ -559,12 +706,16 @@ function ActiveGroupStudyRoom({
   copied,
   nowMs,
   onCopy,
+  onTogglePrivacyMode,
+  privacyMode,
   session,
   timezone,
 }: Readonly<{
   copied: boolean
   nowMs: number
   onCopy: () => void
+  onTogglePrivacyMode: () => void
+  privacyMode: boolean
   session: GroupStudySessionView
   timezone: string
 }>) {
@@ -641,11 +792,38 @@ function ActiveGroupStudyRoom({
     <div className="group-study-room">
       <div className="group-study-room__topline">
         <div>
-          <span className="group-study-room__live">
-            <Radio aria-hidden="true" /> Live room
-          </span>
+          <div className="group-study-room__badges">
+            <span className="group-study-room__live">
+              <Radio aria-hidden="true" /> Live room
+            </span>
+            <button
+              aria-label={
+                privacyMode
+                  ? "Disable privacy mode: reveal subjects"
+                  : "Enable privacy mode: mask subjects as Focusing"
+              }
+              aria-pressed={privacyMode}
+              className={`group-study-privacy-toggle ${privacyMode ? "group-study-privacy-toggle--active" : ""}`}
+              onClick={onTogglePrivacyMode}
+              title={
+                privacyMode
+                  ? "Privacy mode: showing 'Focusing' instead of subject (click to reveal)"
+                  : "Privacy mode: mask subjects as 'Focusing'"
+              }
+              type="button"
+            >
+              {privacyMode ? (
+                <EyeOff aria-hidden="true" />
+              ) : (
+                <Eye aria-hidden="true" />
+              )}
+              <span>{privacyMode ? "Masked: Focusing" : "Privacy mode"}</span>
+            </button>
+          </div>
           <h3>{session.name}</h3>
-          <p>{session.subject}</p>
+          <p className={privacyMode ? "group-study-room__subject--masked" : ""}>
+            {privacyMode ? "Focusing" : session.subject}
+          </p>
         </div>
         <button
           aria-label={`Copy Group Study code ${session.joinCode}`}
@@ -788,9 +966,34 @@ function ActiveGroupStudyRoom({
           <Users aria-hidden="true" />
           <h4>Studying now</h4>
         </div>
-        <span>
-          {session.participants.length} / {session.participantLimit} active
-        </span>
+        <div className="group-study-room__section-actions">
+          <button
+            aria-label={
+              privacyMode
+                ? "Disable privacy mode: reveal subjects"
+                : "Enable privacy mode: mask subjects as Focusing"
+            }
+            aria-pressed={privacyMode}
+            className={`group-study-privacy-toggle ${privacyMode ? "group-study-privacy-toggle--active" : ""}`}
+            onClick={onTogglePrivacyMode}
+            title={
+              privacyMode
+                ? "Privacy mode: showing 'Focusing' instead of subjects (click to reveal)"
+                : "Privacy mode: mask subjects as 'Focusing'"
+            }
+            type="button"
+          >
+            {privacyMode ? (
+              <EyeOff aria-hidden="true" />
+            ) : (
+              <Eye aria-hidden="true" />
+            )}
+            <span>{privacyMode ? "Masked" : "Privacy mode"}</span>
+          </button>
+          <span>
+            {session.participants.length} / {session.participantLimit} active
+          </span>
+        </div>
       </div>
       <div className="group-study-room__participants">
         {session.participants.map((participant) => (
@@ -808,7 +1011,18 @@ function ActiveGroupStudyRoom({
                   {participant.isCurrentUser ? <small>You</small> : null}
                   {participant.isHost ? <small>Host</small> : null}
                 </h4>
-                <p>{participant.subject}</p>
+                <p
+                  className={
+                    privacyMode ? "group-study-person__subject--masked" : ""
+                  }
+                  title={
+                    privacyMode && participant.isCurrentUser
+                      ? `Your task: ${participant.subject}`
+                      : undefined
+                  }
+                >
+                  {privacyMode ? "Focusing" : participant.subject}
+                </p>
               </div>
             </div>
             <strong className="group-study-person__clock">

@@ -18,16 +18,20 @@ describe("response security headers", () => {
     const headers = new Map(
       globalEntry?.headers.map((header) => [header.key, header.value] as const),
     )
-    const csp = proxy(
+    const dynamicCsp = proxy(
       new NextRequest("https://traketo.example.test/sign-in"),
     ).headers.get("Content-Security-Policy")
+    const staticCsp = headers.get("Content-Security-Policy")
 
     expect(globalEntry).toBeDefined()
-    expect(csp).toContain("frame-ancestors 'none'")
-    expect(csp).toMatch(/script-src 'self' 'nonce-[^']+'/)
-    expect(csp).not.toContain("strict-dynamic")
-    expect(csp).toContain("frame-src 'self' https://challenges.cloudflare.com")
-    expect(csp).toContain("https://challenges.cloudflare.com")
+    expect(dynamicCsp).toContain("frame-ancestors 'none'")
+    expect(dynamicCsp).toMatch(/script-src 'self' 'nonce-[^']+'/)
+    expect(dynamicCsp).not.toContain("strict-dynamic")
+    expect(dynamicCsp).toContain(
+      "frame-src 'self' https://challenges.cloudflare.com",
+    )
+    expect(staticCsp).toContain("script-src 'self' 'unsafe-inline'")
+    expect(staticCsp).toContain("https://challenges.cloudflare.com")
     expect(headers.get("Cross-Origin-Opener-Policy")).toBe("same-origin")
     expect(headers.get("Cross-Origin-Resource-Policy")).toBe("same-origin")
     expect(headers.get("Permissions-Policy")).toContain("camera=()")

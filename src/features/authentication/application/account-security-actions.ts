@@ -1,10 +1,11 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 
 import { getDatabase } from "@/db/client"
 import {
+  getCurrentSessionId,
   requireUser,
   requireWorkspaceAccess,
 } from "@/features/authentication/server/authorization"
@@ -28,6 +29,10 @@ import {
   publishRealtimeEvent,
   userSessionRealtimeChannel,
 } from "@/lib/realtime/realtime-events"
+import {
+  cookieConsentName,
+  parseCookieConsent,
+} from "@/features/privacy/domain/cookie-consent"
 
 export type SessionView = Readonly<{
   createdAt: string
@@ -38,8 +43,23 @@ export type SessionView = Readonly<{
 }>
 
 export type ExportDataState = ActionResult<{
-  filename: string
-  pdfBase64: string
+  json: {
+    base64: string
+    filename: string
+    mimeType: "application/json"
+  }
+  pdf: {
+    base64: string
+    filename: string
+    mimeType: "application/pdf"
+  } | null
+  summary: {
+    consentRecords: number
+    sessions: number
+    sharedGroups: number
+    tasks: number
+    workspaces: number
+  }
 }> | null
 export type DeleteAccountState = ActionResult<{ deleted: true }> | null
 
@@ -54,6 +74,9 @@ const deleteAccountConfirmationSchema = z.object({
     .refine((val) => val.toUpperCase() === "DELETE", {
       message: 'Type "DELETE" to confirm account deletion.',
     }),
+})
+const exportAccountDataSchema = z.object({
+  includePdf: z.boolean(),
 })
 
 async function accountRateLimitFailure(userId: string) {
@@ -150,22 +173,68 @@ export async function signOutEverywhereAction(): Promise<
   return { data: { signedOut: true }, ok: true }
 }
 
-export async function exportAccountDataAction(): Promise<ExportDataState> {
+export async function exportAccountDataAction(input: {
+  includePdf: boolean
+}): Promise<ExportDataState> {
   const access = await requireWorkspaceAccess()
   const user = await requireUser()
   const limited = await accountRateLimitFailure(user.id)
   if (limited) return limited
 
+  const parsed = exportAccountDataSchema.safeParse(input)
+  if (!parsed.success) {
+    return validationFailure("Choose a valid export format and try again.", {})
+  }
+
+  const [currentSessionId, cookieStore] = await Promise.all([
+    getCurrentSessionId(),
+    cookies(),
+  ])
+  const cookieConsent = parseCookieConsent(
+    cookieStore.get(cookieConsentName)?.value,
+  )
   const payload = await buildAccountExport(getDatabase(), access, {
-    email: user.email,
-    name: user.name,
+    browserPreferenceConsent:
+      cookieConsent === null
+        ? null
+        : {
+            personalization: cookieConsent === "preferences",
+            preferences: cookieConsent === "preferences",
+          },
+    currentSessionId,
   })
-  const pdf = await buildAccountExportPdf(payload)
+  const pdf = parsed.data.includePdf
+    ? await buildAccountExportPdf(payload)
+    : null
+  const date = new Date().toISOString().slice(0, 10)
+  const count = (key: string) => {
+    const value = payload[key]
+    return Array.isArray(value) ? value.length : 0
+  }
 
   return {
     data: {
-      filename: `traketo-export-${new Date().toISOString().slice(0, 10)}.pdf`,
-      pdfBase64: Buffer.from(pdf).toString("base64"),
+      json: {
+        base64: Buffer.from(JSON.stringify(payload, null, 2)).toString(
+          "base64",
+        ),
+        filename: `traketo-export-${date}.json`,
+        mimeType: "application/json",
+      },
+      pdf: pdf
+        ? {
+            base64: Buffer.from(pdf).toString("base64"),
+            filename: `traketo-export-${date}.pdf`,
+            mimeType: "application/pdf",
+          }
+        : null,
+      summary: {
+        consentRecords: count("consentHistory"),
+        sessions: count("sessions"),
+        sharedGroups: count("sharedGroups"),
+        tasks: count("tasks"),
+        workspaces: count("workspaces"),
+      },
     },
     ok: true,
   }
@@ -270,5 +339,3 @@ async function removeAttachmentObjects(storageKeys: readonly string[]) {
     )
   }
 }
-
-

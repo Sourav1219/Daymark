@@ -1,17 +1,34 @@
 // @vitest-environment node
 
 import { NextRequest } from "next/server"
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server"
 import { describe, expect, it } from "vitest"
 
 import { buildContentSecurityPolicy, config, proxy } from "./proxy"
 
 describe("protected route proxy", () => {
-  it("runs on app pages so every rendered document receives a nonce", () => {
-    expect(config.matcher).toEqual([
-      expect.objectContaining({
-        source: expect.stringContaining("_next/static"),
-      }),
-    ])
+  it.each([
+    "/",
+    "/app",
+    "/app/workspaces/example",
+    "/today",
+    "/quests/example",
+    "/sign-in",
+    "/contact",
+  ])("runs on dynamic application route %s", (url) => {
+    expect(unstable_doesMiddlewareMatch({ config, url })).toBe(true)
+  })
+
+  it.each([
+    "/about",
+    "/privacy",
+    "/terms",
+    "/wp-admin/install.php",
+    "/ads.txt",
+    "/api/session/ping",
+    "/_next/static/chunk.js",
+  ])("bypasses the proxy for static or unknown route %s", (url) => {
+    expect(unstable_doesMiddlewareMatch({ config, url })).toBe(false)
   })
 
   it("redirects a request without a session cookie", () => {

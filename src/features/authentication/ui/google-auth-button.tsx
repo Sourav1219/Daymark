@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 
 import { authClient } from "@/features/authentication/client/auth-client"
+import { prepareGoogleRegistrationAction } from "@/features/authentication/application/actions"
 import { safeRedirectPath } from "@/features/authentication/application/validation"
 import {
   closeAuthSession,
@@ -18,6 +19,8 @@ type GoogleAuthButtonProps = Readonly<{
   mode: "continue" | "login" | "register"
   nextPath: string
   oauthError: GoogleOAuthError
+  registrationAllowed?: boolean
+  onRegistrationAgreementRequired?: () => void
 }>
 
 const labels = {
@@ -54,6 +57,8 @@ export function GoogleAuthButton({
   mode,
   nextPath,
   oauthError,
+  registrationAllowed = false,
+  onRegistrationAgreementRequired,
 }: GoogleAuthButtonProps) {
   const [pending, setPending] = useState(false)
   const [clientError, setClientError] = useState<string | null>(null)
@@ -83,11 +88,28 @@ export function GoogleAuthButton({
 
   async function startGoogleAuth() {
     if (!configured || pending) return
+    if (mode === "register" && !registrationAllowed) {
+      setClientError(null)
+      onRegistrationAgreementRequired?.()
+      return
+    }
 
     setPending(true)
     setClientError(null)
 
     try {
+      if (mode === "register") {
+        const prepared = await prepareGoogleRegistrationAction({
+          privacyNoticeAcknowledged: true,
+          termsAccepted: true,
+        })
+        if (!prepared.ok) {
+          setClientError(prepared.error.message)
+          setPending(false)
+          return
+        }
+      }
+
       const isNative = isCapacitorNative()
       const errorPath = mode === "register" ? "/sign-up" : "/sign-in"
 

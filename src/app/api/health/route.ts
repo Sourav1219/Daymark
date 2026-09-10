@@ -1,16 +1,14 @@
-export const dynamic = "force-dynamic"
-export const runtime = "nodejs"
+export const dynamic = "force-static"
 
 export function GET() {
   return Response.json(
     {
       service: "traketo",
       status: "ok",
-      timestamp: new Date().toISOString(),
     },
     {
       headers: {
-        "Cache-Control": "no-store",
+        "Cache-Control": "public, max-age=0, s-maxage=31536000, immutable",
       },
     },
   )

@@ -15,13 +15,33 @@ describe("registration validation", () => {
       email: "  USER@Example.com ",
       name: "  Ada Lovelace  ",
       password: "correct-horse-battery-staple",
+      privacyNoticeAcknowledged: "on",
+      termsAccepted: "on",
     })
 
     expect(result).toEqual({
       email: "user@example.com",
       name: "Ada Lovelace",
       password: "correct-horse-battery-staple",
+      privacyNoticeAcknowledged: "on",
+      termsAccepted: "on",
     })
+  })
+
+  it("requires combined age and terms acceptance plus privacy acknowledgement", () => {
+    const result = registrationSchema.safeParse({
+      email: "user@example.com",
+      name: "Valid Name",
+      password: "correct-horse-battery-staple",
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors).toMatchObject({
+        privacyNoticeAcknowledged: expect.any(Array),
+        termsAccepted: expect.any(Array),
+      })
+    }
   })
 
   it("rejects malformed email, short name, and short password", () => {

@@ -8,9 +8,9 @@ import { useRouter } from "next/navigation"
 import { SessionExpiredCard } from "@/features/authentication/ui/session-expired-card"
 import { clearPrivateOfflineData } from "@/features/offline/storage/offline-database"
 
-const SESSION_CHECK_INTERVAL_MS = 5 * 60 * 1_000
+const SESSION_CHECK_INTERVAL_MS = 10 * 60 * 1_000
 const SESSION_CHECK_DEDUPLICATION_MS = 30 * 1_000
-const SHARED_SESSION_CHECK_WINDOW_MS = 4 * 60 * 1_000
+const SHARED_SESSION_CHECK_WINDOW_MS = 9 * 60 * 1_000
 const SHARED_SESSION_CHECK_KEY = "traketo:last-session-check:v1"
 
 function recentlyCheckedInAnotherTab(now: number) {

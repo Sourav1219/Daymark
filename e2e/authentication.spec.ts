@@ -16,6 +16,8 @@ test("registers, enters Today, logs out, and logs in", async ({
   await page.getByLabel("Name").fill("E2E Operator")
   await page.getByLabel("Email").fill(email)
   await page.getByLabel("Password", { exact: true }).fill(password)
+  await page.locator("#termsAccepted").check()
+  await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
 
   await expect(page).toHaveURL(/\/today$/u)
@@ -92,6 +94,8 @@ test("keeps sign-up and sign-in states separate and reports duplicate accounts",
   await page.getByLabel("Name").fill("Auth State E2E")
   await page.getByLabel("Email").fill(email)
   await page.getByLabel("Password", { exact: true }).fill(password)
+  await page.locator("#termsAccepted").check()
+  await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page).toHaveURL(/\/today$/u)
 
@@ -103,6 +107,8 @@ test("keeps sign-up and sign-in states separate and reports duplicate accounts",
   await page.getByLabel("Name").fill("Duplicate Auth E2E")
   await page.getByLabel("Email").fill(email)
   await page.getByLabel("Password", { exact: true }).fill(password)
+  await page.locator("#termsAccepted").check()
+  await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
   await expect(page.locator(".auth__error")).toHaveText(
     "An account with this email already exists. Sign in instead.",

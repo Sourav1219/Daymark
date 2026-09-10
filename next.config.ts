@@ -2,6 +2,8 @@ import { withSentryConfig } from "@sentry/nextjs/config"
 import { withSerwist } from "@serwist/turbopack"
 import type { NextConfig } from "next"
 
+import { buildContentSecurityPolicy } from "./src/lib/security/content-security-policy"
+
 const production = process.env.NODE_ENV === "production"
 const securityHeaders = [
   ...(!production
@@ -14,6 +16,10 @@ const securityHeaders = [
     : []),
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+  {
+    key: "Content-Security-Policy",
+    value: buildContentSecurityPolicy(undefined),
+  },
   {
     key: "Permissions-Policy",
     value: "camera=(), geolocation=(), microphone=()",
@@ -36,6 +42,9 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   experimental: {
     authInterrupts: true,
+    // Integrity attributes protect cached JavaScript assets while public pages
+    // use a static CSP and can therefore be served without a function.
+    sri: { algorithm: "sha256" },
   },
   poweredByHeader: false,
   productionBrowserSourceMaps: false,

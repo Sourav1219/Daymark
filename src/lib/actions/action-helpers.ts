@@ -14,7 +14,6 @@ import type {
   ActionFailure,
   ActionResult,
 } from "@/lib/actions/action-result"
-import { observeRateLimitHit } from "@/lib/observability/metrics"
 import { logger } from "@/lib/observability/logger"
 import { resolveRequestId } from "@/lib/observability/request-context"
 
@@ -110,7 +109,6 @@ export async function runActionMutation<T>({
       userId: rateLimit.userId,
     })
     if (limit && !limit.success) {
-      observeRateLimitHit(rateLimit.policy)
       return rateLimitFailure()
     }
 

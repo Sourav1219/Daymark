@@ -30,6 +30,10 @@ export async function GET() {
 
   const session = await getAuth().api.getSession({
     headers: requestHeaders,
+    query: {
+      disableCookieCache: true,
+      disableRefresh: true,
+    },
   })
 
   if (!session) {

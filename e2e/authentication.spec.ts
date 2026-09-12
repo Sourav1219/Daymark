@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { expect, test } from "@playwright/test"
+import { completeEmailVerification } from "./helpers/complete-email-verification"
 
 test("registers, enters Today, logs out, and logs in", async ({
   context,
@@ -19,6 +20,7 @@ test("registers, enters Today, logs out, and logs in", async ({
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page)
 
   await expect(page).toHaveURL(/\/today$/u)
   await expect(
@@ -44,23 +46,27 @@ test("registers, enters Today, logs out, and logs in", async ({
   await expect(page).toHaveURL(/\/today$/u)
   await page.getByRole("link", { name: "Profile" }).click()
   await page.getByRole("button", { name: "Log out" }).click()
-  await expect(page).toHaveURL(/\/sign-in$/u)
+  await expect(page).toHaveURL(/\/sign-out\?next=%2Ftoday$/u)
+  await expect(
+    page.getByRole("heading", { name: "You have been signed out." }),
+  ).toBeVisible()
+  await page.getByRole("link", { name: "Sign in again" }).click()
+  await expect(page).toHaveURL(/\/sign-in\?mode=login&next=%2Ftoday$/u)
 
   await context.addCookies([
     {
       httpOnly: true,
       name: "questly.session_token",
       sameSite: "Lax",
-      url: "http://127.0.0.1:3000",
+      url: new URL(page.url()).origin,
       value: "invalid-session-token",
     },
   ])
   await page.goto("/app")
-  await expect(
-    page.getByRole("heading", { name: "Your session is missing or expired." }),
-  ).toBeVisible()
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Fapp$/u)
+  await expect(page.getByRole("button", { name: "Get started" })).toBeVisible()
 
-  await context.clearCookies()
+  await context.clearCookies({ name: /questly\.session_token$/u })
   await page.goto("/app")
   await expect(page).toHaveURL(/\/sign-in\?next=%2Fapp$/u)
   await page.getByRole("button", { name: "I already have an account" }).click()
@@ -86,7 +92,7 @@ test("keeps sign-up and sign-in states separate and reports duplicate accounts",
   await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Enter" }).click()
   await expect(page.locator(".auth__error")).toHaveText(
-    "Email or password is incorrect. Check your details and try again.",
+    "Sign-in was unsuccessful. Please try again.",
   )
 
   await page.getByRole("button", { name: "Register" }).click()
@@ -97,11 +103,13 @@ test("keeps sign-up and sign-in states separate and reports duplicate accounts",
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
-  await expect(page).toHaveURL(/\/today$/u)
+  await completeEmailVerification(page)
 
   await page.getByRole("link", { name: "Profile" }).click()
   await page.getByRole("button", { name: "Log out" }).click()
-  await expect(page).toHaveURL(/\/sign-in$/u)
+  await expect(page).toHaveURL(/\/sign-out\?next=%2Ftoday$/u)
+  await page.getByRole("link", { name: "Sign in again" }).click()
+  await expect(page).toHaveURL(/\/sign-in\?mode=login&next=%2Ftoday$/u)
 
   await page.goto("/sign-up")
   await page.getByLabel("Name").fill("Duplicate Auth E2E")
@@ -110,11 +118,16 @@ test("keeps sign-up and sign-in states separate and reports duplicate accounts",
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
-  await expect(page.locator(".auth__error")).toHaveText(
-    "An account with this email already exists. Sign in instead.",
-  )
+  await expect(
+    page.getByRole("heading", { name: "Check your inbox." }),
+  ).toBeVisible()
+  await expect(
+    page.getByText("An account with this email already exists", {
+      exact: false,
+    }),
+  ).toHaveCount(0)
 
-  await page.getByRole("button", { name: "Sign in" }).click()
+  await page.getByRole("button", { name: "Back to sign in" }).click()
   await expect(page.locator(".auth__error")).toHaveCount(0)
   await page.getByLabel("Email").fill(email)
   await page
@@ -122,7 +135,7 @@ test("keeps sign-up and sign-in states separate and reports duplicate accounts",
     .fill("definitely-the-wrong-password")
   await page.getByRole("button", { name: "Enter" }).click()
   await expect(page.locator(".auth__error")).toHaveText(
-    "Email or password is incorrect. Check your details and try again.",
+    "Sign-in was unsuccessful. Please try again.",
   )
 
   await page.getByLabel("Password", { exact: true }).fill(password)

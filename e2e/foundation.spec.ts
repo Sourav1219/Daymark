@@ -26,9 +26,8 @@ test("redirects the root to sign-in and exposes the health endpoint", async ({
 
   await page.goto("/sign-up")
   await expect(page.getByText("Your data, in plain language")).toHaveCount(0)
-  await expect(
-    page.locator(".auth__turnstile + .auth__agreements"),
-  ).toHaveCount(1)
+  await expect(page.locator(".auth__turnstile")).toHaveCount(0)
+  await expect(page.locator(".auth__agreements")).toHaveCount(1)
   await expect(page.locator(".auth__agreements + .auth__submit")).toHaveCount(1)
   const terms = page.getByRole("checkbox", {
     name: /I confirm I am 18 or older and accept the Terms of Service/u,
@@ -49,7 +48,7 @@ test("redirects the root to sign-in and exposes the health endpoint", async ({
   const optionalConsentCookie = (await page.context().cookies()).find(
     (cookie) => cookie.name === "traketo_cookie_consent",
   )
-  expect(optionalConsentCookie).toBeUndefined()
+  expect(optionalConsentCookie?.value).toBe("v1.essential")
   await expect(page.locator("[data-nextjs-dialog]")).toHaveCount(0)
   expect(consoleErrors).toEqual([])
 })

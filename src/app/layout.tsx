@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 
 const inter = Inter({
   display: "swap",
+  preload: false,
   subsets: ["latin"],
   variable: "--font-inter",
 })

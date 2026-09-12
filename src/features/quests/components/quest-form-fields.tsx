@@ -145,7 +145,12 @@ export function QuestFormFields({
     }
 
     if (preset === "today") {
-      const start = new Date(Math.ceil((Date.now() + 1) / 900_000) * 900_000)
+      // Keep a full minute of headroom before the next quarter-hour. Without
+      // it, clicking near a boundary can submit a start time that the server
+      // already considers past by the time the action is processed.
+      const start = new Date(
+        Math.ceil((Date.now() + 60_000) / 900_000) * 900_000,
+      )
       setSchedule({
         dueAt: formatZonedLocalInput(
           new Date(start.getTime() + 2 * 60 * 60_000),

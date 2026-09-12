@@ -4,6 +4,7 @@ import { Suspense } from "react"
 import { usePathname } from "next/navigation"
 
 import { BottomTabBar } from "@/components/shell/bottom-tab-bar"
+import "@/app/styles/route-loading.css"
 import {
   AboutLoadingState,
   ContactLoadingState,

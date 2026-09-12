@@ -141,6 +141,7 @@ export function AuthExperience({
               <Link
                 className="font-semibold text-system-blue underline underline-offset-2 hover:opacity-80"
                 href="/contact"
+                prefetch={false}
               >
                 Contact support
               </Link>

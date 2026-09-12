@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { serverEnvSchema } from "./schema"
 
 describe("serverEnvSchema", () => {
+  afterEach(() => vi.unstubAllEnvs())
+
   const turnstile = {
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: "turnstile-public-test-key",
     TURNSTILE_SECRET_KEY: "turnstile-secret-test-key",
@@ -232,6 +234,22 @@ describe("serverEnvSchema", () => {
           "postgresql://app_user:pass@example.test/questly?sslmode=require",
         MIGRATION_DATABASE_URL:
           "postgresql://migration_user:pass@example.test/questly?sslmode=verify-full",
+      }).success,
+    ).toBe(true)
+  })
+
+  it("allows external-service omissions only for loopback E2E production builds", () => {
+    vi.stubEnv("E2E_TEST_MODE", "true")
+
+    expect(
+      serverEnvSchema.safeParse({
+        BETTER_AUTH_SECRET: "a-secure-secret-that-is-at-least-32-characters",
+        BETTER_AUTH_URL: "http://127.0.0.1:3001",
+        CRON_SECRET: "cron-secret-that-is-at-least-32-characters",
+        DATABASE_URL: "postgresql://app_user:pass@example.test/questly",
+        MIGRATION_DATABASE_URL:
+          "postgresql://migration_user:pass@example.test/questly",
+        NODE_ENV: "production",
       }).success,
     ).toBe(true)
   })

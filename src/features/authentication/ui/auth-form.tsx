@@ -14,6 +14,7 @@ import {
 } from "@/features/authentication/ui/google-auth-button"
 import { EmailVerificationPanel } from "@/features/authentication/ui/email-verification-panel"
 import { TurnstileWidget } from "@/features/authentication/ui/turnstile-widget"
+import "@/app/styles/sign-in-register-forms.css"
 import type { AuthNotice } from "@/features/authentication/ui/auth-experience"
 
 const loadingMessages = [

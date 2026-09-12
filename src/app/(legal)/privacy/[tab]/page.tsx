@@ -86,10 +86,6 @@ export default async function PrivacySubpage(props: {
   }
 
   return (
-    <PrivacyExperience
-      initialTab={initialTab}
-      isSubpage
-      user={privacyUser}
-    />
+    <PrivacyExperience initialTab={initialTab} isSubpage user={privacyUser} />
   )
 }

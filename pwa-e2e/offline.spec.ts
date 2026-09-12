@@ -6,6 +6,8 @@ test("installs the worker, queues offline creation, recovers, and clears private
   page,
   request,
 }) => {
+  test.setTimeout(120_000)
+
   const manifest = await request.get("/manifest.webmanifest")
   expect(manifest.ok()).toBe(true)
   await expect(manifest.json()).resolves.toMatchObject({
@@ -18,6 +20,7 @@ test("installs the worker, queues offline creation, recovers, and clears private
   })
 
   const email = `phase8-${Date.now()}@example.com`
+  const offlinePasscode = "pwa-offline-passcode"
   const password = "OfflinePhase8!2026"
   await page.goto("/sign-up")
   await page.getByLabel("Name").fill("Offline Operator")
@@ -32,12 +35,32 @@ test("installs the worker, queues offline creation, recovers, and clears private
   await page.goto("/quests")
   await page.getByLabel("Task title").fill("Online cached task")
   await page.getByRole("button", { name: "Create Task", exact: true }).click()
-  await page.getByRole("button", { name: "Continue" }).click()
+  await page.getByRole("link", { name: "Continue" }).click()
+  await expect(page).toHaveURL(/\/today\?task=/u)
+  await page.goto("/quests")
   await page.getByRole("tab", { name: /Search/u }).click()
   await page
     .getByRole("searchbox", { name: "Search" })
     .fill("Online cached task")
   await expect(page).toHaveURL(/search=Online(?:\+|%20)cached/u)
+  await expect(
+    page.getByRole("article", { name: "Online cached task", exact: true }),
+  ).toBeVisible()
+
+  await page.goto("/settings")
+  await page.getByLabel("Create offline passcode").fill(offlinePasscode)
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    page.getByRole("button", { name: "Enable encrypted offline data" }).click(),
+  ])
+  await page.goto("/quests")
+  await page.getByLabel("Offline data passcode").fill(offlinePasscode)
+  await page.getByRole("button", { name: "Unlock offline data" }).click()
+  await expect(page.getByText("Offline data unlocked")).toBeVisible()
+  await page.getByRole("tab", { name: /Search/u }).click()
+  await page
+    .getByRole("searchbox", { name: "Search" })
+    .fill("Online cached task")
   await expect(
     page.getByRole("article", { name: "Online cached task", exact: true }),
   ).toBeVisible()
@@ -114,8 +137,13 @@ test("installs the worker, queues offline creation, recovers, and clears private
 
   await page.reload({ waitUntil: "domcontentloaded" })
   await expect(
-    page.getByRole("heading", { name: "Offline tasks" }),
+    page.getByRole("heading", { name: "Offline Workspace" }),
   ).toBeVisible()
+  await page.getByLabel("Offline passcode").fill(offlinePasscode)
+  await page.getByRole("button", { name: "Unlock offline data" }).click()
+  await expect(
+    page.getByRole("heading", { name: "Offline Tasks", exact: true }),
+  ).toBeAttached()
   await expect(
     page.getByText("Online cached task", { exact: true }),
   ).toHaveCount(0)
@@ -124,7 +152,8 @@ test("installs the worker, queues offline creation, recovers, and clears private
   ).toBeVisible()
 
   await context.setOffline(false)
-  await page.goto("/quests")
+  await page.getByRole("link", { name: "Try reconnecting" }).click()
+  await expect(page).toHaveURL(/\/quests$/u)
   await page.getByRole("tab", { name: /Search/u }).click()
   await page
     .getByRole("searchbox", { name: "Search" })
@@ -139,7 +168,7 @@ test("installs the worker, queues offline creation, recovers, and clears private
 
   await page.getByRole("link", { name: "Profile" }).click()
   await page.getByRole("button", { name: "Log out" }).click()
-  await expect(page).toHaveURL(/\/sign-in$/u)
+  await expect(page).toHaveURL(/\/sign-out\?next=%2Ftoday$/u)
   await expect
     .poll(() =>
       page.evaluate(async () => {

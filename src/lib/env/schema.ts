@@ -104,6 +104,8 @@ export const serverEnvSchema = z
       .optional(),
   })
   .superRefine((env, context) => {
+    const loopbackE2E = isLoopbackE2ETestEnvironment(env)
+
     if (
       Boolean(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) !==
       Boolean(env.TURNSTILE_SECRET_KEY)
@@ -126,6 +128,7 @@ export const serverEnvSchema = z
     // In production, enforce HTTPS for the auth URL.
     if (
       env.NODE_ENV === "production" &&
+      !loopbackE2E &&
       !env.BETTER_AUTH_URL.startsWith("https://")
     ) {
       context.addIssue({
@@ -135,7 +138,10 @@ export const serverEnvSchema = z
       })
     }
     if (env.NODE_ENV === "production") {
-      if (!env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || !env.TURNSTILE_SECRET_KEY) {
+      if (
+        !loopbackE2E &&
+        (!env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || !env.TURNSTILE_SECRET_KEY)
+      ) {
         context.addIssue({
           code: "custom",
           message: "Turnstile site and secret keys are required in production.",
@@ -150,7 +156,10 @@ export const serverEnvSchema = z
           path: ["CRON_SECRET"],
         })
       }
-      if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
+      if (
+        !loopbackE2E &&
+        (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN)
+      ) {
         context.addIssue({
           code: "custom",
           message:
@@ -166,7 +175,7 @@ export const serverEnvSchema = z
       const hasTlsMode = (url: URL) =>
         encryptedModes.has(url.searchParams.get("sslmode")?.toLowerCase() ?? "")
 
-      if (!hasTlsMode(runtimeUrl)) {
+      if (!loopbackE2E && !hasTlsMode(runtimeUrl)) {
         context.addIssue({
           code: "custom",
           message:
@@ -182,7 +191,7 @@ export const serverEnvSchema = z
           path: ["MIGRATION_DATABASE_URL"],
         })
       } else {
-        if (!hasTlsMode(migrationUrl)) {
+        if (!loopbackE2E && !hasTlsMode(migrationUrl)) {
           context.addIssue({
             code: "custom",
             message:
@@ -244,7 +253,7 @@ export const serverEnvSchema = z
     }
     if (
       env.NODE_ENV === "production" &&
-      !isLoopbackE2ETestEnvironment(env) &&
+      !loopbackE2E &&
       (!env.RESEND_API_KEY || !emailFrom)
     ) {
       context.addIssue({

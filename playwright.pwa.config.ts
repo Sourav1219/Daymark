@@ -30,9 +30,13 @@ export default defineConfig({
     command: "pnpm build && pnpm start --hostname 127.0.0.1 --port 3001",
     env: {
       ...process.env,
+      BETTER_AUTH_URL: "http://127.0.0.1:3001",
       E2E_TEST_MODE: "true",
       NEXT_DIST_DIR: ".next-pwa-e2e",
+      NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3001",
       NEXT_PUBLIC_E2E_TEST_MODE: "true",
+      UPSTASH_REDIS_REST_TOKEN: "",
+      UPSTASH_REDIS_REST_URL: "",
     },
     reuseExistingServer: false,
     timeout: 180_000,

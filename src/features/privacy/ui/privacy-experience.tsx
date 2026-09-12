@@ -403,7 +403,9 @@ export function PrivacyExperience({
   const [copied, setCopied] = useState(false)
 
   const currentHero = isSubpage ? tabHeroContent[activeTab] : null
-  const heroBadge = currentHero ? currentHero.badge : "Privacy & Data Protection"
+  const heroBadge = currentHero
+    ? currentHero.badge
+    : "Privacy & Data Protection"
   const heroTitle = currentHero ? currentHero.title : "Privacy & Data Centre"
   const heroDesc =
     currentHero?.desc ??
@@ -629,12 +631,8 @@ export function PrivacyExperience({
                   DPDP Act · GDPR Aligned
                 </span>
               </div>
-              <h1 className="privacy-centre-hero__title">
-                {heroTitle}
-              </h1>
-              <p className="privacy-centre-hero__desc">
-                {heroDesc}
-              </p>
+              <h1 className="privacy-centre-hero__title">{heroTitle}</h1>
+              <p className="privacy-centre-hero__desc">{heroDesc}</p>
             </div>
           </section>
 

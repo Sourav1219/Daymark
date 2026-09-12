@@ -4,8 +4,6 @@
 
 @import "./styles/base.css";
 @import "./styles/sign-up-welcome-screen.css";
-@import "./styles/sign-in-register-forms.css";
-@import "./styles/route-loading.css";
 @import "./styles/cookie-consent.css";
 
 /* Native Touch Ergonomics (Android / Mobile PWA) */

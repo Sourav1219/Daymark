@@ -158,15 +158,11 @@ test("runs, pauses, resumes, edits, isolates history, and stops on close", async
     window.dispatchEvent(new PageTransitionEvent("pagehide")),
   )
   await page.close({ runBeforeUnload: true })
-  await expect
-    .poll(
-      async () => {
-        await backgroundPage.goto("/timer")
-        return backgroundPage.getByRole("button", { name: /^Start /u }).count()
-      },
-      { timeout: 15_000 },
-    )
-    .toBe(1)
+  await backgroundPage.waitForTimeout(1_000)
+  await backgroundPage.goto("/timer")
+  await expect(
+    backgroundPage.getByRole("button", { name: /^Start /u }),
+  ).toBeVisible()
   await expect(
     backgroundPage.getByText("Close boundary", { exact: true }),
   ).toBeVisible()

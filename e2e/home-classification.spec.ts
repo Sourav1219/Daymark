@@ -52,19 +52,22 @@ test("Home classification, independent history pages, and recovery", async ({
     name: "Reply to client email",
     exact: true,
   })
-  await expect(work.getByText("Work · Light effort")).toBeVisible()
-  await work.getByRole("button", { name: /^Classify/u }).click()
+  await expect(
+    work.getByRole("button", { name: "Edit Reply to client email: Work" }),
+  ).toBeVisible()
+  await work
+    .getByRole("button", { name: "Edit Reply to client email: Work" })
+    .click()
   await work.getByRole("button", { name: "Study", exact: true }).click()
   await expect(
     work.getByRole("button", { name: "Study", exact: true }),
   ).toHaveAttribute("aria-pressed", "true")
-  await work.getByRole("button", { name: "Deep focus", exact: true }).click()
   await expect(
-    work.getByText("Study · Deep focus", { exact: true }),
+    work.getByRole("button", { name: "Edit Reply to client email: Study" }),
   ).toBeVisible()
   await page.reload()
   await expect(
-    work.getByText("Study · Deep focus", { exact: true }),
+    work.getByRole("button", { name: "Edit Reply to client email: Study" }),
   ).toBeVisible()
 
   const db = postgres(process.env.DATABASE_URL!, { prepare: false, max: 1 })
@@ -76,9 +79,9 @@ test("Home classification, independent history pages, and recovery", async ({
       await db`select task_type, effort, type_manual, effort_manual, priority from tasks where workspace_id = ${scope.workspace_id} and title = 'Reply to client email'`
     expect(saved).toMatchObject({
       task_type: "study",
-      effort: "deep",
+      effort: "unset",
       type_manual: true,
-      effort_manual: true,
+      effort_manual: false,
       priority: "medium",
     })
     const now = Date.now()
@@ -91,7 +94,7 @@ test("Home classification, independent history pages, and recovery", async ({
       effort: "light",
     }
     const rows = [
-      ...Array.from({ length: 22 }, (_, i) => ({
+      ...Array.from({ length: 52 }, (_, i) => ({
         ...base,
         id: randomUUID(),
         title: `Completed fixture ${i}`,
@@ -101,7 +104,7 @@ test("Home classification, independent history pages, and recovery", async ({
         deleted_at: null,
         position: i,
       })),
-      ...Array.from({ length: 22 }, (_, i) => ({
+      ...Array.from({ length: 52 }, (_, i) => ({
         ...base,
         id: randomUUID(),
         title: `Deleted fixture ${i}`,
@@ -117,7 +120,7 @@ test("Home classification, independent history pages, and recovery", async ({
         title: "Earlier unresolved miss",
         status: "open",
         completed_at: null,
-        due_at: new Date(now - 40 * day),
+        due_at: new Date(now - 60 * 60_000),
         deleted_at: null,
         position: 0,
       },
@@ -153,37 +156,9 @@ test("Home classification, independent history pages, and recovery", async ({
         exact: true,
       }),
     ).toBeAttached()
-    await expect(
-      page.getByText("Completed fixture 0", { exact: true }),
-    ).toBeAttached()
-    await expect(
-      page.getByText("Deleted fixture 0", { exact: true }),
-    ).toBeAttached()
+    await expect(page.getByText("Completed fixture 0")).toHaveCount(0)
+    await expect(page.getByText("Deleted fixture 0")).toHaveCount(0)
     await expect(page.getByText("Expired recovery fixture")).toHaveCount(0)
-    await expect(
-      page.getByRole("button", { name: "Show more completed", exact: true }),
-    ).toBeAttached()
-    await expect(
-      page.getByRole("button", {
-        name: "Show more recently deleted",
-        exact: true,
-      }),
-    ).toBeAttached()
-    await page
-      .getByRole("button", { name: "Show more completed", exact: true })
-      .click()
-    await expect(
-      page.getByText("Completed fixture 21", { exact: true }),
-    ).toBeAttached()
-    await expect(
-      page.getByText("Deleted fixture 21", { exact: true }),
-    ).toHaveCount(0)
-    await page
-      .getByRole("button", { name: "Show more recently deleted", exact: true })
-      .click()
-    await expect(
-      page.getByText("Deleted fixture 21", { exact: true }),
-    ).toBeAttached()
 
     await page.getByRole("button", { name: "Type", exact: true }).click()
     await page
@@ -194,14 +169,6 @@ test("Home classification, independent history pages, and recovery", async ({
       page.getByRole("article", { name: "Buy detergent", exact: true }),
     ).toHaveCount(0)
     await expect(work).toBeVisible()
-    await page
-      .getByRole("button", { name: "Effort · Any", exact: true })
-      .click()
-    await page
-      .getByRole("region", { name: "Task effort", exact: true })
-      .getByRole("button", { name: "Light effort", exact: true })
-      .click()
-    await expect(work).toHaveCount(0)
     await page.getByRole("button", { name: "All", exact: true }).click()
     await expect(work).toBeAttached()
 
@@ -222,15 +189,39 @@ test("Home classification, independent history pages, and recovery", async ({
         exact: true,
       }),
     ).toBeAttached()
+
+    await page.goto("/cleared")
+    await expect(
+      page.getByRole("article", { name: "Completed fixture 0", exact: true }),
+    ).toBeVisible()
+    await expect(page.getByText("Deleted fixture 0")).toHaveCount(0)
+    await page
+      .getByRole("navigation", { name: "Task pages" })
+      .getByRole("button", { name: "Next" })
+      .click()
+    await expect(page).toHaveURL(/\/cleared\?page=2$/u)
+    await expect(
+      page.getByRole("article", { name: "Completed fixture 51", exact: true }),
+    ).toBeVisible()
+
+    await page.goto("/quests")
+    await page.getByRole("tab", { name: /Trash/u }).click()
     const deleted = page.getByRole("article", {
-      name: "Deleted: Deleted fixture 0",
+      name: "Deleted fixture 0",
       exact: true,
     })
-    await deleted.getByRole("button", { name: "Restore", exact: true }).click()
-    await expect(deleted).toHaveCount(0)
+    await expect(deleted).toBeVisible()
+    await expect(page.getByText("Completed fixture 0")).toHaveCount(0)
+    await expect(page.getByText("Expired recovery fixture")).toHaveCount(0)
+    await deleted.getByRole("button", { name: "Restore Task" }).click()
+    const restoreDialog = page.getByRole("alertdialog", {
+      name: "Restore for today",
+    })
+    await restoreDialog.getByRole("button", { name: "Restore to Home" }).click()
+    await expect(page).toHaveURL(/\/today$/u)
     await expect(
       page.getByRole("article", { name: "Deleted fixture 0", exact: true }),
-    ).toBeAttached()
+    ).toBeVisible()
 
     await page.setViewportSize({ width: 390, height: 844 })
     await page.getByRole("button", { name: "Type", exact: true }).click()

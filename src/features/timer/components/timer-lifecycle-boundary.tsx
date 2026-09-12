@@ -18,6 +18,13 @@ export function TimerLifecycleBoundary() {
       stopRequested = true
 
       const payload = JSON.stringify({ sessionId })
+      if (
+        typeof navigator.sendBeacon === "function" &&
+        navigator.sendBeacon("/api/timer/stop", payload)
+      ) {
+        return
+      }
+
       void fetch("/api/timer/stop", {
         body: payload,
         credentials: "same-origin",

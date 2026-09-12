@@ -151,13 +151,34 @@ export function CookieConsentProvider({
               {showChoices ? (
                 <>
                   Choose whether to allow optional preference storage. Essential
-                  cookies remain active. <Link href="/privacy">Learn more</Link>
+                  cookies remain active.{" "}
+                  <Link
+                    aria-label="Learn more about our privacy policy"
+                    href="/privacy"
+                    prefetch={false}
+                  >
+                    Learn more
+                    <span className="sr-only">
+                      {" "}
+                      about our privacy policy
+                    </span>
+                  </Link>
                 </>
               ) : (
                 <>
                   Essential cookies enable secure sign-in. With your permission,
                   optional storage remembers preferences.{" "}
-                  <Link href="/privacy">Learn more</Link>
+                  <Link
+                    aria-label="Learn more about our privacy policy"
+                    href="/privacy"
+                    prefetch={false}
+                  >
+                    Learn more
+                    <span className="sr-only">
+                      {" "}
+                      about our privacy policy
+                    </span>
+                  </Link>
                 </>
               )}
             </p>

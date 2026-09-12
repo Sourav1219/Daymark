@@ -12,7 +12,6 @@ export const metadata: Metadata = {
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <link rel="preconnect" href="https://challenges.cloudflare.com" />
       <link rel="dns-prefetch" href="https://challenges.cloudflare.com" />
       {children}
     </>

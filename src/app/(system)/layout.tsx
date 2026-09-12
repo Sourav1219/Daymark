@@ -8,6 +8,7 @@ import "@/app/styles/anime-chapter-styling.css"
 import "@/app/styles/prototype-motifs.css"
 import "@/app/styles/today-home-hero.css"
 import "@/app/styles/support-pages.css"
+import "@/app/styles/route-loading.css"
 
 import { AppShell } from "@/components/shell/app-shell"
 import { SentryFeedbackWidget } from "@/components/system/sentry-feedback-widget"

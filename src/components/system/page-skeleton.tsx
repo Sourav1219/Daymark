@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton"
+import "@/app/styles/route-loading.css"
 
 type PageSkeletonProps = Readonly<{
   description?: string

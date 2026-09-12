@@ -11,6 +11,7 @@ import {
 import { EmailVerificationPanel } from "@/features/authentication/ui/email-verification-panel"
 import { AuthSuccessPopup } from "@/features/authentication/ui/auth-success-popup"
 import { TurnstileWidget } from "@/features/authentication/ui/turnstile-widget"
+import "@/app/styles/sign-in-register-forms.css"
 
 type AccountEmailFormProps = Readonly<{
   mode: "password-reset" | "verification"

@@ -5,9 +5,16 @@ import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 
 import * as schema from "@/db/schema"
+import { isLoopbackE2ETestEnvironment } from "@/lib/env/schema"
 import { readServerEnv } from "@/lib/env/server"
 
 type PostgresClient = ReturnType<typeof postgres>
+
+function shouldVerifyDatabaseTls(
+  env: ReturnType<typeof readServerEnv>,
+): boolean {
+  return env.NODE_ENV === "production" && !isLoopbackE2ETestEnvironment(env)
+}
 
 function createPostgresClient(databaseUrl: string, verifyTls: boolean) {
   const keepDevelopmentConnectionsWarm = process.env.NODE_ENV === "development"
@@ -73,7 +80,7 @@ export function getDatabase(): Database {
   if (!database || !databaseClient) {
     databaseClient = createPostgresClient(
       env.DATABASE_URL,
-      env.NODE_ENV === "production",
+      shouldVerifyDatabaseTls(env),
     )
     database = drizzle(databaseClient, { schema })
   }
@@ -116,7 +123,7 @@ export async function withHealthyDatabase<T>(
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const client = createPostgresClient(
       env.DATABASE_URL,
-      env.NODE_ENV === "production",
+      shouldVerifyDatabaseTls(env),
     )
     const candidate = drizzle(client, { schema })
 

@@ -46,7 +46,6 @@ test("queues encrypted offline edits and a dependent deletion", async ({
   await page.getByRole("button", { name: "Arrange all tasks" }).click()
   const quest = page.getByRole("article", { name: "Offline draft" })
   await expect(quest).toBeVisible()
-  await quest.getByRole("button", { name: "Manage" }).click()
   await quest.getByText("Edit Task", { exact: true }).click()
   const editForm = quest.locator("form", { hasText: "Save changes" })
   await editForm.getByLabel("Task title").fill("Offline draft updated")

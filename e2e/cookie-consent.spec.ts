@@ -37,7 +37,8 @@ test("allows opening cookie preferences on demand from the privacy page", async 
   await initialDialog.getByRole("button", { name: "Essential only" }).click()
   await expect(initialDialog).toBeHidden()
 
-  await page.getByRole("button", { name: /Cookie settings/i }).click()
+  await page.getByRole("button", { name: "Consent & Ledger" }).click()
+  await page.getByRole("button", { name: "Cookie Preferences" }).click()
   const consentDialog = page.getByRole("dialog", {
     name: "Manage cookie choices",
   })

@@ -11,18 +11,6 @@ Sign-up welcome screen — clean, illustration-led onboarding.
   }
 }
 
-@keyframes welcome-pop-in-visible {
-  0% {
-    transform: scale(0.85);
-  }
-  60% {
-    transform: scale(1.04);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
 .welcome {
   display: flex;
   justify-content: center;
@@ -232,15 +220,10 @@ Sign-up welcome screen — clean, illustration-led onboarding.
 @keyframes welcome-mascot-idle {
   0%,
   100% {
-    transform: translateY(0) scale(1);
-    filter: drop-shadow(0 1.2rem 1.5rem rgba(50, 108, 247, 0.14));
+    transform: translateY(0);
   }
-  45% {
-    transform: translateY(-0.35rem) scale(1.025, 1.04);
-    filter: drop-shadow(0 1.45rem 1.8rem rgba(50, 108, 247, 0.2));
-  }
-  58% {
-    transform: translateY(-0.25rem) scale(1.018, 1.01);
+  50% {
+    transform: translateY(-0.35rem);
   }
 }
 
@@ -251,11 +234,9 @@ Sign-up welcome screen — clean, illustration-led onboarding.
   height: auto;
   object-fit: contain;
   transform-origin: 50% 58%;
-  will-change: transform, filter;
+  will-change: transform;
   filter: drop-shadow(0 1.2rem 1.5rem rgba(50, 108, 247, 0.14));
-  animation:
-    welcome-pop-in-visible 0.5s var(--ease-emphasized) both,
-    welcome-mascot-idle 4.8s 0.5s ease-in-out infinite;
+  animation: welcome-mascot-idle 4.8s ease-in-out infinite;
 }
 
 .welcome__float-card {

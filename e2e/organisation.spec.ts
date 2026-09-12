@@ -51,6 +51,7 @@ test("organises and finds Quests with Phase 5 controls", async ({ page }) => {
     parentQuest.locator('[data-slot="badge"]').filter({ hasText: gateName }),
   ).toBeVisible()
 
+  await parentQuest.getByRole("button", { name: "Manage" }).click()
   await parentQuest.getByText("Add Subtask", { exact: true }).click()
   const subquestForm = parentQuest.locator("form", {
     has: page.getByRole("button", { name: "Create Subtask" }),

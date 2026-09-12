@@ -23,7 +23,7 @@ describe("NotFound", () => {
       name: /Back to homepage/i,
     })
     expect(homeLink).toBeInTheDocument()
-    expect(homeLink).toHaveAttribute("href", "/")
+    expect(homeLink).toHaveAttribute("href", "/sign-in")
 
     const supportLink = screen.getByRole("link", {
       name: /Contact support/i,

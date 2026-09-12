@@ -67,7 +67,7 @@ export function SessionExpiredCard({
           <header className="session-expired__topbar">
             <Link
               className="session-expired__wordmark"
-              href="/"
+              href="/sign-in"
               title="Traketo Home"
             >
               <span className="session-expired__diamond" aria-hidden="true" />
@@ -107,7 +107,7 @@ export function SessionExpiredCard({
             <h1 className="session-expired__title" id="unauthorized-title">
               {heading}
             </h1>
-            <p className="session-expired__description">{description}</p>
+            <h2 className="session-expired__description">{description}</h2>
           </div>
 
           {/* Data Safety Reassurance */}

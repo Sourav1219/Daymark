@@ -19,9 +19,9 @@ export function PasswordResetForm({ token }: Readonly<{ token: string }>) {
             <br />
             <span>password.</span>
           </h1>
-          <p className="auth__subtitle">
+          <h2 className="auth__subtitle">
             This secure link can be used once and expires after one hour.
-          </p>
+          </h2>
         </div>
 
         <form action={action} className="auth__form" noValidate>

@@ -167,11 +167,11 @@ export function AuthForm({
               </>
             )}
           </h1>
-          <p className="auth__subtitle">
+          <h2 className="auth__subtitle">
             {registering
               ? "Turn your intentions into finished tasks."
               : "Your tasks are waiting for you."}
-          </p>
+          </h2>
         </div>
 
         <div className="auth__tabs">

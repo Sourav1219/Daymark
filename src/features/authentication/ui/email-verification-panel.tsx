@@ -81,10 +81,10 @@ export function EmailVerificationPanel({
         <h1 className="verification__title" id="verification-title">
           Check your inbox<span>.</span>
         </h1>
-        <p className="verification__subtitle">
+        <h2 className="verification__subtitle">
           We sent a 6-digit verification code to
           <strong>{email}</strong>
-        </p>
+        </h2>
       </div>
 
       <form action={verifyAction} className="verification__form" noValidate>

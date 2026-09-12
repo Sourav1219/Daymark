@@ -30,6 +30,6 @@ describe("UnauthorizedClient", () => {
 
     const homeLink = screen.getByRole("link", { name: /Back to homepage/i })
     expect(homeLink).toBeInTheDocument()
-    expect(homeLink).toHaveAttribute("href", "/")
+    expect(homeLink).toHaveAttribute("href", "/sign-in")
   })
 })

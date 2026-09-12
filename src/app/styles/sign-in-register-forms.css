@@ -443,6 +443,7 @@ Sign-in / Register forms — same clean app-width column as the
   margin: 0;
   color: var(--app-text-sub);
   font-size: 0.98rem;
+  font-weight: 400;
 }
 
 .auth__tabs {
@@ -927,6 +928,7 @@ Sign-in / Register forms — same clean app-width column as the
   color: var(--app-text-sub);
   font-size: 0.94rem;
   line-height: 1.55;
+  font-weight: 400;
 }
 
 .verification__subtitle strong {

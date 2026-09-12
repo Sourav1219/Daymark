@@ -54,7 +54,11 @@ export function UnauthorizedClient() {
         <div className="unauth__inner">
           {/* Top bar */}
           <header className="unauth__topbar">
-            <Link className="unauth__wordmark" href="/" title="Traketo Home">
+            <Link
+              className="unauth__wordmark"
+              href="/sign-in"
+              title="Traketo Home"
+            >
               <span className="unauth__diamond" aria-hidden="true" />
               <span>Traketo</span>
             </Link>
@@ -92,10 +96,10 @@ export function UnauthorizedClient() {
             <h1 className="unauth__title" id="unauth-title">
               Sign in to <em>continue</em>.
             </h1>
-            <p className="unauth__desc">
+            <h2 className="unauth__desc">
               This page is protected. Sign in to pick up right where you left
               off — your tasks, streaks, and progress are all still here.
-            </p>
+            </h2>
           </div>
 
           {/* Trust row */}
@@ -116,7 +120,7 @@ export function UnauthorizedClient() {
               <span>Sign in</span>
               <ArrowRight aria-hidden="true" />
             </Link>
-            <Link className="unauth__btn-secondary" href="/">
+            <Link className="unauth__btn-secondary" href="/sign-in">
               Back to homepage
             </Link>
           </div>

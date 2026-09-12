@@ -72,10 +72,10 @@ function VerificationRequestStep({
           <h1 className="auth__title">
             Get a fresh <span>code.</span>
           </h1>
-          <p className="auth__subtitle">
+          <h2 className="auth__subtitle">
             Enter the email you registered with. If the account is eligible,
             we’ll send a new 6-digit code.
-          </p>
+          </h2>
         </div>
 
         <form action={action} className="auth__form" noValidate>
@@ -157,9 +157,9 @@ function PasswordResetRequest() {
             <br />
             <span>password.</span>
           </h1>
-          <p className="auth__subtitle">
+          <h2 className="auth__subtitle">
             We’ll send a secure password-reset link if the account is eligible.
-          </p>
+          </h2>
         </div>
 
         <form action={action} className="auth__form" noValidate>

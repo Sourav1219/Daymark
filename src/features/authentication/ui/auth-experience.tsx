@@ -103,10 +103,10 @@ export function AuthExperience({
               <h1 className="welcome__brand" id="welcome-title">
                 Turn plans into <em>progress.</em>
               </h1>
-              <p className="welcome__tagline">
+              <h2 className="welcome__tagline">
                 Tasks, focus sessions, and shared study—together in one calm
                 place.
-              </p>
+              </h2>
             </div>
 
             <div className="welcome__actions">

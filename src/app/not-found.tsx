@@ -21,7 +21,11 @@ export default function NotFound() {
         <div className="unauth__inner">
           {/* Top bar */}
           <header className="unauth__topbar">
-            <Link className="unauth__wordmark" href="/" title="Traketo Home">
+            <Link
+              className="unauth__wordmark"
+              href="/sign-in"
+              title="Traketo Home"
+            >
               <span className="unauth__diamond" aria-hidden="true" />
               <span>Traketo</span>
             </Link>
@@ -59,11 +63,11 @@ export default function NotFound() {
             <h1 className="unauth__title" id="not-found-title">
               We can’t find that <em>page</em>.
             </h1>
-            <p className="unauth__desc">
+            <h2 className="unauth__desc">
               The link you followed may be broken, or the page may have been
               moved. Your tasks, streaks, and account data remain completely
               safe.
-            </p>
+            </h2>
           </div>
 
           {/* Trust row */}
@@ -85,7 +89,7 @@ export default function NotFound() {
               <ArrowLeft aria-hidden="true" />
               <span>Back to your tasks</span>
             </Link>
-            <Link className="unauth__btn-secondary" href="/">
+            <Link className="unauth__btn-secondary" href="/sign-in">
               Back to homepage
             </Link>
           </div>

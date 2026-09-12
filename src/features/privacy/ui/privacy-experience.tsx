@@ -835,7 +835,9 @@ export function PrivacyExperience({
                         <User aria-hidden="true" />
                       </span>
                       <div className="privacy-inventory-card__title">
-                        <strong>1. Identity &amp; Account Credentials</strong>
+                        <h3 className="privacy-inventory-card__heading">
+                          1. Identity &amp; Account Credentials
+                        </h3>
                         <small>
                           Required to authenticate your identity, secure access,
                           and maintain account ownership.
@@ -850,16 +852,29 @@ export function PrivacyExperience({
                     <div className="privacy-inventory-detail-box">
                       <label>Data Held:</label>
                       <p>
-                        Name ({user?.name ?? "Current user"}), Email (
-                        {user?.email ?? "Registered address"}), Argon2id-hashed
-                        password, verification flags.
+                        Email address, display name, password hash, session
+                        tokens, and email verification status.
                       </p>
                     </div>
                     <div className="privacy-inventory-detail-box">
-                      <label>Retention Policy:</label>
+                      <label>Processing Purpose:</label>
                       <p>
-                        Duration of active account + 30-day purge window
-                        following deletion.
+                        Authentication, fraud prevention, transactional alerts,
+                        and regulatory communications.
+                      </p>
+                    </div>
+                    <div className="privacy-inventory-detail-box">
+                      <label>Retention Window:</label>
+                      <p>
+                        Retained for the lifetime of your active account plus 30
+                        days post-erasure request.
+                      </p>
+                    </div>
+                    <div className="privacy-inventory-detail-box">
+                      <label>Third-Party Processors:</label>
+                      <p>
+                        Supabase (Database/Auth hosting), Resend (Transactional
+                        dispatch).
                       </p>
                     </div>
                   </div>
@@ -885,9 +900,9 @@ export function PrivacyExperience({
                         <Layers aria-hidden="true" />
                       </span>
                       <div className="privacy-inventory-card__title">
-                        <strong>
+                        <h3 className="privacy-inventory-card__heading">
                           2. Habits, Quests &amp; Progression Data
-                        </strong>
+                        </h3>
                         <small>
                           Your core productivity content created to run daily
                           routines, timers, and goals.
@@ -924,7 +939,9 @@ export function PrivacyExperience({
                         <UserCheck aria-hidden="true" />
                       </span>
                       <div className="privacy-inventory-card__title">
-                        <strong>3. Shared Study &amp; Collaboration</strong>
+                        <h3 className="privacy-inventory-card__heading">
+                          3. Shared Study &amp; Collaboration
+                        </h3>
                         <small>
                           Generated only when you actively enter a collaborative
                           focus room.
@@ -961,9 +978,9 @@ export function PrivacyExperience({
                         <HardDrive aria-hidden="true" />
                       </span>
                       <div className="privacy-inventory-card__title">
-                        <strong>
+                        <h3 className="privacy-inventory-card__heading">
                           4. Device, Telemetry &amp; Offline Cache
-                        </strong>
+                        </h3>
                         <small>
                           Necessary to prevent brute-force attacks, synchronize
                           offline state, and debug app crashes.
@@ -1057,9 +1074,9 @@ export function PrivacyExperience({
                     <SlidersHorizontal aria-hidden="true" />
                   </span>
                   <div className="privacy-consent-hub-card__copy">
-                    <strong className="privacy-consent-hub-card__title">
+                    <h3 className="privacy-consent-hub-card__title">
                       Active Account Consent Controls
-                    </strong>
+                    </h3>
                     <p>
                       Live switches for <strong>Email Task Reminders</strong>,{" "}
                       <strong>Web Push Notifications</strong>, and{" "}
@@ -1094,10 +1111,10 @@ export function PrivacyExperience({
 
               {/* Consent History Ledger */}
               <div className="privacy-ledger-box">
-                <div className="privacy-ledger-header">
+                <h3 className="privacy-ledger-header">
                   <Clock aria-hidden="true" />
                   <span>Consent Audit Trail &amp; Ledger</span>
-                </div>
+                </h3>
                 <p className="privacy-ledger-desc">
                   Tamper-evident record of your consent grants, explicit
                   timestamps, and regulatory status for compliance with GDPR
@@ -1161,7 +1178,9 @@ export function PrivacyExperience({
               {/* Request Form */}
               <div className="privacy-request-card-box">
                 <div className="privacy-inventory-card__title">
-                  <strong>Submit a Formal Privacy Request</strong>
+                  <h3 className="privacy-inventory-card__heading">
+                    Submit a Formal Privacy Request
+                  </h3>
                   <small>
                     Choose the right you wish to exercise and specify details.
                   </small>
@@ -1285,9 +1304,9 @@ export function PrivacyExperience({
               {/* Requests Tracker */}
               <div className="privacy-request-card-box">
                 <div className="privacy-inventory-card__title">
-                  <strong>
+                  <h3 className="privacy-inventory-card__heading">
                     Your Active Privacy Requests ({requests.length})
-                  </strong>
+                  </h3>
                   <small>Reload this page to see the latest status</small>
                 </div>
                 <div className="privacy-requests-tracking-list">
@@ -1366,10 +1385,10 @@ export function PrivacyExperience({
                 <div className="privacy-nominee-box">
                   <div className="privacy-nominee-active-card">
                     <div className="privacy-nominee-active-header">
-                      <div className="privacy-nominee-active-title">
+                      <h3 className="privacy-nominee-active-title">
                         <UserCheck aria-hidden="true" />
                         <span>{nominee.name}</span>
-                      </div>
+                      </h3>
                       <span className="privacy-nominee-status-pill">
                         Active Nomination
                       </span>

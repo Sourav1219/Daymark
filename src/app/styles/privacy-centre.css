@@ -834,10 +834,12 @@
   min-width: 0;
 }
 
-.privacy-inventory-card__title strong {
+.privacy-inventory-card__title strong,
+.privacy-inventory-card__title h3 {
   color: #1e293b;
   font-size: 0.84rem;
   font-weight: 850;
+  margin: 0;
 }
 
 .privacy-inventory-card__title small {
@@ -1166,6 +1168,7 @@
   font-size: 0.84rem;
   font-weight: 850;
   color: #0f172a;
+  margin: 0;
 }
 
 .privacy-consent-hub-card__copy p {
@@ -1251,6 +1254,7 @@
   color: #1e293b;
   font-size: 0.78rem;
   font-weight: 850;
+  margin: 0;
 }
 
 .privacy-ledger-header svg {
@@ -1643,6 +1647,7 @@
   color: #0f766e;
   font-size: 0.84rem;
   font-weight: 850;
+  margin: 0;
 }
 
 .privacy-nominee-active-title svg {

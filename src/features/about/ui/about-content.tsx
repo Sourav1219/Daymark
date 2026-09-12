@@ -142,7 +142,7 @@ export function AboutContent() {
                       <Icon aria-hidden="true" />
                     </span>
                     <div className="about-feature-card__text">
-                      <strong>{title}</strong>
+                      <h3>{title}</h3>
                       <small>{description}</small>
                     </div>
                   </article>
@@ -196,7 +196,7 @@ export function AboutContent() {
             </span>
             <div className="about-trust-card__content">
               <span className="about-trust-card__badge">Privacy First</span>
-              <h3>Private by design</h3>
+              <h2>Private by design</h2>
               <p>
                 Your tasks and routines are personal. Traketo does not sell
                 personal data or use it for third-party advertising.

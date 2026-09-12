@@ -438,11 +438,13 @@
   gap: 0.18rem;
 }
 
-.about-feature-card__text strong {
+.about-feature-card__text strong,
+.about-feature-card__text h3 {
   color: #1e3352;
   font-size: 0.78rem;
   font-weight: 850;
   line-height: 1.2;
+  margin: 0;
 }
 
 .about-feature-card__text small {
@@ -601,6 +603,7 @@
   text-transform: uppercase;
 }
 
+.about-trust-card__content h2,
 .about-trust-card__content h3 {
   margin: 0;
   color: #064e3b;

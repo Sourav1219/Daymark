@@ -3,17 +3,9 @@
 @import "shadcn/tailwind.css";
 
 @import "./styles/base.css";
-@import "./styles/redesign.css";
-@import "./styles/anime-chapter-styling.css";
-@import "./styles/prototype-motifs.css";
-@import "./styles/today-home-hero.css";
 @import "./styles/sign-up-welcome-screen.css";
 @import "./styles/sign-in-register-forms.css";
-@import "./styles/legal-pages.css";
-@import "./styles/support-pages.css";
 @import "./styles/route-loading.css";
-@import "./styles/session-expired.css";
-@import "./styles/unauthorized.css";
 @import "./styles/cookie-consent.css";
 
 /* Native Touch Ergonomics (Android / Mobile PWA) */

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 
+import "@/app/styles/unauthorized.css"
 import { UnauthorizedClient } from "@/app/unauthorized-client"
 
 export const metadata: Metadata = {

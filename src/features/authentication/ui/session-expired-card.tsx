@@ -6,6 +6,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowRight, CheckCircle2, Lock, Shield, Sparkles } from "lucide-react"
 
+import "@/app/styles/session-expired.css"
+
 type SessionExpiredCardProps = Readonly<{
   actionHref?: Route | string
   actionLabel?: string

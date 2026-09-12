@@ -4,9 +4,18 @@ import { useState } from "react"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
-import { AuthForm } from "@/features/authentication/ui/auth-form"
+import dynamic from "next/dynamic"
+
 import type { GoogleOAuthError } from "@/features/authentication/ui/google-auth-button"
 import { WelcomeAvatar } from "@/features/authentication/ui/welcome-avatar"
+
+const AuthForm = dynamic(
+  () =>
+    import("@/features/authentication/ui/auth-form").then(
+      (mod) => mod.AuthForm,
+    ),
+  { ssr: true },
+)
 
 type AuthMode = "welcome" | "login" | "register"
 export type AuthNotice = "verification-error" | null

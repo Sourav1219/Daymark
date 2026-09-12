@@ -2,6 +2,27 @@
 Sign-up welcome screen — clean, illustration-led onboarding.
    No dotted backdrop; blue primary + soft-blue secondary CTA.
    ============================================================ */
+@keyframes welcome-enter-up-visible {
+  from {
+    transform: translateY(0.75rem);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes welcome-pop-in-visible {
+  0% {
+    transform: scale(0.85);
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .welcome {
   display: flex;
   justify-content: center;
@@ -83,7 +104,11 @@ Sign-up welcome screen — clean, illustration-led onboarding.
   gap: 0.7rem;
   min-height: 2.65rem;
   padding: 0 0.2rem;
-  animation: enter-up 0.4s var(--ease-system) both;
+  /* Keep real text visible in the initial frame so performance tooling can
+     identify a contentful paint. Delayed opacity animations on every
+     above-the-fold child can otherwise leave Chrome with only a background
+     paint and a NO_FCP result. */
+  animation: welcome-enter-up-visible 0.4s var(--ease-system) both;
 }
 
 .welcome__wordmark,
@@ -161,7 +186,7 @@ Sign-up welcome screen — clean, illustration-led onboarding.
   box-shadow:
     0 1.5rem 3rem -2rem rgba(32, 67, 151, 0.38),
     inset 0 1px rgba(255, 255, 255, 0.92);
-  animation: enter-up 0.5s 0.05s var(--ease-emphasized) both;
+  animation: welcome-enter-up-visible 0.5s 0.05s var(--ease-emphasized) both;
 }
 
 .welcome__orbit {
@@ -229,7 +254,7 @@ Sign-up welcome screen — clean, illustration-led onboarding.
   will-change: transform, filter;
   filter: drop-shadow(0 1.2rem 1.5rem rgba(50, 108, 247, 0.14));
   animation:
-    pop-in 0.5s var(--ease-emphasized) both,
+    welcome-pop-in-visible 0.5s var(--ease-emphasized) both,
     welcome-mascot-idle 4.8s 0.5s ease-in-out infinite;
 }
 
@@ -269,7 +294,7 @@ Sign-up welcome screen — clean, illustration-led onboarding.
 
 .welcome__copy {
   text-align: center;
-  animation: enter-up 0.48s 0.14s var(--ease-emphasized) both;
+  animation: welcome-enter-up-visible 0.48s 0.14s var(--ease-emphasized) both;
 }
 
 .welcome__eyebrow {
@@ -310,7 +335,7 @@ Sign-up welcome screen — clean, illustration-led onboarding.
 .welcome__actions {
   display: grid;
   gap: 0.7rem;
-  animation: enter-up 0.48s 0.22s var(--ease-emphasized) both;
+  animation: welcome-enter-up-visible 0.48s 0.22s var(--ease-emphasized) both;
 }
 
 .welcome__cta {
@@ -404,6 +429,34 @@ Sign-up welcome screen — clean, illustration-led onboarding.
   text-underline-offset: 0.14rem;
 }
 
+.welcome__about-link {
+  display: inline-flex;
+  min-height: 1.8rem;
+  align-items: center;
+  align-self: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: -0.12rem;
+  color: #7787a1;
+  font-size: 0.65rem;
+  font-weight: 850;
+  text-decoration: none;
+  transition:
+    color 160ms var(--ease-system),
+    transform 160ms var(--ease-system);
+}
+
+.welcome__about-link svg {
+  width: 0.78rem;
+  height: 0.78rem;
+}
+
+.welcome__about-link:hover,
+.welcome__about-link:focus-visible {
+  color: #315fd1;
+  transform: translateY(-1px);
+}
+
 @media (max-height: 42rem) {
   .welcome__art {
     width: min(88%, 16rem);
@@ -427,6 +480,10 @@ Sign-up welcome screen — clean, illustration-led onboarding.
   .welcome__float-card,
   .welcome__topbar {
     animation: none;
+  }
+
+  .welcome__about-link {
+    transition: none;
   }
 }
 
@@ -645,4 +702,3 @@ Sign-up welcome screen — clean, illustration-led onboarding.
     min-height: 2.75rem;
   }
 }
-

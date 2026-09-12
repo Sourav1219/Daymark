@@ -5,9 +5,8 @@ import Script from "next/script"
 import type { ReactNode } from "react"
 
 import "./globals.css"
-import { Baloo_2, Caveat, Inter, Nunito } from "next/font/google"
+import { Baloo_2, Inter, Nunito } from "next/font/google"
 import { DevServiceWorkerCleanup } from "@/components/system/dev-service-worker-cleanup"
-import { SentryFeedbackWidget } from "@/components/system/sentry-feedback-widget"
 import {
   cookieConsentName,
   parseCookieConsent,
@@ -19,12 +18,6 @@ const inter = Inter({
   display: "swap",
   subsets: ["latin"],
   variable: "--font-inter",
-})
-const caveat = Caveat({
-  display: "swap",
-  subsets: ["latin"],
-  variable: "--font-caveat",
-  weight: ["400", "500", "600", "700"],
 })
 // Rounded, friendly display + UI faces used by the redesigned auth surfaces.
 // Exposed as scoped CSS variables so the app shell keeps its Inter default.
@@ -93,7 +86,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       className={cn(
         "font-sans",
         inter.variable,
-        caveat.variable,
         baloo.variable,
         nunito.variable,
       )}
@@ -107,8 +99,9 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               strategy="beforeInteractive"
             />
           ) : null}
-          <DevServiceWorkerCleanup />
-          <SentryFeedbackWidget />
+          {process.env.NODE_ENV !== "production" ? (
+            <DevServiceWorkerCleanup />
+          ) : null}
           <SerwistProvider
             disable={process.env.NODE_ENV !== "production"}
             options={{ scope: "/", updateViaCache: "none" }}

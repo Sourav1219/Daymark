@@ -1,5 +1,8 @@
 import type { ReactNode } from "react"
 
+import "@/app/styles/legal-pages.css"
+import "@/app/styles/support-pages.css"
+
 import { LegalShellContext } from "@/components/legal/legal-shell-context"
 
 /**

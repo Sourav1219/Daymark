@@ -169,7 +169,7 @@ jobs:
         env:
           E2E_TEST_MODE: "true"
           NEXT_PUBLIC_E2E_TEST_MODE: "true"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
@@ -209,7 +209,7 @@ jobs:
         env:
           E2E_TEST_MODE: "true"
           NEXT_PUBLIC_E2E_TEST_MODE: "true"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-pwa-report

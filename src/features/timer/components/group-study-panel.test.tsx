@@ -92,7 +92,13 @@ describe("GroupStudyPanel realtime fallback", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL) =>
         String(input).includes("/group-poll")
-          ? Response.json({ participantCount: 1, status: "active", version: 1 })
+          ? Response.json({
+              activityCount: 0,
+              joinRequestCount: 0,
+              participantCount: 1,
+              status: "active",
+              version: 1,
+            })
           : new Response(null, { status: 204 }),
       ),
     )
@@ -135,11 +141,11 @@ describe("GroupStudyPanel realtime fallback", () => {
     expect(groupPollCalls()).toHaveLength(2)
   })
 
-  it("falls back after five seconds when realtime never opens", async () => {
+  it("falls back after three seconds when realtime never opens", async () => {
     renderPanel()
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(5_000)
+      await vi.advanceTimersByTimeAsync(3_000)
     })
 
     expect(groupPollCalls()).toHaveLength(1)

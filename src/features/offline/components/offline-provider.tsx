@@ -15,11 +15,18 @@ import {
 } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog } from "radix-ui"
-import { CloudOff, RefreshCw, TriangleAlert, X } from "lucide-react"
+import {
+  CloudOff,
+  LockKeyhole,
+  RefreshCw,
+  TriangleAlert,
+  X,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { logger } from "@/lib/observability/logger"
 import type { GateView } from "@/features/gates/domain/types"
 import type { LabelView } from "@/features/labels/domain/types"
@@ -43,6 +50,8 @@ import {
   removeOfflineMutation,
   retryOfflineMutationWithVersion,
   setActiveOfflineScope,
+  getOfflineStorageStatus,
+  unlockPrivateOfflineData,
 } from "@/features/offline/storage/offline-database"
 
 type OfflineContextValue = Readonly<{
@@ -532,7 +541,71 @@ export function useOptionalOffline() {
 }
 
 export function OfflineStatusBar() {
-  const { conflicts, isOffline, pendingCount } = useOffline()
+  const { conflicts, isOffline, pendingCount, refreshQueue, scope } =
+    useOffline()
+  const [locked, setLocked] = useState(false)
+  const [passcode, setPasscode] = useState("")
+  const [unlocking, setUnlocking] = useState(false)
+  const [unlockError, setUnlockError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void getOfflineStorageStatus()
+      .then((status) => setLocked(status.locked))
+      .catch(logOfflineFailure("Offline lock status could not be read"))
+  }, [])
+
+  async function unlock() {
+    setUnlocking(true)
+    setUnlockError(null)
+    try {
+      if (!(await unlockPrivateOfflineData(passcode))) {
+        setUnlockError("The offline passcode is incorrect.")
+        return
+      }
+      await setActiveOfflineScope(scope)
+      await refreshQueue()
+      setLocked(false)
+      setPasscode("")
+      toast.success("Offline data unlocked")
+    } catch (error) {
+      logOfflineFailure("Offline data could not be unlocked")(error)
+      setUnlockError("Offline data could not be unlocked. Try again.")
+    } finally {
+      setUnlocking(false)
+    }
+  }
+
+  if (locked) {
+    return (
+      <div
+        aria-live="polite"
+        className="flex flex-wrap items-center justify-center gap-2 border-b border-warning/30 bg-warning/10 px-4 py-2 text-center text-xs text-warning"
+        role="status"
+      >
+        <LockKeyhole aria-hidden="true" className="size-4" />
+        <span>Offline data is locked for this browser session.</span>
+        <Input
+          aria-label="Offline data passcode"
+          autoComplete="off"
+          className="h-8 w-48 bg-surface"
+          disabled={unlocking}
+          onChange={(event) => setPasscode(event.target.value)}
+          type="password"
+          value={passcode}
+        />
+        <Button
+          disabled={unlocking || passcode.length === 0}
+          onClick={unlock}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          {unlocking ? "Unlocking" : "Unlock offline data"}
+        </Button>
+        {unlockError ? <span role="alert">{unlockError}</span> : null}
+      </div>
+    )
+  }
 
   if (!isOffline && pendingCount === 0 && conflicts.length === 0) return null
 

@@ -79,11 +79,15 @@ export function createR2AttachmentStorage(config: R2Env): AttachmentStorage {
       )
     },
 
-    async createUploadGrant({ contentType, key }) {
+    async createUploadGrant({ byteSize, contentType, key }) {
       const url = await getSignedUrl(
         client,
         new PutObjectCommand({
           Bucket: config.bucketName,
+          // Signing Content-Length makes R2 reject a replay that sends more
+          // bytes than the application authorized. Browsers provide this
+          // forbidden request header automatically from the File body.
+          ContentLength: byteSize,
           ContentType: contentType,
           Key: key,
         }),

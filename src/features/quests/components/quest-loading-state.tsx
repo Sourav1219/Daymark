@@ -2,7 +2,6 @@ import {
   CalendarDays,
   Check,
   Clock3,
-  Flag,
   Plus,
   RotateCcw,
   Search,
@@ -36,7 +35,7 @@ function TasksLoadingState() {
           <div className="quest-overview__heading">
             <div>
               <span>Workspace</span>
-              <h1>Create Task</h1>
+              <h2>Tasks</h2>
             </div>
             <p>Create and schedule a new task or manage trash.</p>
           </div>
@@ -77,9 +76,6 @@ function TasksLoadingState() {
                   Turn an intention into something you can finish.
                 </p>
               </div>
-              <span className="quest-create-card__timezone">
-                <Flag /> Local
-              </span>
             </CardHeader>
             <CardContent className="quest-create-card__content">
               <div className="grid gap-5">
@@ -188,6 +184,7 @@ function ClearedLoadingState() {
       <span className="sr-only">Loading Completed</span>
       <PageHeading
         actions={<LoadingPlaceholder className="exact-loading__badge" />}
+        as="h2"
         description="Review completed tasks and reopen anything that still needs attention."
         eyebrow="Archive"
         title="Completed"

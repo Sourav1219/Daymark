@@ -2,7 +2,7 @@
 
 import { useActionState, useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Flag, WandSparkles } from "lucide-react"
+import { WandSparkles } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -27,10 +27,7 @@ import {
 } from "@/features/quests/components/task-created-popup"
 import { questHomeHref } from "@/features/quests/domain/quest-links"
 import type { QuestView } from "@/features/quests/domain/types"
-import {
-  defaultTimezone,
-  timezoneAbbreviation,
-} from "@/features/reminders/domain/timezone"
+import { defaultTimezone } from "@/features/reminders/domain/timezone"
 import { useOffline } from "@/features/offline/components/offline-provider"
 
 const initialState: QuestActionState = null
@@ -124,10 +121,6 @@ export function QuestCreateForm({
               Turn an intention into something you can finish.
             </CardDescription>
           </div>
-          <span className="quest-create-card__timezone" title={timezone}>
-            <Flag aria-hidden="true" />
-            {timezoneAbbreviation(timezone)}
-          </span>
         </CardHeader>
         <CardContent className="quest-create-card__content">
           <form

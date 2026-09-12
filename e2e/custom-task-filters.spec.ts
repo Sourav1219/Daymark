@@ -30,7 +30,7 @@ test("creates a named custom task and limits Home filter facets", async ({
       await sql`insert into accounts (account_id, provider_id, user_id, password) values (${userId}, 'credential', ${userId}, ${passwordHash})`
       await sql`insert into workspaces (id, owner_user_id, name, slug) values (${workspaceId}, ${userId}, 'Custom Filter Workspace', ${`custom-filter-${userId}`})`
       await sql`insert into workspace_members (workspace_id, user_id, role) values (${workspaceId}, ${userId}, 'owner')`
-      await sql`insert into user_settings (user_id) values (${userId})`
+      await sql`insert into user_settings (user_id, timezone, timezone_confirmed_at) values (${userId}, 'Asia/Calcutta', now())`
       await sql`insert into user_progression (workspace_id, user_id) values (${workspaceId}, ${userId})`
     })
 
@@ -156,10 +156,10 @@ test("creates a named custom task and limits Home filter facets", async ({
       name: "Morning run",
       exact: true,
     })
-    await task.getByRole("button", { name: /^Classify Morning run:/u }).click()
-    const classificationPanel = task.getByLabel(
-      "Classification for Morning run",
-    )
+    await task.getByRole("button", { name: /^Edit Morning run:/u }).click()
+    const classificationPanel = task.getByLabel("Edit Morning run", {
+      exact: true,
+    })
     await classificationPanel
       .getByRole("button", { name: "Study", exact: true })
       .click()
@@ -180,7 +180,7 @@ test("creates a named custom task and limits Home filter facets", async ({
       { timeout: 15_000 },
     )
     await classificationPanel
-      .getByRole("button", { name: "Done editing classification" })
+      .getByRole("button", { name: "Done editing" })
       .click()
     await expect(classificationPanel).toHaveCount(0)
   } finally {

@@ -21,6 +21,7 @@ import type {
   SetQuestLabelsCommand,
 } from "@/features/labels/validation/label-validation"
 import { lockWorkspaceForMutation } from "@/features/workspaces/infrastructure/workspace-access-repository"
+import { labelQuotaAvailable } from "@/lib/resource-quotas"
 
 export type LabelMutationSummary = Readonly<{
   id: string
@@ -93,6 +94,12 @@ export async function createLabel(
   authorizeLabelAccess(access)
   return mapNameConflict(() =>
     withWorkspaceMutation(database, access, async (transaction) => {
+      if (!(await labelQuotaAvailable(transaction, access.workspaceId))) {
+        throw new LabelServiceError(
+          "VALIDATION_ERROR",
+          "This workspace has reached its retained Label quota.",
+        )
+      }
       const created = await createLabelRecord(transaction, access, command)
 
       if (!created) {

@@ -17,14 +17,11 @@ function isProtectedPath(pathname: string) {
     pathname === "/today" ||
     pathname === "/quests" ||
     pathname.startsWith("/quests/") ||
-    [
-      "/timer",
-      "/gates",
-      "/cleared",
-      "/progress",
-      "/profile",
-      "/settings",
-    ].includes(pathname)
+    ["/timer", "/gates", "/cleared", "/progress", "/profile"].includes(
+      pathname,
+    ) ||
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/")
   )
 }
 
@@ -37,8 +34,11 @@ export function proxy(request: NextRequest) {
 
   // Correlation id for structured logs: forward an upstream id when present,
   // otherwise stamp one so Server Actions and RSC requests log traceably.
+  const upstreamRequestId = requestHeaders.get("x-request-id")
   const requestId =
-    requestHeaders.get("x-request-id") ?? `req_${crypto.randomUUID()}`
+    upstreamRequestId && /^[\w.-]{8,128}$/u.test(upstreamRequestId)
+      ? upstreamRequestId
+      : `req_${crypto.randomUUID()}`
   requestHeaders.set("x-request-id", requestId)
 
   let response: NextResponse
@@ -83,7 +83,7 @@ export const config = {
       // dynamic CSP enter the Node.js proxy. Public/static pages and arbitrary
       // scanner paths are served directly by Next/Vercel's CDN.
       source:
-        "/((?:app(?:/.*)?|today|quests(?:/.*)?|timer|gates|cleared|progress|profile|settings|sign-in|sign-up|reset-password|sign-out|session-expired|unauthorized|contact)?)",
+        "/((?:app(?:/.*)?|today|quests(?:/.*)?|timer|gates|cleared|progress|profile|settings(?:/.*)?|sign-in|sign-up|reset-password|sign-out|session-expired|unauthorized|contact)?)",
     },
   ],
 }

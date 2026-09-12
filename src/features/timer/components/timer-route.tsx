@@ -108,7 +108,13 @@ function TimerClockDisplay({
   return (
     <div className="timer-clock-wrap">
       <div
-        aria-label={`${isOvertime ? "Overtime " : "Elapsed time "}${clock}`}
+        aria-label={`${
+          isOvertime
+            ? "Overtime "
+            : progressPercent === null
+              ? "Elapsed time "
+              : "Remaining time "
+        }${clock}`}
         aria-live="off"
         className="timer-clock"
         data-overtime={isOvertime}
@@ -166,10 +172,9 @@ export function TimerRoute({
   initialDashboard,
 }: Readonly<{ initialDashboard: TimerDashboardView }>) {
   const router = useRouter()
-  const [now, setNow] = useState(() => Date.now())
-  const [serverOffset] = useState(
-    () => Date.parse(initialDashboard.serverNow) - Date.now(),
-  )
+  const initialServerNow = Date.parse(initialDashboard.serverNow)
+  const [now, setNow] = useState(initialServerNow)
+  const [serverOffset, setServerOffset] = useState(0)
   const [subject, setSubject] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingSubject, setEditingSubject] = useState("")
@@ -192,18 +197,30 @@ export function TimerRoute({
       (participant) => participant.status === "running",
     ) ?? false
 
-  const [mode, setMode] = useState<TimerMode>(() =>
-    activeSessionId ? getSessionMode(activeSessionId) : getPreferredMode(),
-  )
-  const [prevSessionId, setPrevSessionId] = useState(activeSessionId)
+  const [mode, setMode] = useState<TimerMode>("pomodoro")
   const chimePlayedRef = useRef(false)
 
-  if (activeSessionId !== prevSessionId) {
-    setPrevSessionId(activeSessionId)
-    setMode(
-      activeSessionId ? getSessionMode(activeSessionId) : getPreferredMode(),
+  useEffect(() => {
+    const clientNow = Date.now()
+    const timeout = window.setTimeout(() => {
+      setServerOffset(initialServerNow - clientNow)
+      setNow(clientNow)
+    }, 0)
+    return () => window.clearTimeout(timeout)
+  }, [initialServerNow])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () =>
+        setMode(
+          activeSessionId
+            ? getSessionMode(activeSessionId)
+            : getPreferredMode(),
+        ),
+      0,
     )
-  }
+    return () => window.clearTimeout(timeout)
+  }, [activeSessionId])
 
   const activePreset = getPresetById(mode)
   const targetMs = activePreset.durationMinutes * 60 * 1000

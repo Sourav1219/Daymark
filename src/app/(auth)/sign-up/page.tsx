@@ -6,7 +6,12 @@ import { getCurrentUser } from "@/features/authentication/server/authorization"
 import { isGoogleAuthConfigured } from "@/features/authentication/server/google-auth"
 import { AuthExperience } from "@/features/authentication/ui/auth-experience"
 
-export const metadata: Metadata = { title: "Create account" }
+export const metadata: Metadata = {
+  title: "Create account",
+  description:
+    "Create a private Traketo account to organize tasks, track streaks, and master your focus.",
+  alternates: { canonical: "/sign-up" },
+}
 
 type SignUpPageProps = Readonly<{
   searchParams: Promise<{

@@ -344,15 +344,6 @@ async function requireHostRoom(
   if (!authorizedRoom || authorizedRoom.status !== "active") {
     throw new TimerServiceError("NOT_FOUND", "This Group Study room has ended.")
   }
-  // Guard: the caller's workspace must match the room's owning workspace.
-  // This closes the loophole where access.workspaceId (personal workspace)
-  // could diverge from the room's actual workspaceId.
-  if (authorizedRoom.workspaceId !== access.workspaceId) {
-    throw new TimerServiceError(
-      "FORBIDDEN",
-      "You do not have access to manage this Group Study room.",
-    )
-  }
   const room = await lockGroupStudySessionRecord(
     database,
     authorizedRoom.workspaceId,
@@ -392,7 +383,7 @@ export async function updateGroupStudySettings(
     const room = await requireHostRoom(transaction, access, input.roomId)
     const activeCount = await countActiveGroupStudyParticipants(
       transaction,
-      access.workspaceId,
+      room.workspaceId,
       room.id,
     )
     if (input.participantLimit < activeCount) {
@@ -408,7 +399,7 @@ export async function updateGroupStudySettings(
       now,
       participantLimit: input.participantLimit,
       subject: input.subject,
-      workspaceId: access.workspaceId,
+      workspaceId: room.workspaceId,
     })
     if (!updated) {
       throw new TimerServiceError(
@@ -433,7 +424,7 @@ export async function setGroupStudyJoinLocked(
       groupSessionId: room.id,
       joinLocked: input.joinLocked,
       now,
-      workspaceId: access.workspaceId,
+      workspaceId: room.workspaceId,
     })
     if (!updated) {
       throw new TimerServiceError("CONFLICT", "Room access changed elsewhere.")
@@ -456,7 +447,7 @@ export async function regenerateGroupStudyJoinCode(
       groupSessionId: room.id,
       joinCode,
       now,
-      workspaceId: access.workspaceId,
+      workspaceId: room.workspaceId,
     })
     if (!updated) {
       throw new TimerServiceError(
@@ -482,7 +473,7 @@ export async function moderateGroupStudyParticipant(
     const room = await requireHostRoom(transaction, access, input.roomId)
     const participant = await lockActiveGroupStudyParticipantForModeration(
       transaction,
-      access.workspaceId,
+      room.workspaceId,
       room.id,
       input.participantId,
     )
@@ -523,7 +514,7 @@ export async function moderateGroupStudyParticipant(
       now,
       participantId: participant.id,
       userId: participant.userId,
-      workspaceId: access.workspaceId,
+      workspaceId: room.workspaceId,
     })
     if (!left) {
       throw new TimerServiceError("CONFLICT", "That participant already left.")

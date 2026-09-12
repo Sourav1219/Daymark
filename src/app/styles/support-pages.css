@@ -344,7 +344,8 @@
   text-transform: uppercase;
 }
 
-.about-section-label h2 {
+.about-section-label h2,
+.about-section-label p {
   margin: 0;
   color: #1e3352;
   font-size: 0.88rem;
@@ -810,6 +811,10 @@
 
 .profile-help-settings[open] .profile-help-settings__chevron {
   transform: rotate(180deg);
+}
+
+.profile-help-settings:not([open]) .profile-help-settings__content {
+  display: none;
 }
 
 .profile-help-settings__content {
@@ -1845,7 +1850,8 @@
   color: #1d4ed8;
 }
 
-.contact-form__heading h2 {
+.contact-form__heading h2,
+.contact-form__heading p {
   margin: 0.2rem 0 0;
   color: #1e3352;
   font-size: 0.92rem;

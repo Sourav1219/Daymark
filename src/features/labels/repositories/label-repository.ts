@@ -98,6 +98,18 @@ export async function listLabelRecords(
   return database
     .select(labelSelection)
     .from(labels)
+    .innerJoin(
+      workspaceMembers,
+      and(
+        eq(workspaceMembers.workspaceId, labels.workspaceId),
+        eq(workspaceMembers.userId, access.userId),
+        isNull(workspaceMembers.deletedAt),
+      ),
+    )
+    .innerJoin(
+      workspaces,
+      and(eq(workspaces.id, labels.workspaceId), isNull(workspaces.deletedAt)),
+    )
     .where(
       and(eq(labels.workspaceId, access.workspaceId), isNull(labels.deletedAt)),
     )

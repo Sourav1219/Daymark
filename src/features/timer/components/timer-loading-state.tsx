@@ -31,7 +31,7 @@ export function TimerLoadingState() {
       <header className="timer-page-header">
         <div>
           <p className="timer-page-eyebrow">Focus timer</p>
-          <h1>Timer</h1>
+          <h2>Timer</h2>
           <p>Give one thing your full attention.</p>
         </div>
       </header>
@@ -147,13 +147,13 @@ export function TimerLoadingState() {
                 <Users />
               </span>
               <div>
-                <h3>Create a room</h3>
+                <h4>Create a room</h4>
                 <p>Choose the shared study topic and invite your people.</p>
               </div>
               <LoadingInput label="Room name" />
               <LoadingInput label="Study objective" />
               <LoadingInput label="Participant limit" />
-              <Button className="group-study__join-button" disabled>
+              <Button className="group-study__create-button" disabled>
                 <Play /> Create &amp; start
               </Button>
             </div>
@@ -163,11 +163,15 @@ export function TimerLoadingState() {
                 <UserPlus />
               </span>
               <div>
-                <h3>Join with a code</h3>
+                <h4>Join with a code</h4>
                 <p>Enter the active room code shared by another student.</p>
               </div>
               <LoadingInput label="Room code" />
-              <Button disabled variant="outline">
+              <Button
+                className="group-study__join-button"
+                disabled
+                variant="outline"
+              >
                 <DoorOpen /> Join room
               </Button>
             </div>

@@ -4,7 +4,13 @@ import Link from "next/link"
 import { PasswordResetForm } from "@/features/authentication/ui/password-reset-form"
 import { isPasswordResetTokenActive } from "@/features/authentication/repositories/password-reset-repository"
 
-export const metadata: Metadata = { title: "Reset password" }
+export const metadata: Metadata = {
+  title: "Reset password",
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 type ResetPasswordPageProps = Readonly<{
   searchParams: Promise<{

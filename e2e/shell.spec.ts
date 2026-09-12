@@ -3,6 +3,9 @@ import { randomUUID } from "node:crypto"
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test } from "@playwright/test"
 import { DateTime } from "luxon"
+import { completeEmailVerification } from "./helpers/complete-email-verification"
+
+test.use({ locale: "en-IN", timezoneId: "Asia/Kolkata" })
 
 async function registerShellUser(page: import("@playwright/test").Page) {
   await page.goto("/sign-up")
@@ -14,6 +17,7 @@ async function registerShellUser(page: import("@playwright/test").Page) {
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page)
   await expect(page).toHaveURL(/\/today$/u)
 }
 
@@ -51,15 +55,15 @@ test("mobile-frame shell navigation, feedback primitives, and accessibility pass
     name: "Primary navigation",
   })
   const primaryRoutes = [
-    ["Tasks", "/quests"],
-    ["Progress", "/progress"],
+    ["Tasks", "/quests", "Tasks"],
+    ["Progress", "/progress", "Your progress"],
   ] as const
 
-  for (const [label, path] of primaryRoutes) {
+  for (const [label, path, heading] of primaryRoutes) {
     await primaryNav.getByRole("link", { name: label }).click()
     await expect(page).toHaveURL(new RegExp(`${path}$`, "u"))
     await expect(
-      page.getByRole("heading", { level: 1, name: label }),
+      page.getByRole("heading", { level: 1, name: heading }),
     ).toBeVisible()
     await expect(
       page.getByRole("button", { name: /^Open notifications/u }),
@@ -88,16 +92,6 @@ test("mobile-frame shell navigation, feedback primitives, and accessibility pass
   await expect(
     page.locator("#main-content").getByText("Reminder inbox", { exact: true }),
   ).toBeVisible()
-
-  const timezone = page.getByLabel("Timezone")
-  await timezone.fill("Europe/London")
-  await page.getByRole("button", { name: "Save timezone" }).click()
-  await expect(
-    page.getByText("Timezone updated", { exact: true }),
-  ).toBeVisible()
-  await expect(page.getByText("Timezone updated", { exact: true })).toBeHidden({
-    timeout: 10_000,
-  })
 
   const accessibility = await new AxeBuilder({ page }).analyze()
   expect(accessibility.violations).toEqual([])
@@ -224,16 +218,16 @@ test("the Home bell and Settings inbox surface a task deadline", async ({
   })
   await createForm.getByLabel("Task title").fill(title)
   await createForm.getByRole("button", { name: "Today · 2 hours" }).click()
-  await createForm.getByLabel("Due time · IST").click()
+  await createForm.getByRole("button", { name: "Due time" }).click()
   const dueSoonTime = DateTime.now()
     .setZone("Asia/Kolkata")
     .plus({ minutes: 25 })
     .toFormat("HH:mm")
-  const exactDueTime = page.getByLabel("Due time · IST exact value")
+  const exactDueTime = page.getByLabel("Due time exact value")
   await exactDueTime.fill("")
   await exactDueTime.fill(dueSoonTime)
-  await exactDueTime
-    .locator("..")
+  await page
+    .getByRole("dialog", { name: "Choose an exact time" })
     .getByRole("button", { name: "Use time" })
     .click()
   await createForm.getByRole("button", { name: "Create Task" }).click()
@@ -296,7 +290,7 @@ test("the Home bell and Settings inbox surface a task deadline", async ({
   const reopenedAlert = reopenedDialog.getByRole("article", {
     name: `${title} deadline alert`,
   })
-  await reopenedAlert.getByRole("button", { name: "Mark read" }).click()
+  await expect(reopenedAlert).toContainText(deadlineCopy)
   await page.keyboard.press("Escape")
   await expect(
     page.getByRole("button", { name: "Open notifications" }),
@@ -314,7 +308,7 @@ test("the Home bell and Settings inbox surface a task deadline", async ({
   await expect(settingsInbox.getByText(laterTitle)).toHaveCount(0)
   await expect(
     settingsAlert.getByRole("button", { name: "Mark read" }),
-  ).toHaveCount(0)
+  ).toBeVisible()
 
   await page.goto("/today")
   await page.getByRole("button", { name: /^Open notifications/u }).click()
@@ -339,8 +333,11 @@ test("the Home bell and Settings inbox surface a task deadline", async ({
   await completionDialog
     .getByRole("button", { name: /Continue|Keep going/u })
     .click()
-  await expect(taskFromNotification).toHaveCount(0)
-  await expect(page.getByRole("heading", { name: "Completed" })).toHaveCount(0)
+  await expect(taskFromNotification).toHaveAttribute("data-status", "completed")
+  await expect(
+    taskFromNotification.getByLabel(`${title} completed`),
+  ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Completed" })).toBeVisible()
 
   await page.getByRole("button", { name: /^Open notifications/u }).click()
   const refreshedInbox = page.getByRole("dialog", { name: "Notifications" })
@@ -352,7 +349,7 @@ test("the Home bell and Settings inbox surface a task deadline", async ({
   await expect(refreshedInbox.getByText("You're all caught up")).toBeVisible()
 })
 
-test("an active Home task can be swiped to Trash without a points penalty", async ({
+test("an active Home task can be completed without exposing Trash controls", async ({
   page,
 }) => {
   await registerShellUser(page)
@@ -369,37 +366,25 @@ test("an active Home task can be swiped to Trash without a points penalty", asyn
 
   await page.goto("/today")
   const task = page.getByRole("article", { name: title, exact: true })
-  const shell = task.locator("..")
   const deleteTask = page.getByRole("button", {
     name: `Move ${title} to Trash`,
   })
   await expect(task).toBeVisible()
-  await expect(deleteTask).toHaveCSS("opacity", "0")
-
-  const box = await task.boundingBox()
-  expect(box).not.toBeNull()
-  if (!box) return
-  const startX = box.x + box.width * 0.75
-  const y = box.y + box.height / 2
-  await page.mouse.move(startX, y)
-  await page.mouse.down()
-  await page.mouse.move(startX - 90, y, { steps: 8 })
-  await page.mouse.up()
-
-  await expect(shell).toHaveAttribute("data-actions-open", "true")
-  await expect(deleteTask).toHaveCSS("opacity", "1")
-  await deleteTask.click()
-
-  const deletedDialog = page.getByRole("dialog", { name: "Moved to Trash" })
-  await expect(deletedDialog).toContainText("No points were deducted")
-  await deletedDialog.getByRole("button", { name: "Continue" }).click()
-  await expect(task).toHaveCount(0)
+  await expect(deleteTask).toHaveCount(0)
+  await task.getByRole("button", { name: `Clear ${title}` }).click()
+  const completionDialog = page.getByRole("dialog").filter({ hasText: title })
+  await expect(completionDialog).toBeVisible()
+  await completionDialog
+    .getByRole("button", { name: /Keep going|Continue/u })
+    .click()
+  await expect(task).toHaveAttribute("data-status", "completed")
+  await expect(task.getByLabel(`${title} completed`)).toBeVisible()
 
   await page.goto("/progress")
   await expect(
-    page.getByRole("progressbar", { name: "Today: 0 of 0 points" }),
+    page.getByRole("progressbar", { name: "Today: 20 of 20 points" }),
   ).toBeVisible()
   await expect(
-    page.getByRole("progressbar", { name: "This week: 0 of 0 points" }),
+    page.getByRole("progressbar", { name: "This week: 20 of 20 points" }),
   ).toBeVisible()
 })

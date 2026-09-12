@@ -7,7 +7,7 @@ import { parseQuestFilters } from "@/features/quests/validation/quest-validation
 import { parseQuestPage } from "@/features/quests/domain/types"
 import { QuestLoadingState } from "@/features/quests/components/quest-loading-state"
 
-export const metadata: Metadata = { title: "Create Task" }
+export const metadata: Metadata = { title: "Tasks" }
 
 type QuestsPageProps = Readonly<{
   searchParams: Promise<Record<string, string | string[] | undefined>>

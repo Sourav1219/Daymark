@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 
 type PageHeadingProps = Readonly<{
   actions?: ReactNode
+  as?: "h1" | "h2"
   className?: string
   description?: string
   eyebrow: string
@@ -12,6 +13,7 @@ type PageHeadingProps = Readonly<{
 
 export function PageHeading({
   actions,
+  as: Component = "h1",
   className,
   description,
   eyebrow,
@@ -25,9 +27,9 @@ export function PageHeading({
       </div>
 
       <div className="flex items-start justify-between gap-3">
-        <h1 className="text-3xl font-bold tracking-tight text-balance text-ink">
+        <Component className="text-3xl font-bold tracking-tight text-balance text-ink">
           {title}
-        </h1>
+        </Component>
         {actions ? <div className="shrink-0 pt-1">{actions}</div> : null}
       </div>
 

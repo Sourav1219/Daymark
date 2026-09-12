@@ -31,6 +31,20 @@ import type {
 } from "@/features/today/types"
 import { useOptionalOffline } from "@/features/offline/components/offline-provider"
 
+const homeBucketTitles: Record<HomeBucket, string> = {
+  active: "My tasks",
+  missed: "Missed",
+  completed: "Completed",
+  deleted: "Recently deleted",
+}
+
+const homeBucketOrder: Record<HomeBucket, number> = {
+  active: 0,
+  missed: 1,
+  completed: 2,
+  deleted: 3,
+}
+
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
@@ -311,12 +325,6 @@ export function HomeExperience(
     )
   }
 
-  const titles = {
-    active: "My tasks",
-    completed: "Completed",
-    missed: "Missed",
-    deleted: "Recently deleted",
-  }
   const searchQuery = filters.search?.trim() ?? ""
   const normalizedQuery = searchQuery.toLowerCase()
   const queryWords = useMemo(
@@ -325,10 +333,39 @@ export function HomeExperience(
   )
 
   const visiblePages = useMemo(() => {
+    const seenTaskIds = new Set<string>()
+    const seenActiveOrMissedTitles = new Set<string>()
+
     return pages
       .filter((page) => page.bucket !== "deleted")
+      .slice()
+      .sort(
+        (a, b) =>
+          (homeBucketOrder[a.bucket] ?? 99) - (homeBucketOrder[b.bucket] ?? 99),
+      )
       .map((page) => {
         const filtered = page.cards.filter((card) => {
+          // Enforce strict mutual exclusivity: a task can only belong to one section
+          if (seenTaskIds.has(card.id)) return false
+
+          // Bucket-status integrity constraint: completed tasks cannot appear in missed or active
+          if (page.bucket === "completed" && card.status !== "completed")
+            return false
+          if (page.bucket === "missed" && card.status === "completed")
+            return false
+          if (page.bucket === "active" && card.status === "completed")
+            return false
+
+          // Ensure status mutual exclusivity across sections:
+          // A task cannot appear in Completed if an active or missed task with the identical title exists
+          const normalizedTitle = card.title.trim().toLowerCase()
+          if (
+            page.bucket === "completed" &&
+            seenActiveOrMissedTitles.has(normalizedTitle)
+          ) {
+            return false
+          }
+
           const value = resolveClassification(card)
           const matchesType =
             filters.taskType === "any" ||
@@ -341,9 +378,24 @@ export function HomeExperience(
           if (!matchesType || !matchesPriority) return false
 
           // Instant, 0ms in-memory filter: no delay on 1-2 letters
-          if (!normalizedQuery) return true
+          if (!normalizedQuery) {
+            seenTaskIds.add(card.id)
+            if (page.bucket === "active" || page.bucket === "missed") {
+              seenActiveOrMissedTitles.add(normalizedTitle)
+            }
+            return true
+          }
 
-          return scoreCard(card, normalizedQuery, queryWords) >= 0
+          const matchesSearch =
+            scoreCard(card, normalizedQuery, queryWords) >= 0
+          if (matchesSearch) {
+            seenTaskIds.add(card.id)
+            if (page.bucket === "active" || page.bucket === "missed") {
+              seenActiveOrMissedTitles.add(normalizedTitle)
+            }
+            return true
+          }
+          return false
         })
 
         // Dynamic sorting/ranking as user writes 1-2 or more letters
@@ -441,7 +493,12 @@ export function HomeExperience(
               selectedDate={props.selectedDate}
               sections={
                 page.cards.length
-                  ? [{ title: titles[page.bucket], cards: page.cards }]
+                  ? [
+                      {
+                        title: homeBucketTitles[page.bucket],
+                        cards: page.cards,
+                      },
+                    ]
                   : []
               }
               timezone={props.timezone}
@@ -455,7 +512,7 @@ export function HomeExperience(
               >
                 {loadingBucket === page.bucket
                   ? "Loading…"
-                  : `Show more ${titles[page.bucket].toLowerCase()}`}
+                  : `Show more ${homeBucketTitles[page.bucket].toLowerCase()}`}
               </button>
             ) : null}
           </div>

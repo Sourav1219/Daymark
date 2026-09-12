@@ -375,18 +375,6 @@ function ConsentControlsCard({
                 </span>
               </span>
             </div>
-            {consentEmail ? (
-              <button
-                className="security-withdraw-btn"
-                disabled={busy}
-                onClick={() =>
-                  void applyConsentChange({ enabled: false, kind: "email" })
-                }
-                type="button"
-              >
-                Withdraw consent
-              </button>
-            ) : null}
           </div>
         </div>
 
@@ -441,18 +429,6 @@ function ConsentControlsCard({
                 </span>
               </span>
             </div>
-            {consentPush ? (
-              <button
-                className="security-withdraw-btn"
-                disabled={busy}
-                onClick={() =>
-                  void applyConsentChange({ enabled: false, kind: "push" })
-                }
-                type="button"
-              >
-                Withdraw consent
-              </button>
-            ) : null}
           </div>
         </div>
 
@@ -505,18 +481,6 @@ function ConsentControlsCard({
                 </span>
               </span>
             </div>
-            {consentOffline ? (
-              <button
-                className="security-withdraw-btn"
-                disabled={busy}
-                onClick={() =>
-                  void applyConsentChange({ enabled: false, kind: "offline" })
-                }
-                type="button"
-              >
-                Withdraw consent
-              </button>
-            ) : null}
           </div>
         </div>
       </div>
@@ -643,7 +607,7 @@ function SessionsCard({
           <MonitorSmartphone aria-hidden="true" />
         </span>
         <div>
-          <div className="security-card-heading__title">
+          <div className="security-card-heading__title sr-only">
             <h3 id="sessions-heading">Active sessions</h3>
             <span>{sessions.length}</span>
           </div>

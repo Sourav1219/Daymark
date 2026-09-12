@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { expect, test, type Page } from "@playwright/test"
+import { completeEmailVerification } from "./helpers/complete-email-verification"
 
 async function register(page: Page, label: string) {
   await page.goto("/sign-up")
@@ -12,6 +13,7 @@ async function register(page: Page, label: string) {
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page)
   await expect(page).toHaveURL(/\/today$/u)
 }
 
@@ -64,8 +66,9 @@ test("creates and clears a Quest with keyboard-only Quest controls", async ({
     await route.continue()
   })
   await page.keyboard.press("Control+Enter")
-  await expect(page.getByLabel("Task is saving")).toBeVisible()
-  await expect(page.getByLabel("Task is saving")).toBeHidden()
+  await expect(
+    page.getByRole("dialog", { name: "Task created!" }),
+  ).toBeVisible()
   await page.getByRole("link", { name: "Continue" }).click()
   await page.goto("/quests")
   await page.getByRole("tab", { name: /Search/u }).click()
@@ -80,7 +83,7 @@ test("creates and clears a Quest with keyboard-only Quest controls", async ({
   await expect(listItem).toBeFocused()
   await page.keyboard.press("c")
   await expect(
-    page.getByRole("dialog", { name: "Task complete!" }),
+    page.getByRole("dialog").filter({ hasText: title }),
   ).toBeVisible()
 
   await page.goto("/cleared")

@@ -142,7 +142,10 @@ function PasswordResetRequest() {
   const [dismissedSuccess, setDismissedSuccess] = useState<typeof state>(null)
   const dismissSuccess = useCallback(() => setDismissedSuccess(state), [state])
   const successVisible = state?.ok && state !== dismissedSuccess
-  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
+  const turnstileSiteKey =
+    process.env.NEXT_PUBLIC_E2E_TEST_MODE === "true"
+      ? ""
+      : (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "")
   const [captchaVerified, setCaptchaVerified] = useState(!turnstileSiteKey)
 
   return (

@@ -486,9 +486,12 @@ export async function createQuestRecord(
 ): Promise<QuestRecord | null> {
   const classification = {
     ...suggestClassification(input.title, input.description),
-    ...input,
+    ...(input.customType !== undefined ? { customType: input.customType } : {}),
     ...(input.taskType !== undefined
-      ? { typeManual: input.typeManual ?? true }
+      ? {
+          taskType: input.taskType,
+          typeManual: input.typeManual ?? true,
+        }
       : {}),
   }
   const [created] = await database
@@ -620,6 +623,18 @@ export async function listQuestRecords(
       )`,
     })
     .from(tasks)
+    .innerJoin(
+      workspaceMembers,
+      and(
+        eq(workspaceMembers.workspaceId, tasks.workspaceId),
+        eq(workspaceMembers.userId, access.userId),
+        isNull(workspaceMembers.deletedAt),
+      ),
+    )
+    .innerJoin(
+      workspaces,
+      and(eq(workspaces.id, tasks.workspaceId), isNull(workspaces.deletedAt)),
+    )
     .leftJoin(
       gates,
       and(eq(gates.id, tasks.projectId), isNull(gates.deletedAt)),

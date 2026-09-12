@@ -124,4 +124,66 @@ describe("HomeExperience instant case-insensitive search", () => {
     expect(screen.getAllByText("Reply to client email")[0]).toBeVisible()
     expect(screen.getAllByText("Design sprint planning")[0]).toBeVisible()
   })
+
+  it("enforces mutual exclusivity so tasks do not appear simultaneously in Missed and Completed", () => {
+    const pagesWithDuplicateTitle: readonly HomePage[] = [
+      { bucket: "active", hasMore: false, offset: 0, cards: [] },
+      {
+        bucket: "missed",
+        hasMore: false,
+        offset: 0,
+        cards: [
+          {
+            ...createCard("missed-1", "Test Task 1"),
+            status: "failed",
+            dueAt: "2026-09-06T15:00:00.000Z",
+          },
+        ],
+      },
+      {
+        bucket: "completed",
+        hasMore: false,
+        offset: 0,
+        cards: [
+          {
+            ...createCard("completed-1", "Test Task 1"),
+            status: "completed",
+            completedAt: "2026-09-06T10:00:00.000Z",
+          },
+          {
+            ...createCard("completed-2", "Test Task 2"),
+            status: "completed",
+            completedAt: "2026-09-06T11:00:00.000Z",
+          },
+        ],
+      },
+      { bucket: "deleted", hasMore: false, offset: 0, cards: [] },
+    ]
+
+    render(
+      <HomeExperience
+        activeLabelId="any"
+        facets={{
+          priorities: ["medium"],
+          types: [{ customType: null, taskType: "work" }],
+        }}
+        history={[]}
+        inbox={{ dueSoonQuests: [] }}
+        initialPages={pagesWithDuplicateTitle}
+        labels={[]}
+        referenceNow="2026-09-06T18:00:00.000Z"
+        selectedDate="2026-09-06"
+        streak={3}
+        timezone="UTC"
+        todayDate="2026-09-06"
+      />,
+    )
+
+    // "Test Task 1" should appear exactly once (in Missed), never simultaneously in Completed
+    const task1Elements = screen.getAllByText("Test Task 1")
+    expect(task1Elements).toHaveLength(1)
+
+    // "Test Task 2" (which is completed) remains visible in Completed
+    expect(screen.getByText("Test Task 2")).toBeVisible()
+  })
 })

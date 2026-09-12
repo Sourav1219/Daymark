@@ -37,7 +37,7 @@ describe("CookieConsentProvider", () => {
     })
   })
 
-  it("automatically opens consent banner for new visitors with Accept all and Essential only, and no Manage choices button initially", () => {
+  it("automatically opens consent banner for new visitors with Accept all and Essential only, and no Manage choices button initially", async () => {
     render(
       <CookieConsentProvider initialConsent={null}>
         <p>Page content</p>
@@ -45,7 +45,7 @@ describe("CookieConsentProvider", () => {
     )
 
     expect(
-      screen.getByRole("dialog", { name: "Cookies & privacy" }),
+      await screen.findByRole("dialog", { name: "Cookies & privacy" }),
     ).toBeVisible()
     expect(screen.getByRole("button", { name: "Accept all" })).toBeVisible()
     expect(screen.getByRole("button", { name: "Essential only" })).toBeVisible()
@@ -86,7 +86,7 @@ describe("CookieConsentProvider", () => {
       </CookieConsentProvider>,
     )
 
-    const acceptBtn = screen.getByRole("button", { name: "Accept all" })
+    const acceptBtn = await screen.findByRole("button", { name: "Accept all" })
     const essentialBtn = screen.getByRole("button", { name: "Essential only" })
 
     expect(acceptBtn).toBeVisible()
@@ -114,7 +114,7 @@ describe("CookieConsentProvider", () => {
       </CookieConsentProvider>,
     )
 
-    await user.click(screen.getByRole("button", { name: "Accept all" }))
+    await user.click(await screen.findByRole("button", { name: "Accept all" }))
 
     await waitFor(() => {
       expect(saveCookieConsentAction).toHaveBeenCalledWith("preferences")
@@ -142,7 +142,7 @@ describe("CookieConsentProvider", () => {
     )
 
     expect(
-      screen.getByRole("dialog", { name: "Manage cookie choices" }),
+      await screen.findByRole("dialog", { name: "Manage cookie choices" }),
     ).toBeVisible()
     expect(screen.getByRole("region", { name: "Cookie choices" })).toBeVisible()
     expect(screen.getByText("Essential cookies & storage")).toBeVisible()
@@ -187,7 +187,7 @@ describe("CookieConsentProvider", () => {
     )
 
     expect(
-      screen.getByRole("dialog", { name: "Manage cookie choices" }),
+      await screen.findByRole("dialog", { name: "Manage cookie choices" }),
     ).toBeVisible()
     expect(screen.getByText(/Optional preferences allowed/i)).toBeVisible()
 
@@ -214,7 +214,7 @@ describe("CookieConsentProvider", () => {
       </CookieConsentProvider>,
     )
 
-    expect(screen.getByRole("dialog")).toBeVisible()
+    expect(await screen.findByRole("dialog")).toBeVisible()
     await user.click(
       screen.getByRole("button", { name: "Close cookie settings" }),
     )

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { expect, test } from "@playwright/test"
+import { completeEmailVerification } from "./helpers/complete-email-verification"
 
 test.use({ locale: "en-IN", timezoneId: "Asia/Kolkata" })
 
@@ -53,6 +54,7 @@ test("runs, pauses, resumes, edits, isolates history, and stops on close", async
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page)
   await expect(page).toHaveURL(/\/today$/u)
 
   const primaryLinks = page
@@ -72,8 +74,9 @@ test("runs, pauses, resumes, edits, isolates history, and stops on close", async
   ).toBeVisible()
   await expect(page.locator("[data-nextjs-dialog]")).toHaveCount(0)
 
+  await page.getByRole("radio", { name: "Stopwatch" }).check()
   await page.getByLabel("Session subject").fill("Deep work")
-  await page.getByRole("button", { name: "Start timer" }).click()
+  await page.getByRole("button", { name: /^Start /u }).click()
   await expect(
     page.getByRole("dialog", { name: "Timer started!" }),
   ).toBeVisible()
@@ -124,7 +127,7 @@ test("runs, pauses, resumes, edits, isolates history, and stops on close", async
   ).toBeVisible()
   await expect(page.getByText("Session saved to Timer history")).toHaveCount(0)
   await page.getByRole("button", { name: "Continue" }).click()
-  await expect(page.getByRole("button", { name: "Start timer" })).toBeVisible()
+  await expect(page.getByRole("button", { name: /^Start /u })).toBeVisible()
   await expect(
     page.getByRole("heading", { name: "Timer history" }),
   ).toBeVisible()
@@ -141,7 +144,7 @@ test("runs, pauses, resumes, edits, isolates history, and stops on close", async
 
   await page.getByRole("link", { name: "Timer" }).click()
   await page.getByLabel("Session subject").fill("Close boundary")
-  await page.getByRole("button", { name: "Start timer" }).click()
+  await page.getByRole("button", { name: /^Start /u }).click()
   await expect(
     page.getByRole("dialog", { name: "Timer started!" }),
   ).toBeVisible()
@@ -155,11 +158,15 @@ test("runs, pauses, resumes, edits, isolates history, and stops on close", async
     window.dispatchEvent(new PageTransitionEvent("pagehide")),
   )
   await page.close({ runBeforeUnload: true })
-  await backgroundPage.waitForTimeout(750)
-  await backgroundPage.goto("/timer")
-  await expect(
-    backgroundPage.getByRole("button", { name: "Start timer" }),
-  ).toBeVisible()
+  await expect
+    .poll(
+      async () => {
+        await backgroundPage.goto("/timer")
+        return backgroundPage.getByRole("button", { name: /^Start /u }).count()
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(1)
   await expect(
     backgroundPage.getByText("Close boundary", { exact: true }),
   ).toBeVisible()

@@ -18,6 +18,10 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/api/",
           "/app/",
+          "/verify-email",
+          "/forgot-password",
+          "/reset-password",
+          "/session-expired",
           "/today",
           "/quests",
           "/timer",

@@ -3,7 +3,15 @@
 import { randomUUID } from "node:crypto"
 
 import { eq } from "drizzle-orm"
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 
 import { createDatabase, type Database } from "@/db/client"
 import {
@@ -115,6 +123,8 @@ integrationDescribe("Gate repository and application services", () => {
   let fixture: Fixture
 
   beforeAll(() => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-08-07T00:00:00.000Z"))
     if (!testDatabaseUrl) {
       throw new Error("TEST_DATABASE_URL is required for integration tests")
     }
@@ -134,6 +144,7 @@ integrationDescribe("Gate repository and application services", () => {
   })
 
   afterAll(async () => {
+    vi.useRealTimers()
     if (database) {
       await database.$client.end({ timeout: 2 })
     }

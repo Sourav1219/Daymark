@@ -298,4 +298,27 @@ describe("PrivacyExperience (Unified Privacy & Data Centre)", () => {
     expect(backButton).toBeVisible()
     expect(backButton).toHaveAttribute("href", "/profile")
   })
+
+  it("renders distinct descriptive H1 headings when isSubpage is true", () => {
+    const { unmount } = render(
+      <PrivacyExperience initialTab="policy" isSubpage user={mockUser} />,
+    )
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Official Statutory Privacy Policy",
+      }),
+    ).toBeVisible()
+    unmount()
+
+    render(
+      <PrivacyExperience initialTab="inventory" isSubpage user={mockUser} />,
+    )
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Personal Data Inventory & Lawful Bases",
+      }),
+    ).toBeVisible()
+  })
 })

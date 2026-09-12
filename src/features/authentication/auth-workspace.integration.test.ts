@@ -16,6 +16,7 @@ import {
   tasks,
   userProgression,
   users,
+  verifications,
   workspaceMembers,
   workspaces,
 } from "@/db/schema"
@@ -80,6 +81,7 @@ integrationDescribe("authentication and workspace integration", () => {
   beforeEach(async () => {
     await clearReminderFixtures(database)
     await database.delete(rateLimits)
+    await database.delete(verifications)
     await database.delete(questLabels)
     await database.delete(tasks)
     await database.delete(labels)
@@ -162,7 +164,9 @@ integrationDescribe("authentication and workspace integration", () => {
     const verification = await auth.api.verifyEmailOTP({
       body: {
         email: "ada@example.com",
-        otp: verificationCodes[0] ?? "",
+        // The rejected sign-in above deliberately issues a fresh code for the
+        // unverified account. Only that latest code should remain valid.
+        otp: verificationCodes.at(-1) ?? "",
       },
       headers: new Headers({ origin: "https://questly.test" }),
       returnHeaders: true,
@@ -285,7 +289,7 @@ integrationDescribe("authentication and workspace integration", () => {
     await expect(database.select().from(sessions)).resolves.toHaveLength(0)
   })
 
-  it("persists production authentication rate-limit buckets", async () => {
+  it("does not duplicate the shared action limiter in Better Auth", async () => {
     const response = await auth.handler(
       new Request("https://questly.test/api/auth/sign-in/email", {
         body: JSON.stringify({
@@ -301,8 +305,6 @@ integrationDescribe("authentication and workspace integration", () => {
     )
 
     expect(response.status).toBe(401)
-    await expect(database.select().from(rateLimits)).resolves.toMatchObject([
-      { count: 1 },
-    ])
+    await expect(database.select().from(rateLimits)).resolves.toEqual([])
   })
 })

@@ -166,6 +166,9 @@ jobs:
       - run: pnpm db:migrate
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+        env:
+          E2E_TEST_MODE: "true"
+          NEXT_PUBLIC_E2E_TEST_MODE: "true"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -203,6 +206,9 @@ jobs:
       - run: pnpm db:migrate
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:pwa
+        env:
+          E2E_TEST_MODE: "true"
+          NEXT_PUBLIC_E2E_TEST_MODE: "true"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

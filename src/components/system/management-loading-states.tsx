@@ -41,6 +41,7 @@ export function GatesLoadingState() {
       <span className="sr-only">Loading Lists</span>
       <PageHeading
         actions={<LoadingPlaceholder className="exact-loading__badge" />}
+        as="h2"
         description="Organise tasks into named Lists. Each List offers a shareable filtered view of your tasks, and archived Lists keep history without cluttering active work."
         eyebrow="Lists"
         title="Lists"
@@ -71,6 +72,7 @@ export function SettingsLoadingState() {
     >
       <span className="sr-only">Loading Settings</span>
       <PageHeading
+        as="h2"
         description="Tune dates, reminders, and offline access around your routine."
         eyebrow="Settings"
         title="Settings"
@@ -125,9 +127,9 @@ export function ContactLoadingState() {
           <span className="sr-only">Loading Contact us</span>
           <header className="contact-nav-header">
             <BackButton
-              aria-label="Back to profile"
+              aria-label="Back"
               className="contact-back-btn"
-              fallbackHref="/profile"
+              fallbackHref="/sign-in"
             >
               <ArrowLeft />
             </BackButton>
@@ -147,7 +149,7 @@ export function ContactLoadingState() {
                 <Sparkles aria-hidden="true" />
                 <span>Help &amp; Support</span>
               </div>
-              <h1 className="contact-hero-banner__title">Contact us</h1>
+              <p className="contact-hero-banner__title">Contact us</p>
               <p className="contact-hero-banner__desc">
                 Have a question, feedback, or need assistance? Select a topic
                 and we’ll get you in touch with the right team.
@@ -164,7 +166,7 @@ export function ContactLoadingState() {
                     Topic: <strong>Account &amp; sign-in</strong>
                   </span>
                 </div>
-                <h2>Your message details</h2>
+                <p>Your message details</p>
               </div>
               <Mail />
             </div>
@@ -224,9 +226,9 @@ export function AboutLoadingState() {
           <span className="sr-only">Loading About Traketo</span>
           <header className="about-nav-header">
             <BackButton
-              aria-label="Back to profile"
+              aria-label="Back"
               className="about-back-btn"
-              fallbackHref="/profile"
+              fallbackHref="/sign-in"
             >
               <ArrowLeft />
             </BackButton>
@@ -248,9 +250,9 @@ export function AboutLoadingState() {
               </div>
               <div className="about-hero-banner__main">
                 <div>
-                  <h1 className="about-hero-banner__title">
+                  <p className="about-hero-banner__title">
                     A calmer way to make progress.
-                  </h1>
+                  </p>
                   <p className="about-hero-banner__desc">
                     Traketo brings planning, focus sessions, reminders, and
                     shared study into one thoughtful space—so your day feels
@@ -267,7 +269,7 @@ export function AboutLoadingState() {
           >
             <div className="about-section-label">
               <span className="about-section-step">Step 1</span>
-              <h2>Designed for real life</h2>
+              <p>Designed for real life</p>
             </div>
             <div className="about-features-grid">
               <div className="about-feature-card about-feature-card--blue">
@@ -310,9 +312,9 @@ export function PrivacyLoadingState() {
           <span className="sr-only">Loading Privacy Policy</span>
           <header className="privacy-nav-header">
             <BackButton
-              aria-label="Back to profile"
+              aria-label="Back"
               className="privacy-back-btn"
-              fallbackHref="/profile"
+              fallbackHref="/sign-in"
             >
               <ArrowLeft />
             </BackButton>
@@ -335,7 +337,7 @@ export function PrivacyLoadingState() {
                 </span>
                 <span className="privacy-hero-date">Effective 28 Aug 2026</span>
               </div>
-              <h1 className="privacy-hero-banner__title">Privacy Policy</h1>
+              <p className="privacy-hero-banner__title">Privacy Policy</p>
               <p className="privacy-hero-banner__desc">
                 This policy explains what Traketo collects, why it is needed,
                 and the choices you have over your information.
@@ -391,7 +393,7 @@ export function TermsLoadingState() {
             <BackButton
               aria-label="Back"
               className="terms-back-btn"
-              fallbackHref="/profile"
+              fallbackHref="/sign-in"
             >
               <ArrowLeft />
             </BackButton>
@@ -414,7 +416,7 @@ export function TermsLoadingState() {
                 </span>
                 <span className="terms-hero-date">Effective 26 Aug 2026</span>
               </div>
-              <h1 className="terms-hero-banner__title">Terms of Service</h1>
+              <p className="terms-hero-banner__title">Terms of Service</p>
               <p className="terms-hero-banner__desc">
                 These terms set the ground rules for using Traketo and explain
                 the responsibilities shared between you and the service.
@@ -505,9 +507,9 @@ export function PrivacyCentreLoadingState() {
                   DPDP &amp; GDPR Compliant
                 </span>
               </div>
-              <h1 className="privacy-centre-hero__title">
+              <p className="privacy-centre-hero__title">
                 Privacy &amp; Data Centre
-              </h1>
+              </p>
               <p className="privacy-centre-hero__desc">
                 Inspect the data Traketo holds, manage optional consent,
                 download your archive, submit privacy requests, and designate a
@@ -545,6 +547,7 @@ export function WorkspaceLoadingState() {
       <span className="sr-only">Loading workspace</span>
       <PageHeading
         actions={<LoadingPlaceholder className="exact-loading__badge" />}
+        as="h2"
         description="The explicit workspace URL passed the same membership-predicated access boundary used by every shell route."
         eyebrow="Authorized workspace"
         title="Opening workspace"

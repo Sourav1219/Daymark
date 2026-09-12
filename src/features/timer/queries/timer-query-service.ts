@@ -283,6 +283,28 @@ export async function getTimerDashboard(
   database: Database = getDatabase(),
   now: Date = new Date(),
 ): Promise<TimerDashboardView> {
+  const workspace = await getAuthorizedWorkspaceSummary(access, database)
+  const timezone = workspace?.timezone ?? defaultTimezone
+  const today = localDateForInstant(now, timezone)
+
+  // AccessContext is a request-scoped optimization, not an authorization
+  // credential. Re-check membership before any timer or room data is read so
+  // a revoked context cannot disclose a final dashboard snapshot.
+  if (!workspace) {
+    return {
+      activeSession: null,
+      completedCount: 0,
+      history: [],
+      localDate: today,
+      pendingJoinRequest: null,
+      serverNow: now.toISOString(),
+      sharedHistory: [],
+      sharedSession: null,
+      timezone,
+      totalCompletedMs: 0,
+    }
+  }
+
   const activeSessionPromise = findActiveTimerSessionRecord(database, access)
   const sharedSessionPromise = getActiveGroupStudyView(database, access)
   const pendingJoinRequestPromise = database
@@ -300,11 +322,6 @@ export async function getTimerDashboard(
     )
     .limit(1)
     .then((res) => res[0] ?? null)
-  const timezone =
-    (await getAuthorizedWorkspaceSummary(access, database))?.timezone ??
-    defaultTimezone
-  const today = localDateForInstant(now, timezone)
-
   // Compute the UTC boundaries of the current local day so we can push the
   // date filter into SQL instead of loading all sessions.
   const dayStart = DateTime.fromISO(today, { zone: timezone })

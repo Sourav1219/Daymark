@@ -23,7 +23,7 @@ export function PageSkeleton({
       <span className="sr-only">Loading {title}</span>
       <header className="route-loading__header">
         <span>{eyebrow}</span>
-        <h1>{title}</h1>
+        <h2>{title}</h2>
         <p>{description}</p>
       </header>
       <LoadingBody variant={variant} />

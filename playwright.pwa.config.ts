@@ -8,11 +8,32 @@ export default defineConfig({
   use: {
     ...devices["Desktop Chrome"],
     baseURL: "http://127.0.0.1:3001",
+    storageState: {
+      cookies: [
+        {
+          domain: "127.0.0.1",
+          expires: -1,
+          httpOnly: false,
+          name: "traketo_cookie_consent",
+          path: "/",
+          sameSite: "Lax",
+          secure: false,
+          value: "v1.essential",
+        },
+      ],
+      origins: [],
+    },
     serviceWorkers: "allow",
     trace: "on-first-retry",
   },
   webServer: {
     command: "pnpm build && pnpm start --hostname 127.0.0.1 --port 3001",
+    env: {
+      ...process.env,
+      E2E_TEST_MODE: "true",
+      NEXT_DIST_DIR: ".next-pwa-e2e",
+      NEXT_PUBLIC_E2E_TEST_MODE: "true",
+    },
     reuseExistingServer: false,
     timeout: 180_000,
     url: "http://127.0.0.1:3001/api/health",

@@ -108,9 +108,15 @@ export function AboutContent() {
                     doable, not crowded.
                   </p>
                 </div>
-                <div aria-hidden="true" className="about-hero-banner__visual">
-                  <span className="about-hero-banner__halo" />
-                  <WelcomeAvatar className="about-hero-banner__avatar" />
+                <div className="about-hero-banner__visual">
+                  <span
+                    aria-hidden="true"
+                    className="about-hero-banner__halo"
+                  />
+                  <WelcomeAvatar
+                    alt="Traketo guide companion illustration"
+                    className="about-hero-banner__avatar"
+                  />
                 </div>
               </div>
             </div>

@@ -10,7 +10,6 @@ import {
   useTransition,
   type ReactNode,
 } from "react"
-import { createPortal } from "react-dom"
 import Link from "next/link"
 import { Cookie, ChevronRight, X } from "lucide-react"
 
@@ -39,18 +38,6 @@ function subscribeToCookieConsent(onChange: () => void) {
 
 function noServerCookieConsent() {
   return null
-}
-
-function subscribeStatic() {
-  return () => undefined
-}
-
-function getClientMounted() {
-  return true
-}
-
-function getServerMounted() {
-  return false
 }
 
 const defaultCookieConsentContextValue: CookieConsentContextValue = {
@@ -134,12 +121,6 @@ export function CookieConsentProvider({
     [consent, openPreferences],
   )
 
-  const mounted = useSyncExternalStore(
-    subscribeStatic,
-    getClientMounted,
-    getServerMounted,
-  )
-
   const dialogContent = isOpen ? (
     <div
       aria-hidden={false}
@@ -163,9 +144,9 @@ export function CookieConsentProvider({
           </span>
           <div>
             <span className="cookie-consent__eyebrow">Your privacy</span>
-            <h2 id="cookie-consent-title">
+            <p className="cookie-consent__title" id="cookie-consent-title">
               {showChoices ? "Manage cookie choices" : "Cookies & privacy"}
-            </h2>
+            </p>
             <p id="cookie-consent-description">
               {showChoices ? (
                 <>
@@ -309,17 +290,10 @@ export function CookieConsentProvider({
     </div>
   ) : null
 
-  const portalTarget =
-    typeof document !== "undefined"
-      ? (document.getElementById("app-device-viewport") ?? document.body)
-      : null
-
   return (
     <CookieConsentContext.Provider value={contextValue}>
       {children}
-      {mounted && portalTarget && dialogContent
-        ? createPortal(dialogContent, portalTarget)
-        : null}
+      {dialogContent}
     </CookieConsentContext.Provider>
   )
 }

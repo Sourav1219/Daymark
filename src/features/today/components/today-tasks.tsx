@@ -79,6 +79,7 @@ type ClassificationHandler = (
 ) => void
 const TodayTaskContext = createContext<{
   timezone: string
+  selectedDate?: string | undefined
   onClassified?: ClassificationHandler | undefined
   onRescheduled?: ((task: RestoredTaskNotice) => void) | undefined
 }>({ timezone: "UTC" })
@@ -258,21 +259,22 @@ export function TodayTasks({
     if (lastFocusedQuestId.current === focusedQuestId) {
       return
     }
-    const isEditing =
-      document.activeElement instanceof HTMLInputElement ||
-      document.activeElement instanceof HTMLTextAreaElement ||
-      (document.activeElement instanceof HTMLElement &&
-        document.activeElement.isContentEditable)
-    if (isEditing) {
-      return
-    }
-
     const task = document.getElementById(todayTaskElementId(focusedQuestId))
     if (!task) return
 
-    lastFocusedQuestId.current = focusedQuestId
-
     const frame = window.requestAnimationFrame(() => {
+      const activeElement = document.activeElement
+      const isEditing =
+        activeElement instanceof HTMLInputElement ||
+        activeElement instanceof HTMLTextAreaElement ||
+        (activeElement instanceof HTMLElement &&
+          activeElement.isContentEditable)
+      // Preserve deliberate input focus inside the current Today view. An
+      // input left behind by the previous route must not prevent a requested
+      // task from receiving focus after navigation.
+      if (isEditing && activeElement.closest(".today-page")) return
+
+      lastFocusedQuestId.current = focusedQuestId
       beginTaskGlow(focusedQuestId)
       const reducedMotion =
         window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
@@ -306,7 +308,12 @@ export function TodayTasks({
 
   return (
     <TodayTaskContext.Provider
-      value={{ onClassified, onRescheduled: setRescheduledTask, timezone }}
+      value={{
+        onClassified,
+        onRescheduled: setRescheduledTask,
+        selectedDate,
+        timezone,
+      }}
     >
       {rescheduledTask ? (
         <TaskRescheduledPopup
@@ -360,72 +367,85 @@ export function TodayTasks({
           ) : null}
         </section>
       ) : null}
-      {visibleSections.map((section) => {
-        if (section.title === "Recently deleted")
-          return (
-            <HomeDeletedRows
-              key={section.title}
-              cards={section.cards}
-              timezone={timezone}
-              referenceNow={referenceNow ?? new Date(now).toISOString()}
-            />
-          )
-        const isCompletedSection =
-          section.title === "Completed today" || section.title === "Completed"
+      {visibleSections
+        .slice()
+        .sort((a, b) => {
+          const order: Record<string, number> = {
+            "My tasks": 0,
+            Missed: 1,
+            Completed: 2,
+            "Completed today": 2,
+          }
+          return (order[a.title] ?? 99) - (order[b.title] ?? 99)
+        })
+        .map((section) => {
+          if (section.title === "Recently deleted")
+            return (
+              <HomeDeletedRows
+                key={section.title}
+                cards={section.cards}
+                timezone={timezone}
+                referenceNow={referenceNow ?? new Date(now).toISOString()}
+              />
+            )
+          const isCompletedSection =
+            section.title === "Completed today" || section.title === "Completed"
 
-        return isCompletedSection ? (
-          <TodayCompletedSection
-            focusedQuestId={focusedQuestId}
-            glowingQuestId={glowingQuestId}
-            historical={historical}
-            key={section.title}
-            now={now}
-            onCompleted={showCompletion}
-            onDeleteFailed={deleteFailed}
-            onDeleteStarted={deleteStarted}
-            section={section}
-          />
-        ) : (
-          <section
-            className="today-section"
-            data-primary={section.title === "My tasks"}
-            key={section.title}
-          >
-            <div className="today-section__heading">
-              <div>
-                {section.title === "My tasks" ? (
-                  <small>Personal schedule</small>
-                ) : null}
-                <h2 className="today-section__title">{section.title}</h2>
+          return isCompletedSection ? (
+            <TodayCompletedSection
+              focusedQuestId={focusedQuestId}
+              glowingQuestId={glowingQuestId}
+              historical={historical}
+              key={section.title}
+              now={now}
+              onCompleted={showCompletion}
+              onDeleteFailed={deleteFailed}
+              onDeleteStarted={deleteStarted}
+              section={section}
+            />
+          ) : (
+            <section
+              className={`today-section ${
+                section.title === "Missed" ? "today-section--missed" : ""
+              }`}
+              data-primary={section.title === "My tasks"}
+              key={section.title}
+            >
+              <div className="today-section__heading">
+                <div>
+                  {section.title === "My tasks" ? (
+                    <small>Personal schedule</small>
+                  ) : null}
+                  <h2 className="today-section__title">{section.title}</h2>
+                </div>
+                <span>
+                  {section.cards.length}{" "}
+                  {section.cards.length === 1 ? "task" : "tasks"}
+                </span>
               </div>
-              <span>
-                {section.cards.length}{" "}
-                {section.cards.length === 1 ? "task" : "tasks"}
-              </span>
-            </div>
-            <div className="today-section__cards">
-              {section.cards.map((card) => (
-                <TodayTaskCard
-                  card={card}
-                  focused={card.id === focusedQuestId}
-                  glowing={card.id === glowingQuestId}
-                  historical={historical}
-                  key={`${card.id}:${card.version}:${
-                    optimisticallyReopened.get(card.id) === null
-                      ? "reopening"
-                      : "ready"
-                  }`}
-                  now={now}
-                  onCompleted={showCompletion}
-                  onDeleteFailed={deleteFailed}
-                  onDeleteStarted={deleteStarted}
-                  reopening={optimisticallyReopened.get(card.id) === null}
-                />
-              ))}
-            </div>
-          </section>
-        )
-      })}
+              <div className="today-section__cards">
+                {section.cards.map((card) => (
+                  <TodayTaskCard
+                    card={card}
+                    focused={card.id === focusedQuestId}
+                    glowing={card.id === glowingQuestId}
+                    historical={historical}
+                    key={`${card.id}:${card.status}:${
+                      optimisticallyReopened.get(card.id) === null
+                        ? "reopening"
+                        : "ready"
+                    }`}
+                    now={now}
+                    onCompleted={showCompletion}
+                    onDeleteFailed={deleteFailed}
+                    onDeleteStarted={deleteStarted}
+                    reopening={optimisticallyReopened.get(card.id) === null}
+                  />
+                ))}
+              </div>
+            </section>
+          )
+        })}
     </TodayTaskContext.Provider>
   )
 }
@@ -466,19 +486,19 @@ function TodayCompletedSection({
       className="today-section today-section--completed"
       data-collapsed={collapsed}
     >
-      <button
-        aria-expanded={!collapsed}
-        aria-label={`${section.title}, ${section.cards.length} ${
-          section.cards.length === 1 ? "task" : "tasks"
-        }`}
-        className="today-section__heading today-section__heading--collapsible"
-        onClick={() => setCollapsed((prev) => !prev)}
-        type="button"
-      >
+      <div className="today-section__heading">
         <div className="today-section__heading-title-group">
           <h2 className="today-section__title">{section.title}</h2>
         </div>
-        <span className="today-section__count-badge">
+        <button
+          aria-expanded={!collapsed}
+          aria-label={`${section.title}, ${section.cards.length} ${
+            section.cards.length === 1 ? "task" : "tasks"
+          }`}
+          className="today-section__count-badge today-section__count-badge--toggle"
+          onClick={() => setCollapsed((prev) => !prev)}
+          type="button"
+        >
           <span>
             {section.cards.length}{" "}
             {section.cards.length === 1 ? "task" : "tasks"}
@@ -489,8 +509,8 @@ function TodayCompletedSection({
               collapsed ? "today-section__chevron--collapsed" : ""
             }`}
           />
-        </span>
-      </button>
+        </button>
+      </div>
       {!collapsed ? (
         <div className="today-section__cards">
           {section.cards.map((card, index) => (
@@ -506,7 +526,7 @@ function TodayCompletedSection({
                 focused={card.id === focusedQuestId}
                 glowing={card.id === glowingQuestId}
                 historical={historical}
-                key={`${card.id}:${card.version}`}
+                key={`${card.id}:${card.status}`}
                 now={now}
                 onCompleted={onCompleted}
                 onDeleteFailed={onDeleteFailed}
@@ -541,7 +561,8 @@ function TodayTaskCard({
   onDeleteStarted: (task: DeletedTaskNotice) => void
   reopening?: boolean | undefined
 }>) {
-  const { timezone, onClassified, onRescheduled } = useContext(TodayTaskContext)
+  const { selectedDate, timezone, onClassified, onRescheduled } =
+    useContext(TodayTaskContext)
   const [pending, startTransition] = useTransition()
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [done, setDone] = useState(false)
@@ -554,6 +575,32 @@ function TodayTaskCard({
     card.status === "failed" ||
     (card.status === "open" && dueTime !== null && dueTime < now)
   const hasDescription = Boolean(card.description?.trim())
+
+  const cardDateKey = card.dueAt
+    ? new Intl.DateTimeFormat("en-CA", {
+        day: "2-digit",
+        month: "2-digit",
+        timeZone: timezone,
+        year: "numeric",
+      }).format(new Date(card.dueAt))
+    : card.startAt
+      ? new Intl.DateTimeFormat("en-CA", {
+          day: "2-digit",
+          month: "2-digit",
+          timeZone: timezone,
+          year: "numeric",
+        }).format(new Date(card.startAt))
+      : null
+
+  const isMultiDayRange =
+    card.dateLabel?.includes("→") || card.dateLabel?.includes("–")
+
+  // In a single-day view, repeating the date on every item adds redundant noise.
+  // Omit the date badge when it matches the selected date, while preserving multi-day ranges.
+  const isRedundantDate =
+    Boolean(selectedDate) && cardDateKey === selectedDate && !isMultiDayRange
+
+  const showDateBadge = !isRedundantDate && Boolean(card.dateLabel)
 
   function complete() {
     if (pending || done) {
@@ -697,10 +744,12 @@ function TodayTaskCard({
               ) : null}
               <p className="today-card__meta">
                 <span className="today-card__schedule">
-                  <span className="today-card__date">
-                    <CalendarDays aria-hidden="true" />
-                    <span>{card.dateLabel ?? "No fixed date"}</span>
-                  </span>
+                  {showDateBadge ? (
+                    <span className="today-card__date">
+                      <CalendarDays aria-hidden="true" />
+                      <span>{card.dateLabel}</span>
+                    </span>
+                  ) : null}
                   <span className="today-card__time">
                     <Clock3 aria-hidden="true" />
                     <span>{card.timeLabel}</span>

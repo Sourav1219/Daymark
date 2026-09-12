@@ -24,6 +24,8 @@ import {
   groupStudySessions,
   timerSessions,
   users,
+  workspaceMembers,
+  workspaces,
 } from "@/db/schema"
 import type { GroupStudyActivityAction } from "@/features/timer/domain/types"
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
@@ -112,21 +114,41 @@ export async function groupStudyJoinCodeExists(
 }
 
 /**
- * Resolves the workspaceId that owns a given group study room.
- * Does NOT enforce any access predicate — callers must subsequently
- * verify membership via requireWorkspaceAccess(workspaceId).
+ * Resolves the active participant's workspace for a room only when the
+ * authenticated caller has both an active room seat and an active workspace
+ * membership. Foreign and nonexistent room IDs are deliberately identical.
  */
-export async function findGroupStudySessionWorkspaceId(
+export async function findManagedGroupStudySessionWorkspaceId(
   database: DatabaseExecutor,
-  roomId: string,
+  input: Readonly<{ roomId: string; userId: string }>,
 ): Promise<string | null> {
   const [record] = await database
-    .select({ workspaceId: groupStudySessions.workspaceId })
-    .from(groupStudySessions)
+    .select({ workspaceId: timerSessions.workspaceId })
+    .from(groupStudyParticipants)
+    .innerJoin(
+      groupStudySessions,
+      eq(groupStudySessions.id, groupStudyParticipants.groupSessionId),
+    )
+    .innerJoin(
+      timerSessions,
+      eq(timerSessions.id, groupStudyParticipants.timerSessionId),
+    )
+    .innerJoin(
+      workspaceMembers,
+      and(
+        eq(workspaceMembers.workspaceId, timerSessions.workspaceId),
+        eq(workspaceMembers.userId, input.userId),
+      ),
+    )
+    .innerJoin(workspaces, eq(workspaces.id, timerSessions.workspaceId))
     .where(
       and(
-        eq(groupStudySessions.id, roomId),
+        eq(groupStudySessions.id, input.roomId),
         eq(groupStudySessions.status, "active"),
+        eq(groupStudyParticipants.userId, input.userId),
+        isNull(groupStudyParticipants.leftAt),
+        isNull(workspaceMembers.deletedAt),
+        isNull(workspaces.deletedAt),
       ),
     )
     .limit(1)
@@ -167,6 +189,17 @@ export async function findGroupStudyPollSnapshot(
 ) {
   const [record] = await database
     .select({
+      activityCount: sql<number>`(
+        select count(*)::integer
+        from ${groupStudyActivities}
+        where ${groupStudyActivities.groupSessionId} = ${groupStudySessions.id}
+      )`,
+      joinRequestCount: sql<number>`(
+        select count(*)::integer
+        from ${groupStudyJoinRequests}
+        where ${groupStudyJoinRequests.groupSessionId} = ${groupStudySessions.id}
+          and ${groupStudyJoinRequests.status} = 'pending'
+      )`,
       participantCount: sql<number>`(
         select count(*)::integer
         from ${groupStudyParticipants}

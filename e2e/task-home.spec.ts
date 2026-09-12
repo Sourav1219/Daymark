@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { expect, test } from "@playwright/test"
+import { completeEmailVerification } from "./helpers/complete-email-verification"
 
 test("shows a newly created flexible task on the current Home day", async ({
   page,
@@ -16,6 +17,7 @@ test("shows a newly created flexible task on the current Home day", async ({
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page)
   await expect(page).toHaveURL(/\/today$/u)
 
   await page.goto("/today?date=2026-08-13")

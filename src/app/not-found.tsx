@@ -5,6 +5,10 @@ import { ArrowLeft, CheckCircle2, Compass, Home, Search } from "lucide-react"
 export const metadata: Metadata = {
   description: "The page you are looking for does not exist or has been moved.",
   title: "Page Not Found",
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 export default function NotFound() {
@@ -76,6 +80,7 @@ export default function NotFound() {
               className="unauth__btn-primary"
               href="/today"
               id="not-found-today-btn"
+              rel="nofollow"
             >
               <ArrowLeft aria-hidden="true" />
               <span>Back to your tasks</span>

@@ -20,6 +20,7 @@ import type {
   GateTransitionCommand,
 } from "@/features/gates/validation/gate-validation"
 import { lockWorkspaceForMutation } from "@/features/workspaces/infrastructure/workspace-access-repository"
+import { gateQuotaAvailable } from "@/lib/resource-quotas"
 
 export type GateMutationSummary = Readonly<{
   id: string
@@ -89,6 +90,12 @@ export async function createGate(
   authorizeGateAccess(access)
   return mapNameConflict(() =>
     withWorkspaceMutation(database, access, async (transaction) => {
+      if (!(await gateQuotaAvailable(transaction, access.workspaceId))) {
+        throw new GateServiceError(
+          "VALIDATION_ERROR",
+          "This workspace has reached its retained List quota.",
+        )
+      }
       const created = await createGateRecord(transaction, access, command)
 
       if (!created) {

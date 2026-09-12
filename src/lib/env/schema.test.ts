@@ -155,6 +155,13 @@ describe("serverEnvSchema", () => {
     expect(
       serverEnvSchema.safeParse({
         ...base,
+        UPSTASH_REDIS_REST_TOKEN: "",
+        UPSTASH_REDIS_REST_URL: "",
+      }).success,
+    ).toBe(true)
+    expect(
+      serverEnvSchema.safeParse({
+        ...base,
         CRON_SECRET: "cron-secret-that-is-at-least-32-characters",
         NODE_ENV: "production",
       }).success,

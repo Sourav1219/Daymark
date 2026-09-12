@@ -29,6 +29,7 @@ export interface AttachmentStorage {
   ): Promise<string>
   createUploadGrant(
     input: Readonly<{
+      byteSize: number
       contentType: AllowedAttachmentMimeType
       key: string
     }>,

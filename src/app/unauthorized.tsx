@@ -5,6 +5,10 @@ import { UnauthorizedClient } from "@/app/unauthorized-client"
 export const metadata: Metadata = {
   title: "Sign In Required",
   description: "Sign in to access this page.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 /**

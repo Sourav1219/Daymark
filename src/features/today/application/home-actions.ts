@@ -65,7 +65,7 @@ export async function loadHomePages(
   const settings = await getUserSettings(access)
   const [pages, facets] = await Promise.all([
     Promise.all(
-      (["active", "completed", "missed"] as const).map((bucket) =>
+      (["active", "missed", "completed"] as const).map((bucket) =>
         getHomePage(
           access,
           bucket,

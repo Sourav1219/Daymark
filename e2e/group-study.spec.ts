@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
+import { completeEmailVerification } from "./helpers/complete-email-verification"
 
 test.use({ locale: "en-IN", timezoneId: "Asia/Kolkata" })
 
@@ -20,6 +21,7 @@ async function register(page: Page, name: string) {
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page)
   await expect(page).toHaveURL(/\/today$/u)
   await page.goto("/timer")
 }
@@ -29,6 +31,7 @@ function participant(page: Page, name: string) {
 }
 
 test("keeps every Group Study participant independent", async ({ browser }) => {
+  test.setTimeout(180_000)
   const contexts: BrowserContext[] = []
   const consoleErrors: string[] = []
 
@@ -117,7 +120,7 @@ test("keeps every Group Study participant independent", async ({ browser }) => {
     ).toBeVisible()
     await expect
       .poll(async () => clockSeconds(await secondTimer.textContent()))
-      .toBeGreaterThan(secondBeforePause)
+      .toBeLessThan(secondBeforePause)
 
     const firstPausedAt = clockSeconds(
       await first.getByRole("timer").textContent(),
@@ -152,7 +155,7 @@ test("keeps every Group Study participant independent", async ({ browser }) => {
     ).toBeVisible()
     await expect
       .poll(async () => clockSeconds(await secondTimer.textContent()))
-      .toBeGreaterThan(secondBeforeLeave)
+      .toBeLessThan(secondBeforeLeave)
 
     await second.getByRole("button", { name: "Stop & leave" }).click()
     await expect(

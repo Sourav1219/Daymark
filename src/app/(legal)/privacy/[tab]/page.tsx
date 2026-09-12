@@ -9,7 +9,7 @@ import {
   type PrivacyCentreUser,
 } from "@/features/privacy/ui/privacy-experience"
 
-import { redirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 
 const validTabs: readonly CentreTab[] = [
   "policy",
@@ -40,9 +40,13 @@ export async function generateMetadata(props: {
       title: "Data Controls · Profile Settings",
     }
   }
-  const resolvedTab = validTabs.includes(tab as CentreTab)
-    ? (tab as CentreTab)
-    : "policy"
+  if (!validTabs.includes(tab as CentreTab)) {
+    return {
+      title: "Page Not Found",
+      robots: { index: false, follow: false },
+    }
+  }
+  const resolvedTab = tab as CentreTab
   const title = `${tabTitles[resolvedTab]} · Privacy & Data Centre`
 
   return {
@@ -59,9 +63,10 @@ export default async function PrivacySubpage(props: {
   if (tab === "actions") {
     redirect("/profile")
   }
-  const initialTab = validTabs.includes(tab as CentreTab)
-    ? (tab as CentreTab)
-    : "policy"
+  if (!validTabs.includes(tab as CentreTab)) {
+    notFound()
+  }
+  const initialTab = tab as CentreTab
 
   const currentUser = await getCurrentUser()
   let privacyUser: PrivacyCentreUser | null = null
@@ -80,5 +85,11 @@ export default async function PrivacySubpage(props: {
     }
   }
 
-  return <PrivacyExperience initialTab={initialTab} user={privacyUser} />
+  return (
+    <PrivacyExperience
+      initialTab={initialTab}
+      isSubpage
+      user={privacyUser}
+    />
+  )
 }

@@ -6,7 +6,12 @@ import { getCurrentUser } from "@/features/authentication/server/authorization"
 import { isGoogleAuthConfigured } from "@/features/authentication/server/google-auth"
 import { AuthExperience } from "@/features/authentication/ui/auth-experience"
 
-export const metadata: Metadata = { title: "Sign in" }
+export const metadata: Metadata = {
+  title: "Sign in",
+  description:
+    "Sign in to your Traketo account to access your tasks and focus timer.",
+  alternates: { canonical: "/sign-in" },
+}
 
 type SignInPageProps = Readonly<{
   searchParams: Promise<{

@@ -224,7 +224,7 @@ integrationDescribe("Group Study timer isolation", () => {
         joinLocked: true,
         roomId: created.roomId,
       }),
-    ).rejects.toThrow("active room host")
+    ).rejects.toThrow("Only the room host can change Group Study controls")
     await expect(
       setGroupStudyJoinLocked(database, second, {
         joinLocked: true,
@@ -303,7 +303,7 @@ integrationDescribe("Group Study timer isolation", () => {
         joinLocked: true,
         roomId: created.roomId,
       }),
-    ).rejects.toThrow("do not have access to manage")
+    ).rejects.toThrow("Only the room host can change Group Study controls")
 
     await updateGroupStudySettings(database, first, {
       name: "Systems sprint",

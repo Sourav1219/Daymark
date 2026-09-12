@@ -5,6 +5,10 @@ import { SessionExpiredCard } from "@/features/authentication/ui/session-expired
 export const metadata: Metadata = {
   title: "Access Denied",
   description: "This workspace is outside your access boundary.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 export default function Forbidden() {

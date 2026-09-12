@@ -16,8 +16,8 @@ describe("DailyStudyHistory", () => {
     )
 
     expect(screen.getByText("1 day")).toBeInTheDocument()
-    expect(screen.getByText("August 21, 2026")).toBeInTheDocument()
-    expect(screen.queryByText("August 20, 2026")).not.toBeInTheDocument()
+    expect(screen.getByText("21 Aug 2026")).toBeInTheDocument()
+    expect(screen.queryByText("20 Aug 2026")).not.toBeInTheDocument()
   })
 
   it("shows a selected-day empty state", () => {

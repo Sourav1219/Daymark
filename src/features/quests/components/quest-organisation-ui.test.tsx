@@ -443,7 +443,7 @@ describe("Quest organisation controls", () => {
     ).toHaveAttribute("href", "/today?task=created-task")
   })
 
-  it("renders Create and Trash tabs on QuestActiveBoard and does not display active tasks", async () => {
+  it("switches between task creation, search and ordering, and Trash", async () => {
     const user = userEvent.setup()
 
     render(
@@ -455,8 +455,8 @@ describe("Quest organisation controls", () => {
             deletedAt: "2026-08-13T09:00:00.000Z",
           },
         ]}
-        emptyDescription="Try a different search"
-        emptyTitle="No matching tasks"
+        emptyDescription="Trash is empty"
+        emptyTitle="Trash is empty"
         filters={defaultQuestFilters}
         gates={[]}
         isFiltered={false}
@@ -469,6 +469,8 @@ describe("Quest organisation controls", () => {
       />,
     )
 
+    expect(screen.getAllByRole("tab")).toHaveLength(3)
+
     // Create tab should be selected by default with task creation form rendered
     expect(screen.getByRole("tab", { name: /Create/i })).toHaveAttribute(
       "aria-selected",
@@ -477,12 +479,21 @@ describe("Quest organisation controls", () => {
     expect(screen.getByLabelText("Task title")).toBeVisible()
     expect(screen.getByRole("button", { name: "Create Task" })).toBeVisible()
 
-    // No active tasks tab or active task cards should exist
-    expect(screen.queryByRole("tab", { name: /^Tasks$/i })).toBeNull()
+    const searchTab = screen.getByRole("tab", { name: /Search/i })
+    await user.click(searchTab)
+    expect(searchTab).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("searchbox", { name: "Search" })).toBeVisible()
     expect(screen.queryByText("Quest visible-task")).not.toBeInTheDocument()
-    expect(screen.queryByText("Quest another-task")).not.toBeInTheDocument()
 
-    // Trash tab should exist and show deleted tasks when clicked
+    await user.click(screen.getByRole("button", { name: "Arrange all tasks" }))
+    expect(screen.getByText("Quest visible-task")).toBeVisible()
+    expect(
+      screen.getByRole("button", {
+        name: "Drag Quest visible-task to reorder",
+      }),
+    ).toBeVisible()
+
+    // Trash tab is present and displays deleted quests
     const trashTab = screen.getByRole("tab", { name: /Trash/i })
     expect(trashTab).toBeVisible()
     expect(screen.getByText("Quest recoverable")).not.toBeVisible()
@@ -490,6 +501,16 @@ describe("Quest organisation controls", () => {
     await user.click(trashTab)
     expect(trashTab).toHaveAttribute("aria-selected", "true")
     expect(screen.getByText("Quest recoverable")).toBeVisible()
+
+    // Switching back to Create tab works
+    const createTab = screen.getByRole("tab", { name: /Create/i })
+    await user.click(createTab)
+    expect(createTab).toHaveAttribute("aria-selected", "true")
+    expect(
+      within(screen.getByRole("tabpanel", { name: /Create/i })).getByLabelText(
+        "Task title",
+      ),
+    ).toBeVisible()
   })
 
   it("provides Trash access and restoration in QuestList deleted mode", async () => {
@@ -945,17 +966,17 @@ describe("Quest organisation controls", () => {
     expect(screen.getByLabelText("Critical")).toBeChecked()
 
     await user.click(screen.getByRole("button", { name: "Tomorrow · 9–5" }))
-    const startDate = screen.getByLabelText("Start date · UTC")
-    const startTime = screen.getByLabelText("Start time · UTC")
-    const dueDate = screen.getByLabelText("Due date · UTC")
-    const dueTime = screen.getByLabelText("Due time · UTC")
+    const startDate = screen.getByLabelText("Start date")
+    const startTime = screen.getByLabelText("Start time")
+    const dueDate = screen.getByLabelText("Due date")
+    const dueTime = screen.getByLabelText("Due time")
     expect(startDate).toHaveTextContent(/\d{4}$/u)
     expect(startTime).toHaveTextContent("09:00")
     expect(dueDate).toHaveTextContent(/\d{4}$/u)
     expect(dueTime).toHaveTextContent("17:00")
 
     await user.click(startTime)
-    const exactTime = screen.getByLabelText("Start time · UTC exact value")
+    const exactTime = screen.getByLabelText("Start time exact value")
     fireEvent.change(exactTime, { target: { value: "" } })
     expect(exactTime).toHaveValue("")
     expect(startTime).toHaveTextContent("09:00")
@@ -966,7 +987,7 @@ describe("Quest organisation controls", () => {
     expect(startTime).toHaveTextContent("09:03")
     await user.click(screen.getByRole("button", { name: "Use time" }))
     expect(
-      screen.queryByLabelText("Start time · UTC exact value"),
+      screen.queryByLabelText("Start time exact value"),
     ).not.toBeInTheDocument()
 
     await user.click(startDate)

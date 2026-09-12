@@ -3,7 +3,15 @@
 import { randomUUID } from "node:crypto"
 
 import { and, eq } from "drizzle-orm"
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 
 import { createDatabase, type Database } from "@/db/client"
 import {
@@ -109,6 +117,8 @@ integrationDescribe("Quest repository and application services", () => {
   let fixture: Fixture
 
   beforeAll(() => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-08-07T00:00:00.000Z"))
     if (!testDatabaseUrl) {
       throw new Error("TEST_DATABASE_URL is required for integration tests")
     }
@@ -128,6 +138,7 @@ integrationDescribe("Quest repository and application services", () => {
   })
 
   afterAll(async () => {
+    vi.useRealTimers()
     if (database) {
       await database.$client.end({ timeout: 2 })
     }
@@ -143,7 +154,9 @@ integrationDescribe("Quest repository and application services", () => {
       id: created.id,
       priority: "high",
       status: "open",
+      taskType: "personal",
       title: "Integration Quest",
+      typeManual: false,
     })
 
     const edited = await editQuest(
@@ -218,6 +231,30 @@ integrationDescribe("Quest repository and application services", () => {
     expect(active).toMatchObject([
       { deletedAt: null, id: created.id, status: "open", version: 6 },
     ])
+  })
+
+  it("advances a recurring task when it is completed before its scheduled occurrence", async () => {
+    const created = await createQuest(
+      database,
+      fixture.first,
+      questCommand({ recurrenceRule: "RRULE:FREQ=DAILY" }),
+    )
+
+    await completeQuest(
+      database,
+      fixture.first,
+      { expectedVersion: created.version, questId: created.id },
+      new Date("2026-08-07T12:00:00.000Z"),
+    )
+
+    const active = await getQuestList(fixture.first, "active", { database })
+    expect(active).toHaveLength(1)
+    expect(active[0]).toMatchObject({
+      dueAt: "2026-08-09T13:00:00.000Z",
+      recurrenceSequence: 1,
+      startAt: "2026-08-09T09:00:00.000Z",
+      status: "open",
+    })
   })
 
   it("permanently removes a trashed task from product views", async () => {
@@ -713,26 +750,26 @@ integrationDescribe("Quest repository and application services", () => {
       database,
       fixture.first,
       {
-        dueAt: new Date("2026-08-09T11:30:00.000Z"),
+        dueAt: new Date("2026-08-08T21:30:00.000Z"),
         expectedVersion: deletedMiss.version,
         questId: missed.id,
-        startAt: new Date("2026-08-09T03:30:00.000Z"),
+        startAt: new Date("2026-08-08T19:30:00.000Z"),
       },
       new Date("2026-08-08T18:10:00.000Z"),
     )
     await expect(
       getQuestList(fixture.first, "today", {
         database,
-        localDate: "2026-08-09",
+        localDate: "2026-08-08",
         now: new Date("2026-08-08T18:10:00.000Z"),
       }),
     ).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           deletedAt: null,
-          dueAt: "2026-08-09T11:30:00.000Z",
+          dueAt: "2026-08-08T21:30:00.000Z",
           id: rescheduled.id,
-          startAt: "2026-08-09T03:30:00.000Z",
+          startAt: "2026-08-08T19:30:00.000Z",
           status: "open",
         }),
       ]),

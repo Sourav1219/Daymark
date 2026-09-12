@@ -6,6 +6,10 @@ import { safeRedirectPath } from "@/features/authentication/application/validati
 export const metadata: Metadata = {
   description: "This session ended and requires authentication to continue.",
   title: "Session Ended",
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 type SessionExpiredPageProps = Readonly<{

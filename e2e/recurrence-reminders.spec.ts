@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { expect, test, type Page } from "@playwright/test"
+import { completeEmailVerification } from "./helpers/complete-email-verification"
 
 async function register(page: Page) {
   await page.goto("/sign-up")
@@ -12,6 +13,7 @@ async function register(page: Page) {
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page)
   await expect(page).toHaveURL(/\/today$/u)
 }
 
@@ -37,7 +39,11 @@ test("previews recurrence, creates the next Quest, and manages a reminder", asyn
   await createForm.getByRole("button", { name: "Tomorrow · 9–5" }).click()
   await createForm.getByText("More options", { exact: true }).click()
   await createForm.getByLabel("Repeat").selectOption("RRULE:FREQ=DAILY")
-  await expect(createForm.getByText(/Next quest:/u)).toBeVisible()
+  await expect(
+    createForm.getByText(
+      "The next task will be scheduled after this one is completed.",
+    ),
+  ).toBeVisible()
   await createForm.getByRole("button", { name: "Create Task" }).click()
   await page.getByRole("link", { name: "Continue" }).click()
   await page.goto("/quests")
@@ -47,7 +53,9 @@ test("previews recurrence, creates the next Quest, and manages a reminder", asyn
   let quest = page.getByRole("article", { name: title })
   await expect(quest.getByText("Recurring", { exact: true })).toBeVisible()
   await quest.getByRole("button", { name: `Complete ${title}` }).click()
-  await expect(page.getByText("Momentum gained", { exact: true })).toBeVisible()
+  const completion = page.getByRole("dialog").filter({ hasText: title })
+  await expect(completion).toBeVisible()
+  await completion.getByRole("button", { name: /Keep going|Continue/u }).click()
   quest = page.getByRole("article", { name: title })
   await expect(quest).toBeVisible()
   await expect(quest.getByText("Recurring", { exact: true })).toBeVisible()
@@ -64,7 +72,7 @@ test("previews recurrence, creates the next Quest, and manages a reminder", asyn
   await expect(schedule.getByText("pending", { exact: true })).toBeVisible()
   await expect(schedule.getByRole("link", { name: title })).toHaveAttribute(
     "href",
-    /\/quests\/[0-9a-f-]{36}$/u,
+    /\/today\?task=[0-9a-f-]{36}$/u,
   )
   await schedule.getByText("Edit reminder", { exact: true }).click()
   await schedule.getByRole("button", { name: "Cancel reminder" }).click()

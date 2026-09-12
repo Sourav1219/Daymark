@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto"
 
 import { expect, test } from "@playwright/test"
+import { completeEmailVerification } from "./helpers/complete-email-verification"
 
 test("organises and finds Quests with Phase 5 controls", async ({ page }) => {
+  test.setTimeout(120_000)
   const suffix = randomUUID().slice(0, 8)
   const gateName = `Moon Gate ${suffix}`
   const parentTitle = `Chart the moon path ${suffix}`
@@ -17,6 +19,7 @@ test("organises and finds Quests with Phase 5 controls", async ({ page }) => {
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page)
   await expect(page).toHaveURL(/\/today$/u)
 
   await page.goto("/gates")
@@ -48,10 +51,6 @@ test("organises and finds Quests with Phase 5 controls", async ({ page }) => {
     parentQuest.locator('[data-slot="badge"]').filter({ hasText: gateName }),
   ).toBeVisible()
 
-  const manage = parentQuest.getByRole("button", { name: "Manage" })
-  if ((await manage.getAttribute("aria-expanded")) === "false") {
-    await manage.click()
-  }
   await parentQuest.getByText("Add Subtask", { exact: true }).click()
   const subquestForm = parentQuest.locator("form", {
     has: page.getByRole("button", { name: "Create Subtask" }),
@@ -73,13 +72,16 @@ test("organises and finds Quests with Phase 5 controls", async ({ page }) => {
 
   await page.getByRole("button", { name: "Reset filters" }).click()
   await expect(page).toHaveURL(/\/quests$/u)
+  await page.getByRole("button", { name: "Arrange all tasks" }).click()
   await expect(page.getByRole("article", { name: parentTitle })).toBeVisible()
 
   await page.goto("/today")
   const todayTask = page.getByRole("article").filter({ hasText: parentTitle })
   await expect(todayTask).toBeVisible()
   await todayTask.getByRole("button", { name: `Clear ${parentTitle}` }).click()
-  await expect(page.getByText("Momentum gained", { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole("dialog").filter({ hasText: parentTitle }),
+  ).toBeVisible()
   await page.goto("/cleared")
   await page.getByRole("searchbox", { name: "Search" }).fill(parentTitle)
   await expect(page).toHaveURL(/\/cleared\?search=/u)

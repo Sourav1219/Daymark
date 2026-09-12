@@ -13,6 +13,7 @@ describe("protected route proxy", () => {
     "/app/workspaces/example",
     "/today",
     "/quests/example",
+    "/settings/privacy-data",
     "/sign-in",
     "/contact",
   ])("runs on dynamic application route %s", (url) => {
@@ -123,6 +124,16 @@ describe("protected route proxy", () => {
       "connect-src 'self' https://challenges.cloudflare.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
     )
     expect(csp).not.toContain("strict-dynamic")
+  })
+
+  it("replaces malformed caller-supplied request ids", () => {
+    const response = proxy(
+      new NextRequest("https://questly.test/sign-in", {
+        headers: { "x-request-id": "not valid because it contains spaces" },
+      }),
+    )
+
+    expect(response.headers.get("x-request-id")).toMatch(/^req_[\w-]{36}$/u)
   })
 
   it("allows only the configured R2 account for direct browser uploads", () => {

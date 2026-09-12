@@ -42,7 +42,6 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   metadataBase: new URL("https://traketo.com"),
   applicationName: "Traketo",
-  alternates: { canonical: "/" },
   appleWebApp: {
     capable: true,
     startupImage: "/splash/traketo-splash-portrait.png",
@@ -70,8 +69,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   colorScheme: "light",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   themeColor: "#eaf1fe",
   width: "device-width",
 }

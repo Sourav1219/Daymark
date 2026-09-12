@@ -137,11 +137,13 @@ body > .cookie-consent-backdrop {
 }
 
 .cookie-consent__heading h2,
+.cookie-consent__heading .cookie-consent__title,
 .cookie-consent__heading p {
   margin: 0;
 }
 
-.cookie-consent__heading h2 {
+.cookie-consent__heading h2,
+.cookie-consent__heading .cookie-consent__title {
   color: #142a49;
   font-family: var(--font-baloo), var(--font-nunito), sans-serif;
   font-size: 0.88rem;

@@ -43,7 +43,7 @@ export async function TodayView({
   const [streak, pages, facets, labels, inbox, history] = await Promise.all([
     getCurrentCompletionStreak(access, { now, timezone }),
     Promise.all(
-      (["active", "completed", "missed"] as const).map((bucket) =>
+      (["active", "missed", "completed"] as const).map((bucket) =>
         getHomePage(
           access,
           bucket,

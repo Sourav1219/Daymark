@@ -114,21 +114,44 @@ export async function listGateRecords(
   const results = await database
     .select({
       ...gateSelection,
-      questCount: sql<number>`(
-        select count(*)::integer
-        from ${tasks} gate_task
-        where gate_task.workspace_id = ${access.workspaceId}::uuid
-          and gate_task.project_id = ${gates.id}
-          and gate_task.deleted_at is null
-      )`,
+      questCount: count(tasks.id),
     })
     .from(gates)
+    .innerJoin(
+      workspaceMembers,
+      and(
+        eq(workspaceMembers.workspaceId, gates.workspaceId),
+        eq(workspaceMembers.userId, access.userId),
+        isNull(workspaceMembers.deletedAt),
+      ),
+    )
+    .innerJoin(
+      workspaces,
+      and(eq(workspaces.id, gates.workspaceId), isNull(workspaces.deletedAt)),
+    )
+    .leftJoin(
+      tasks,
+      and(
+        eq(tasks.workspaceId, gates.workspaceId),
+        eq(tasks.projectId, gates.id),
+        isNull(tasks.deletedAt),
+      ),
+    )
     .where(
       and(
         eq(gates.workspaceId, access.workspaceId),
         isNull(gates.deletedAt),
         lifecycleFilter,
       ),
+    )
+    .groupBy(
+      gates.id,
+      gates.name,
+      gates.description,
+      gates.accentToken,
+      gates.position,
+      gates.archivedAt,
+      gates.version,
     )
     .orderBy(asc(gates.position), asc(gates.name))
 

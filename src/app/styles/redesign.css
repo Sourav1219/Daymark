@@ -172,7 +172,7 @@ Redesign — native mobile app shell, motion, and playful depth
 
 /* --- Bottom tab navigation (thumb zone) ------------------- */
 .device-main {
-  padding-bottom: calc(4.9rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(5.6rem + env(safe-area-inset-bottom, 0px));
 }
 
 .app-tabbar {
@@ -184,7 +184,7 @@ Redesign — native mobile app shell, motion, and playful depth
   right: auto;
   bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
   left: 50%;
-  z-index: 30;
+  z-index: 50;
   flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(var(--tab-count), minmax(0, 1fr));
@@ -194,19 +194,19 @@ Redesign — native mobile app shell, motion, and playful depth
   margin: 0;
   padding: var(--tab-pad);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 999px;
   background:
     linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.34),
-      rgba(247, 250, 255, 0.16)
+      rgba(255, 255, 255, 0.96),
+      rgba(246, 249, 255, 0.94)
     ),
-    rgba(255, 255, 255, 0.12);
+    #ffffff;
   box-shadow:
-    0 13px 28px -20px rgba(30, 51, 91, 0.34),
-    0 3px 11px -9px rgba(30, 64, 140, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 14px 34px -16px rgba(25, 45, 95, 0.35),
+    0 4px 14px -6px rgba(30, 64, 140, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
     inset 0 -1px 0 rgba(80, 102, 145, 0.08);
   -webkit-backdrop-filter: blur(20px) saturate(165%);
   backdrop-filter: blur(20px) saturate(165%);
@@ -472,9 +472,7 @@ Redesign — native mobile app shell, motion, and playful depth
   animation: enter-up 0.32s var(--ease-system) both;
 }
 
-.profile-header > div > span,
-.profile-section-heading > div > span,
-.profile-session > div > span {
+.profile-header > div > span {
   color: var(--accent-blue);
   font-size: 0.66rem;
   font-weight: 900;
@@ -482,7 +480,17 @@ Redesign — native mobile app shell, motion, and playful depth
   text-transform: uppercase;
 }
 
-.profile-header h1 {
+.profile-section-heading > div > span,
+.profile-session > div > span {
+  color: var(--accent-blue);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.profile-header h1,
+.profile-header h2 {
   margin: 0.12rem 0 0;
   color: var(--app-text);
   font-family: var(--font-baloo), var(--font-nunito), sans-serif;
@@ -1564,15 +1572,21 @@ Redesign — native mobile app shell, motion, and playful depth
   padding-inline: 0.1rem;
 }
 
-.profile-header > div > span,
-.profile-section-heading > div > span,
-.profile-session > div > span {
+.profile-header > div > span {
   color: var(--accent-blue);
   font-size: 0.66rem;
   letter-spacing: 0.13em;
 }
 
-.profile-header h1 {
+.profile-section-heading > div > span,
+.profile-session > div > span {
+  color: var(--accent-blue);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+}
+
+.profile-header h1,
+.profile-header h2 {
   margin-top: 0.16rem;
   font-size: 2.15rem;
   letter-spacing: -0.025em;
@@ -3283,6 +3297,15 @@ Redesign — native mobile app shell, motion, and playful depth
   font-size: 0.56rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.security-sessions .security-card-heading p {
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: normal;
 }
 
 .security-card-heading__action button {

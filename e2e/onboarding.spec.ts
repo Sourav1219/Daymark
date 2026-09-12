@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto"
 
 import { expect, test } from "@playwright/test"
+import { completeEmailVerification } from "./helpers/complete-email-verification"
 
 test.use({ locale: "en-IN", timezoneId: "Asia/Kolkata" })
 
-test("sends a new account directly home without an onboarding overlay", async ({
+test("sends a new account to its safe destination without an onboarding overlay", async ({
   page,
 }) => {
   await page.goto("/sign-up?next=%2Fprofile")
@@ -16,10 +17,11 @@ test("sends a new account directly home without an onboarding overlay", async ({
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page, /\/profile$/u)
 
-  await expect(page).toHaveURL(/\/today$/u)
+  await expect(page).toHaveURL(/\/profile$/u)
   await expect(
-    page.getByText("Daily activity", { exact: true }).first(),
+    page.getByRole("heading", { name: "Your profile" }),
   ).toBeVisible()
   await expect(
     page.getByRole("complementary", { name: "Getting started" }),

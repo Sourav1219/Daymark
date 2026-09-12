@@ -7,40 +7,54 @@ test.beforeEach(async ({ context, page }) => {
   await context.clearCookies()
 })
 
-test("does not show an intrusive popup dialog when a first-time visitor opens the site", async ({
+test("offers equal consent choices to a first-time visitor", async ({
   page,
 }) => {
-  await page.goto("http://localhost:3000/")
+  await page.goto("/")
 
   await expect(page).toHaveURL(/\/sign-in$/)
   const consentDialog = page.getByRole("dialog", {
     name: "Cookies & privacy",
   })
-  await expect(consentDialog).toHaveCount(0)
+  await expect(consentDialog).toBeVisible()
+  await expect(
+    consentDialog.getByRole("button", { name: "Accept all" }),
+  ).toBeVisible()
+  await expect(
+    consentDialog.getByRole("button", { name: "Essential only" }),
+  ).toBeVisible()
 })
 
 test("allows opening cookie preferences on demand from the privacy page", async ({
   context,
   page,
 }) => {
-  await page.goto("http://localhost:3000/privacy")
+  await page.goto("/privacy")
 
-  const consentDialog = page.getByRole("dialog", {
+  const initialDialog = page.getByRole("dialog", {
     name: "Cookies & privacy",
   })
-  await expect(consentDialog).toHaveCount(0)
+  await initialDialog.getByRole("button", { name: "Essential only" }).click()
+  await expect(initialDialog).toBeHidden()
 
   await page.getByRole("button", { name: /Cookie settings/i }).click()
+  const consentDialog = page.getByRole("dialog", {
+    name: "Manage cookie choices",
+  })
   await expect(consentDialog).toBeVisible()
   await expect(
-    consentDialog.getByRole("button", { name: "Allow Cookies" }),
+    consentDialog.getByRole("button", { name: "Save choices" }),
   ).toBeVisible()
   await expect(
-    consentDialog.getByRole("button", { name: "Decline optional cookies" }),
+    consentDialog.getByRole("button", {
+      name: "Essential cookies only (withdraw consent)",
+    }),
   ).toBeVisible()
 
   await consentDialog
-    .getByRole("button", { name: "Decline optional cookies" })
+    .getByRole("button", {
+      name: "Essential cookies only (withdraw consent)",
+    })
     .click()
   await expect(consentDialog).toBeHidden()
 

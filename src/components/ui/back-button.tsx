@@ -55,6 +55,7 @@ export function BackButton({
       onClick={handleClick}
     >
       {children}
+      <span className="sr-only">{ariaLabel}</span>
     </Link>
   )
 }

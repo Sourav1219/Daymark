@@ -169,7 +169,7 @@ export function QuestTimePicker({
           variant="outline"
         >
           <Clock3 aria-hidden="true" />
-          <span>{value || "Choose time"}</span>
+          <span>{value || "Set time"}</span>
           <ChevronDown
             aria-hidden="true"
             className="quest-time-trigger__chevron"

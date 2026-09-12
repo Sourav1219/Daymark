@@ -943,6 +943,10 @@ export function QuestList({
             version: result.data.version,
             xpEarned: progression?.xpDelta ?? 0,
           })
+          // A recurring completion creates its next occurrence in the same
+          // mutation. Refresh the server view so that new task is available
+          // immediately instead of appearing only after a later navigation.
+          router.refresh()
         } else {
           toast.error(result.error.message)
           setAnnouncement(

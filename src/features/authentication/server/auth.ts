@@ -21,7 +21,11 @@ import {
 } from "@/features/authentication/server/registration-acceptance"
 import { provisionPersonalWorkspace } from "@/features/workspaces/application/provision-personal-workspace"
 import { readServerEnv } from "@/lib/env/server"
-import { googleAuthEnvFromServerEnv, type ServerEnv } from "@/lib/env/schema"
+import {
+  googleAuthEnvFromServerEnv,
+  isLoopbackE2ETestEnvironment,
+  type ServerEnv,
+} from "@/lib/env/schema"
 import {
   publishRealtimeEvent,
   userSessionRealtimeChannel,
@@ -43,7 +47,9 @@ export function createAuth(
   const secureCookies = env.NODE_ENV === "production"
   const minPasswordLength = env.NODE_ENV === "development" ? 8 : 12
   const googleAuth = googleAuthEnvFromServerEnv(env)
-  const turnstileSecret = env.TURNSTILE_SECRET_KEY
+  const e2eTestMode = isLoopbackE2ETestEnvironment(env)
+  const e2eVerificationCode = e2eTestMode ? "481516" : null
+  const turnstileSecret = e2eTestMode ? undefined : env.TURNSTILE_SECRET_KEY
 
   const authentication = betterAuth({
     appName: "Traketo",
@@ -181,6 +187,10 @@ export function createAuth(
       sendOnSignUp: true,
     },
     account: {
+      // Provider credentials grant access outside Traketo. Better Auth can
+      // transparently read legacy plaintext values while encrypting every new
+      // or refreshed OAuth token with AES-256-GCM.
+      encryptOAuthTokens: true,
       accountLinking: {
         allowDifferentEmails: false,
         enabled: true,
@@ -245,6 +255,9 @@ export function createAuth(
         allowedAttempts: 5,
         changeEmail: { enabled: true },
         expiresIn: 10 * 60,
+        ...(e2eVerificationCode
+          ? { generateOTP: () => e2eVerificationCode }
+          : {}),
         otpLength: 6,
         overrideDefaultEmailVerification: true,
         sendVerificationOTP: async ({ email, otp, type }) => {

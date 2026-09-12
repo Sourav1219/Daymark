@@ -168,8 +168,8 @@ export async function ProgressRoute({
           <div>
             <span>Keep moving</span>
             <h2 id="momentum-heading">Your momentum</h2>
+            <p>Goals reset in your local timezone.</p>
           </div>
-          <p>Goals reset in your local timezone.</p>
         </div>
 
         <div className="progress-pace-grid">
@@ -256,7 +256,10 @@ export async function ProgressRoute({
             <span>Recent wins</span>
             <h2 id="progress-history-heading">Progress history</h2>
           </div>
-          <History aria-hidden="true" />
+          <div className="progress-history-badge">
+            <History aria-hidden="true" />
+            <span>Activity log</span>
+          </div>
         </div>
 
         {progress.history.length === 0 ? (

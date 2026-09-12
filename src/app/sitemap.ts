@@ -9,7 +9,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       lastModified: now,
       priority: 1.0,
-      url: `${baseUrl}/`,
+      url: `${baseUrl}/sign-in`,
+    },
+    {
+      changeFrequency: "weekly",
+      lastModified: now,
+      priority: 0.9,
+      url: `${baseUrl}/sign-up`,
     },
     {
       changeFrequency: "monthly",

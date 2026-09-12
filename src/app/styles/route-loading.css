@@ -21,7 +21,8 @@
   text-transform: uppercase;
 }
 
-.route-loading__header h1 {
+.route-loading__header h1,
+.route-loading__header h2 {
   margin: 0;
   color: var(--app-text);
   font-family: var(--font-baloo), var(--font-nunito), sans-serif;

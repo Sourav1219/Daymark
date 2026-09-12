@@ -103,6 +103,7 @@ export function TodayHeader({
           prefetch
         >
           <ChevronLeft aria-hidden="true" />
+          <span className="sr-only">Previous day</span>
         </Link>
         <div className="today-week">
           {days.map((day) =>
@@ -141,6 +142,7 @@ export function TodayHeader({
             prefetch
           >
             <ChevronRight aria-hidden="true" />
+            <span className="sr-only">Next day</span>
           </Link>
         ) : (
           <span

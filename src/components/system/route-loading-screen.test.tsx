@@ -19,7 +19,7 @@ describe("RouteLoadingScreen", () => {
     render(<RouteLoadingScreen />)
 
     expect(screen.getByRole("status", { name: "Loading Tasks" })).toBeVisible()
-    expect(screen.getByRole("heading", { name: "Create Task" })).toBeVisible()
+    expect(screen.getByRole("heading", { name: "Tasks" })).toBeVisible()
     expect(screen.queryByText("Loading your day")).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute(
       "aria-current",

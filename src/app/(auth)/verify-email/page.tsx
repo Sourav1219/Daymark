@@ -2,7 +2,13 @@ import type { Metadata } from "next"
 
 import { AccountEmailForm } from "@/features/authentication/ui/account-email-form"
 
-export const metadata: Metadata = { title: "Verify email" }
+export const metadata: Metadata = {
+  title: "Verify email",
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 export default function VerifyEmailPage() {
   return <AccountEmailForm mode="verification" />

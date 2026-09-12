@@ -577,7 +577,9 @@ export async function completeQuest(
         current.recurrenceRule,
         current.recurrenceTimezone,
         current.recurrenceOccurrenceAt,
-        completedAt,
+        completedAt > current.recurrenceOccurrenceAt
+          ? completedAt
+          : current.recurrenceOccurrenceAt,
       )
 
       if (next) {

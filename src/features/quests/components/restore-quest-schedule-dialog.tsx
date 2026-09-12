@@ -41,6 +41,8 @@ import {
 } from "@/features/reminders/domain/timezone"
 import { cn } from "@/lib/utils"
 
+const restoreToastDurationMs = 4_000
+
 function initialTimeline(
   referenceNow: string,
   timezone: string,
@@ -248,7 +250,10 @@ export function RestoreQuestScheduleDialog({
           toast.error(message)
           return
         }
-        toast.error(message, { id: restoringToast })
+        toast.error(message, {
+          duration: restoreToastDurationMs,
+          id: restoringToast,
+        })
       }
 
       try {
@@ -276,7 +281,10 @@ export function RestoreQuestScheduleDialog({
 
         if (mode === "restore") {
           if (restoringToast !== undefined) {
-            toast.success("Task restored", { id: restoringToast })
+            toast.success("Task restored", {
+              duration: restoreToastDurationMs,
+              id: restoringToast,
+            })
           }
           router.refresh()
           return

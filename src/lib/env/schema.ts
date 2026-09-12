@@ -13,6 +13,28 @@ const optionalGoogleCredential = z.preprocess(
   z.string().trim().min(8).optional(),
 )
 
+const optionalRedisUrl = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim().length === 0 ? undefined : value,
+  z.string().url().optional(),
+)
+
+const optionalRedisToken = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim().length === 0 ? undefined : value,
+  z.string().min(16).optional(),
+)
+
+export function isLoopbackE2ETestEnvironment(
+  env: Readonly<{ BETTER_AUTH_URL: string; NODE_ENV: string }>,
+) {
+  if (process.env.E2E_TEST_MODE !== "true") return false
+  const hostname = new URL(env.BETTER_AUTH_URL).hostname
+  return (
+    hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1"
+  )
+}
+
 export const serverEnvSchema = z
   .object({
     DATABASE_URL: z.string().url().startsWith("postgresql://"),
@@ -66,8 +88,8 @@ export const serverEnvSchema = z
       .enum(["development", "test", "production"])
       .default("development"),
     // Optional only outside production. Both values are required together.
-    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
-    UPSTASH_REDIS_REST_TOKEN: z.string().min(16).optional(),
+    UPSTASH_REDIS_REST_URL: optionalRedisUrl,
+    UPSTASH_REDIS_REST_TOKEN: optionalRedisToken,
     // Set to true only when a trusted reverse proxy terminates and overwrites
     // x-forwarded-for / x-real-ip. Off by default so callers cannot rotate
     // spoofed forwarded headers to evade IP-scoped rate limits.
@@ -220,7 +242,11 @@ export const serverEnvSchema = z
         path: ["RESEND_API_KEY"],
       })
     }
-    if (env.NODE_ENV === "production" && (!env.RESEND_API_KEY || !emailFrom)) {
+    if (
+      env.NODE_ENV === "production" &&
+      !isLoopbackE2ETestEnvironment(env) &&
+      (!env.RESEND_API_KEY || !emailFrom)
+    ) {
       context.addIssue({
         code: "custom",
         message:

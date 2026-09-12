@@ -2,10 +2,12 @@ import { randomUUID } from "node:crypto"
 
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test } from "@playwright/test"
+import { completeEmailVerification } from "./helpers/complete-email-verification"
 
 test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
   page,
 }) => {
+  test.setTimeout(180_000)
   const originalTitle = "Map the silent corridor"
   const editedTitle = "Map the spectral corridor"
 
@@ -18,6 +20,7 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
   await page.locator("#termsAccepted").check()
   await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page)
   await expect(page).toHaveURL(/\/today$/u)
 
   await page.getByRole("button", { name: "View 0 day streak" }).click()
@@ -42,8 +45,8 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
     .fill("Record the safe route before the signal fades.")
   await createForm.getByLabel("High").check()
   await createForm.getByRole("button", { name: "Tomorrow · 9–5" }).click()
-  await createForm.getByLabel("Start time · IST").click()
-  const startTime = page.getByLabel("Start time · IST exact value")
+  await createForm.getByRole("button", { name: "Start time" }).click()
+  const startTime = page.getByLabel("Start time exact value")
   await startTime.fill("")
   await startTime.fill("09:03")
   expect(
@@ -51,20 +54,27 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
       input.checkValidity(),
     ),
   ).toBe(true)
-  await startTime
-    .locator("..")
+  await page
+    .getByRole("dialog", { name: "Choose an exact time" })
     .getByRole("button", { name: "Use time" })
     .click()
-  await expect(createForm.getByLabel("Start time · IST")).toContainText("09:03")
-  await createForm.getByLabel("Due time · IST").click()
-  const dueTime = page.getByLabel("Due time · IST exact value")
+  await expect(
+    createForm.getByRole("button", { name: "Start time" }),
+  ).toContainText("09:03")
+  await createForm.getByRole("button", { name: "Due time" }).click()
+  const dueTime = page.getByLabel("Due time exact value")
   await dueTime.fill("")
   await dueTime.fill("18:07")
   expect(
     await dueTime.evaluate((input: HTMLInputElement) => input.checkValidity()),
   ).toBe(true)
-  await dueTime.locator("..").getByRole("button", { name: "Use time" }).click()
-  await expect(createForm.getByLabel("Due time · IST")).toContainText("18:07")
+  await page
+    .getByRole("dialog", { name: "Choose an exact time" })
+    .getByRole("button", { name: "Use time" })
+    .click()
+  await expect(
+    createForm.getByRole("button", { name: "Due time" }),
+  ).toContainText("18:07")
   await createForm.getByRole("button", { name: "Create Task" }).click()
   await expect(
     page.getByRole("dialog", { name: "Task created!" }),
@@ -79,7 +89,7 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
   let quest = page.getByRole("article", { name: originalTitle })
   await expect(quest).toBeVisible()
   await expect(quest.getByText("high priority")).toBeVisible()
-  await quest.getByText("Manage", { exact: true }).click()
+  await quest.getByRole("button", { name: "Manage" }).click()
   await quest.getByText("Edit Task", { exact: true }).click()
   const editPanel = quest.locator("form").filter({ hasText: "Save changes" })
   await expect(editPanel.getByLabel("Parent task")).toHaveCount(0)
@@ -103,9 +113,8 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
   await expect(quest).toBeHidden()
 
   await page.goto("/today")
-  await expect(
-    page.getByRole("heading", { name: "Completed" }),
-  ).not.toBeVisible()
+  await expect(page.getByRole("heading", { name: "Completed" })).toBeVisible()
+  await expect(page.getByRole("article", { name: editedTitle })).toBeVisible()
   await expect(
     page.getByText("No active tasks for this date.").first(),
   ).toBeVisible()
@@ -118,19 +127,12 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
     page.getByText("No recorded activity on this date."),
   ).toBeVisible()
   await page.getByRole("link", { name: "Profile" }).first().click()
-  await expect(page).toHaveURL(`/profile?date=${previousDate}`)
+  await expect(page).toHaveURL("/profile")
   await page.getByRole("link", { name: "Tasks" }).first().click()
-  await expect(page).toHaveURL(`/quests?date=${previousDate}`)
+  await expect(page).toHaveURL("/quests")
   await page.getByRole("link", { name: "Progress" }).first().click()
-  await expect(page).toHaveURL(`/progress?date=${previousDate}`)
-  let history = page.getByRole("region", { name: "Progress history" })
-  await expect(history.getByText("No points activity yet")).toBeVisible()
-  await expect(history.getByText(editedTitle)).not.toBeVisible()
-
-  await page.goto("/today")
-  await page.getByRole("link", { name: "Progress" }).first().click()
-  await expect(page).toHaveURL(/\/progress$/u)
-  history = page.getByRole("region", { name: "Progress history" })
+  await expect(page).toHaveURL("/progress")
+  const history = page.getByRole("region", { name: "Progress history" })
   await expect(
     page.getByRole("progressbar", { name: "Today: 50 of 50 points" }),
   ).toBeVisible()
@@ -148,8 +150,9 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
     /\/today\?date=\d{4}-\d{2}-\d{2}&task=[0-9a-f-]{36}$/u,
   )
   const focusedHistoryTask = page.getByRole("article", { name: editedTitle })
-  await expect(focusedHistoryTask).toHaveCount(0)
-  await expect(page.getByRole("heading", { name: "Completed" })).toHaveCount(0)
+  await expect(focusedHistoryTask).toBeVisible()
+  await expect(focusedHistoryTask).toBeFocused()
+  await expect(page.getByRole("heading", { name: "Completed" })).toBeVisible()
 
   await page.goto("/cleared")
   quest = page.getByRole("article", { name: editedTitle })
@@ -165,7 +168,7 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
   await page.getByRole("searchbox", { name: "Search" }).fill(editedTitle)
   quest = page.getByRole("article", { name: editedTitle })
   await expect(quest).toBeVisible()
-  await quest.getByText("Manage", { exact: true }).click()
+  await quest.getByRole("button", { name: "Manage" }).click()
   await quest.getByRole("button", { name: "Delete Task" }).click()
   const dialog = page.getByRole("alertdialog")
   await expect(dialog).toBeVisible()
@@ -189,9 +192,11 @@ test("creates, edits, clears, reopens, deletes, and restores a Quest", async ({
   await page.keyboard.press("Escape")
   await restoreTimeline.getByRole("button", { name: "Restore to Home" }).click()
   await expect(page).toHaveURL(/\/today$/u)
-  await expect(page.getByText(editedTitle, { exact: true })).toBeVisible()
+  await expect(page.getByRole("article", { name: editedTitle })).toBeVisible()
 
+  await page.getByRole("link", { name: "Tasks" }).click()
   await page.getByRole("tab", { name: /Search/u }).click()
+  await page.getByRole("searchbox", { name: "Search" }).fill(editedTitle)
   await expect(page.getByRole("article", { name: editedTitle })).toBeVisible()
 
   const accessibility = await new AxeBuilder({ page }).analyze()

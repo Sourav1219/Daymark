@@ -5,7 +5,9 @@ import { and, count, eq, inArray, isNull, sql } from "drizzle-orm"
 import type { DatabaseExecutor } from "@/db/client"
 import {
   attachments,
+  gates,
   groupStudySessions,
+  labels,
   pushSubscriptions,
   reminders,
   tasks,
@@ -17,6 +19,8 @@ export const resourceQuotas = {
   activeAttachmentBytesPerWorkspace: 1_073_741_824,
   activeRemindersPerWorkspace: 1_000,
   activeRoomsPerWorkspace: 10,
+  retainedGatesPerWorkspace: 500,
+  retainedLabelsPerWorkspace: 500,
   pushSubscriptionsPerUser: 10,
   retainedTasksPerWorkspace: 10_000,
   timerSessionsPerWorkspace: 50_000,
@@ -133,4 +137,28 @@ export function pushSubscriptionQuotaAvailable(
       .from(pushSubscriptions)
       .where(eq(pushSubscriptions.userId, userId)),
   ).then((value) => value < resourceQuotas.pushSubscriptionsPerUser)
+}
+
+export function gateQuotaAvailable(
+  database: DatabaseExecutor,
+  workspaceId: string,
+) {
+  return scalarCount(
+    database
+      .select({ value: count() })
+      .from(gates)
+      .where(eq(gates.workspaceId, workspaceId)),
+  ).then((value) => value < resourceQuotas.retainedGatesPerWorkspace)
+}
+
+export function labelQuotaAvailable(
+  database: DatabaseExecutor,
+  workspaceId: string,
+) {
+  return scalarCount(
+    database
+      .select({ value: count() })
+      .from(labels)
+      .where(eq(labels.workspaceId, workspaceId)),
+  ).then((value) => value < resourceQuotas.retainedLabelsPerWorkspace)
 }

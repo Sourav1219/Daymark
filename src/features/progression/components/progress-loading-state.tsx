@@ -24,7 +24,7 @@ export function ProgressLoadingState() {
       <header className="progress-header">
         <div>
           <span>Personal growth</span>
-          <h1>Your progress</h1>
+          <h2>Your progress</h2>
           <p>Every completed task adds to your momentum.</p>
         </div>
       </header>
@@ -91,8 +91,8 @@ export function ProgressLoadingState() {
           <div>
             <span>Keep moving</span>
             <h2>Your momentum</h2>
+            <p>Goals reset in your local timezone.</p>
           </div>
-          <p>Goals reset in your local timezone.</p>
         </div>
         <div className="progress-pace-grid">
           <ProgressMeasureLoading icon="target" label="Today" tone="daily" />
@@ -153,7 +153,10 @@ export function ProgressLoadingState() {
             <span>Recent wins</span>
             <h2>Progress history</h2>
           </div>
-          <History />
+          <div className="progress-history-badge">
+            <History />
+            <span>Activity log</span>
+          </div>
         </div>
         <div className="progress-history-days">
           <section className="progress-history-day">

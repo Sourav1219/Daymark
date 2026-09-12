@@ -498,7 +498,7 @@ export function QuestFormFields({
                             moment.error ? moment.errorId : undefined
                           }
                           ariaInvalid={Boolean(moment.error)}
-                          ariaLabel={`${labelPrefix} date · ${zoneLabel}`}
+                          ariaLabel={`${labelPrefix} date`}
                           id={`${idPrefix}-${moment.key}-date`}
                           minDate={momentMinDate}
                           onChange={(value) =>
@@ -517,7 +517,7 @@ export function QuestFormFields({
                             moment.error ? moment.errorId : undefined
                           }
                           ariaInvalid={Boolean(moment.error)}
-                          ariaLabel={`${labelPrefix} time · ${zoneLabel}`}
+                          ariaLabel={`${labelPrefix} time`}
                           disabled={!parts.date}
                           id={`${idPrefix}-${moment.key}-time`}
                           minTime={momentMinTime}

@@ -44,6 +44,7 @@ import {
   type PrivacyRequestActionState,
   submitPrivacyRequestAction,
 } from "@/features/privacy/application/privacy-request-actions"
+import { useCookieConsent } from "@/features/privacy/ui/cookie-consent-provider"
 import type {
   PrivacyRequestType,
   PrivacyRequestView,
@@ -352,20 +353,61 @@ type DigitalNominee = {
   updatedAt: string
 }
 
+const tabHeroContent: Record<
+  CentreTab,
+  { badge: string; desc: string; title: string }
+> = {
+  consent: {
+    badge: "Consent Controls & Ledger",
+    desc: "Manage your active cookies, tracking preferences, communication consents, and review your cryptographic consent ledger entries.",
+    title: "Granular Consent Controls & Ledger",
+  },
+  inventory: {
+    badge: "Data Inventory & Lawful Bases",
+    desc: "Transparent breakdown of what personal data Traketo collects, processing purposes, legal grounds, storage limits, and retention schedules.",
+    title: "Personal Data Inventory & Lawful Bases",
+  },
+  nominee: {
+    badge: "Digital Nominee Delegation",
+    desc: "Designate and manage authorized representatives to exercise data rights on your behalf in the event of incapacitation or death.",
+    title: "Digital Nominee Delegation Desk",
+  },
+  policy: {
+    badge: "Official Statutory Policy",
+    desc: "Complete statutory disclosures under India's Digital Personal Data Protection Act (DPDPA 2023) and global data protection standards.",
+    title: "Official Statutory Privacy Policy",
+  },
+  rights: {
+    badge: "Statutory Privacy Desk",
+    desc: "Submit and track statutory data requests, including access summaries, data correction, account erasure, and grievance redressal.",
+    title: "Statutory Privacy Rights Desk",
+  },
+}
+
 export function PrivacyExperience({
   initialRequests = [],
   initialRequestType = "access",
   initialTab = "policy",
+  isSubpage = false,
   user,
 }: Readonly<{
   initialRequests?: readonly PrivacyRequestView[] | undefined
   initialRequestType?: PrivacyRequestType | undefined
   initialTab?: CentreTab | undefined
+  isSubpage?: boolean | undefined
   user?: PrivacyCentreUser | null | undefined
 }>) {
   const backHref = useLegalBackHref()
+  const { openPreferences } = useCookieConsent()
   const [activeTab, setActiveTab] = useState<CentreTab>(initialTab)
   const [copied, setCopied] = useState(false)
+
+  const currentHero = isSubpage ? tabHeroContent[activeTab] : null
+  const heroBadge = currentHero ? currentHero.badge : "Privacy & Data Protection"
+  const heroTitle = currentHero ? currentHero.title : "Privacy & Data Centre"
+  const heroDesc =
+    currentHero?.desc ??
+    "Your unified home for Traketo's statutory privacy policy, personal data inventory, consent preferences, rights requests, and account controls."
 
   const switchTab = useCallback((tab: CentreTab) => {
     setActiveTab(tab)
@@ -559,7 +601,7 @@ export function PrivacyExperience({
             <BackButton
               aria-label="Back"
               className="privacy-centre-back-btn"
-              fallbackHref={(backHref ?? "/today") as Route}
+              fallbackHref={(backHref || "/sign-in") as Route}
             >
               <ArrowLeft aria-hidden="true" />
             </BackButton>
@@ -581,19 +623,17 @@ export function PrivacyExperience({
               <div className="privacy-centre-hero__meta">
                 <span className="privacy-centre-badge">
                   <ShieldCheck aria-hidden="true" />
-                  <span>Privacy &amp; Data Protection</span>
+                  <span>{heroBadge}</span>
                 </span>
                 <span className="privacy-centre-date">
                   DPDP Act · GDPR Aligned
                 </span>
               </div>
               <h1 className="privacy-centre-hero__title">
-                Privacy &amp; Data Centre
+                {heroTitle}
               </h1>
               <p className="privacy-centre-hero__desc">
-                Your unified home for Traketo&apos;s statutory privacy policy,
-                personal data inventory, consent preferences, rights requests,
-                and account controls.
+                {heroDesc}
               </p>
             </div>
           </section>
@@ -775,10 +815,10 @@ export function PrivacyExperience({
           {activeTab === "inventory" && (
             <div className="privacy-section-container">
               <div className="privacy-tab-banner privacy-tab-banner--emerald">
-                <div className="privacy-tab-banner__header">
+                <h2 className="privacy-tab-banner__header">
                   <Database aria-hidden="true" className="size-4" />
                   <span>Personal Data Inventory &amp; Lawful Bases</span>
-                </div>
+                </h2>
                 <p className="privacy-tab-banner__desc">
                   Below is an exhaustive breakdown of every category of personal
                   data Traketo holds, the purpose of processing, and its lawful
@@ -825,10 +865,15 @@ export function PrivacyExperience({
                   </div>
                   <Link
                     className="privacy-inventory-link"
-                    href={"/profile" as Route}
+                    href={(user ? "/profile" : "/sign-in") as Route}
+                    rel="nofollow"
                   >
                     <Pencil aria-hidden="true" className="size-3" />
-                    <span>Correct or update in Profile settings</span>
+                    <span>
+                      {user
+                        ? "Correct or update in Profile settings"
+                        : "Sign in to update in Profile settings"}
+                    </span>
                   </Link>
                 </div>
 
@@ -993,10 +1038,10 @@ export function PrivacyExperience({
           {activeTab === "consent" && (
             <div className="privacy-section-container">
               <div className="privacy-tab-banner privacy-tab-banner--blue">
-                <div className="privacy-tab-banner__header">
+                <h2 className="privacy-tab-banner__header">
                   <Sliders aria-hidden="true" className="size-4" />
                   <span>Granular Consent Controls &amp; Regulatory Ledger</span>
-                </div>
+                </h2>
                 <p className="privacy-tab-banner__desc">
                   You have full autonomy over optional data processing. Active
                   account switches are managed within your personal account
@@ -1026,18 +1071,24 @@ export function PrivacyExperience({
                 <div className="privacy-consent-hub-card__actions">
                   <Link
                     className="privacy-hub-manage-link"
-                    href={"/profile" as Route}
+                    href={(user ? "/profile" : "/sign-in") as Route}
+                    rel="nofollow"
                   >
-                    <span>Manage in Profile Settings</span>
+                    <span>
+                      {user
+                        ? "Manage in Profile Settings"
+                        : "Sign in to manage in Profile Settings"}
+                    </span>
                     <ExternalLink aria-hidden="true" className="size-3.5" />
                   </Link>
-                  <Link
+                  <button
                     className="privacy-hub-cookie-link"
-                    href={"/cookies" as Route}
+                    onClick={openPreferences}
+                    type="button"
                   >
                     <span>Cookie Preferences</span>
                     <Cookie aria-hidden="true" className="size-3.5" />
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -1096,10 +1147,10 @@ export function PrivacyExperience({
           {activeTab === "rights" && (
             <div className="privacy-section-container">
               <div className="privacy-tab-banner privacy-tab-banner--purple">
-                <div className="privacy-tab-banner__header">
+                <h2 className="privacy-tab-banner__header">
                   <FileCheck aria-hidden="true" className="size-4" />
                   <span>Statutory Privacy Rights Desk</span>
-                </div>
+                </h2>
                 <p className="privacy-tab-banner__desc">
                   Exercise your rights under GDPR (Articles 15–22) and India
                   DPDP Act 2023 (Sections 11–13). Requests are reviewed within
@@ -1299,10 +1350,10 @@ export function PrivacyExperience({
           {activeTab === "nominee" && (
             <div className="privacy-section-container">
               <div className="privacy-tab-banner privacy-tab-banner--teal">
-                <div className="privacy-tab-banner__header">
+                <h2 className="privacy-tab-banner__header">
                   <UserPlus aria-hidden="true" className="size-4" />
                   <span>Digital Nominee Designation (DPDP Act Section 14)</span>
-                </div>
+                </h2>
                 <p className="privacy-tab-banner__desc">
                   You have the statutory right to nominate another individual
                   who, in the event of your death or incapacity, shall exercise

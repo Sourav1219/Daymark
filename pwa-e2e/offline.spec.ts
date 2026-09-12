@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { completeEmailVerification } from "../e2e/helpers/complete-email-verification"
 
 test("installs the worker, queues offline creation, recovers, and clears private data", async ({
   context,
@@ -22,7 +23,10 @@ test("installs the worker, queues offline creation, recovers, and clears private
   await page.getByLabel("Name").fill("Offline Operator")
   await page.getByLabel("Email").fill(email)
   await page.getByLabel("Password", { exact: true }).fill(password)
+  await page.locator("#termsAccepted").check()
+  await page.locator("#privacyNoticeAcknowledged").check()
   await page.getByRole("button", { name: "Create" }).click()
+  await completeEmailVerification(page)
   await expect(page).toHaveURL(/\/today$/u)
 
   await page.goto("/quests")

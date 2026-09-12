@@ -24,7 +24,7 @@ export function ProfileLoadingState() {
       <header className="profile-header">
         <div>
           <span>Account</span>
-          <h1>Your profile</h1>
+          <h2>Your profile</h2>
           <p>Your personal details in one simple place.</p>
         </div>
         <button className="profile-edit-trigger" disabled type="button">

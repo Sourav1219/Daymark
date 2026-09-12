@@ -1,10 +1,17 @@
 import Image from "next/image"
 
-export function WelcomeAvatar({ className }: { className?: string }) {
+type WelcomeAvatarProps = {
+  alt?: string
+  className?: string
+}
+
+export function WelcomeAvatar({
+  alt = "Traketo guide mascot illustration",
+  className,
+}: WelcomeAvatarProps) {
   return (
     <Image
-      alt=""
-      aria-hidden="true"
+      alt={alt}
       className={className}
       height={478}
       priority

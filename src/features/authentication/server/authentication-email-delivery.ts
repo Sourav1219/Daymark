@@ -6,7 +6,10 @@ import { createHash } from "node:crypto"
 import { Resend } from "resend"
 
 import type { ServerEnv } from "@/lib/env/schema"
-import { emailFromServerEnv } from "@/lib/env/schema"
+import {
+  emailFromServerEnv,
+  isLoopbackE2ETestEnvironment,
+} from "@/lib/env/schema"
 import { logger } from "@/lib/observability/logger"
 import { withDeadline } from "@/lib/timeouts"
 
@@ -168,35 +171,31 @@ class ResendAuthenticationEmailDelivery implements AuthenticationEmailDelivery {
 }
 
 class DevelopmentAuthenticationEmailDelivery implements AuthenticationEmailDelivery {
-  private log(
-    kind: "password-reset" | "verification",
-    input: AuthenticationEmail,
-  ) {
+  private log(kind: "password-reset" | "verification", recipient: string) {
     logger.info("authentication.development_email", {
       kind,
-      recipient: input.recipientEmail,
-      url: input.url,
+      recipientFingerprint: createHash("sha256")
+        .update(recipient.trim().toLowerCase())
+        .digest("hex"),
     })
     return Promise.resolve()
   }
 
   sendVerificationCode(input: VerificationCodeEmail) {
-    logger.info("authentication.development_email", {
-      code: input.code,
-      kind: "verification-code",
-      recipient: input.recipientEmail,
-    })
-    return Promise.resolve()
+    return this.log("verification", input.recipientEmail)
   }
 
   sendPasswordReset(input: AuthenticationEmail) {
-    return this.log("password-reset", input)
+    return this.log("password-reset", input.recipientEmail)
   }
 }
 
 export function createAuthenticationEmailDelivery(
   env: ServerEnv,
 ): AuthenticationEmailDelivery {
+  if (isLoopbackE2ETestEnvironment(env)) {
+    return new DevelopmentAuthenticationEmailDelivery()
+  }
   const from = emailFromServerEnv(env)
   if (env.RESEND_API_KEY && from) {
     return new ResendAuthenticationEmailDelivery(env.RESEND_API_KEY, from)

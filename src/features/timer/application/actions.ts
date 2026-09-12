@@ -1,7 +1,10 @@
 "use server"
 
 import { getDatabase } from "@/db/client"
-import { requireWorkspaceAccess } from "@/features/authentication/server/authorization"
+import {
+  requireUser,
+  requireWorkspaceAccess,
+} from "@/features/authentication/server/authorization"
 import { TimerServiceError } from "@/features/timer/domain/errors"
 import {
   createGroupStudySession,
@@ -20,7 +23,10 @@ import {
   stopTimer,
   type TimerMutationSummary,
 } from "@/features/timer/mutations/timer-mutation-service"
-import { findGroupStudySessionWorkspaceId } from "@/features/timer/repositories/group-study-repository"
+import {
+  findActiveGroupStudyParticipantForTimer,
+  findManagedGroupStudySessionWorkspaceId,
+} from "@/features/timer/repositories/group-study-repository"
 import {
   createGroupStudySchema,
   editTimerSubjectSchema,
@@ -92,8 +98,14 @@ function runGroupStudyMutation<T extends Readonly<{ roomId: string }>>(
  * personal workspace, closing the authorization loophole.
  */
 async function requireRoomWorkspaceAccess(roomId: string) {
+  // Authenticate before performing any room lookup so anonymous requests
+  // cannot use management actions as a database or existence oracle.
+  const user = await requireUser()
   const database = getDatabase()
-  const workspaceId = await findGroupStudySessionWorkspaceId(database, roomId)
+  const workspaceId = await findManagedGroupStudySessionWorkspaceId(database, {
+    roomId,
+    userId: user.id,
+  })
 
   if (!workspaceId) {
     // Room not found or already closed — let the mutation service surface the
@@ -261,9 +273,21 @@ async function transitionAction(
     )
   }
 
-  return runTimerMutation(access.userId, "default", () =>
+  const groupParticipant = await findActiveGroupStudyParticipantForTimer(
+    getDatabase(),
+    access,
+    parsed.data.sessionId,
+  )
+  const result = await runTimerMutation(access.userId, "default", () =>
     transition(getDatabase(), access, parsed.data),
   )
+  if (result.ok && groupParticipant) {
+    await publishRealtimeEvent(
+      roomRealtimeChannel(groupParticipant.groupSessionId),
+      { changedAt: Date.now() },
+    )
+  }
+  return result
 }
 
 export async function pauseTimerAction(input: TimerTransitionInput) {
@@ -292,7 +316,19 @@ export async function editTimerSubjectAction(input: {
     )
   }
 
-  return runTimerMutation(access.userId, "default", () =>
+  const groupParticipant = await findActiveGroupStudyParticipantForTimer(
+    getDatabase(),
+    access,
+    parsed.data.sessionId,
+  )
+  const result = await runTimerMutation(access.userId, "default", () =>
     editTimerSubject(getDatabase(), access, parsed.data),
   )
+  if (result.ok && groupParticipant) {
+    await publishRealtimeEvent(
+      roomRealtimeChannel(groupParticipant.groupSessionId),
+      { changedAt: Date.now() },
+    )
+  }
+  return result
 }

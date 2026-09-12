@@ -95,6 +95,8 @@ integrationDescribe("recurring Quest and reminder subsystem", () => {
   let fixture: Fixture
 
   beforeAll(() => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-03-01T00:00:00.000Z"))
     if (!testDatabaseUrl) {
       throw new Error("TEST_DATABASE_URL is required for integration tests")
     }
@@ -116,6 +118,7 @@ integrationDescribe("recurring Quest and reminder subsystem", () => {
   })
 
   afterAll(async () => {
+    vi.useRealTimers()
     if (database) await database.$client.end({ timeout: 2 })
   })
 

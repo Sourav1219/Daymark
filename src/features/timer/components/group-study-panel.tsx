@@ -8,8 +8,6 @@ import {
   Copy,
   Crown,
   DoorOpen,
-  Eye,
-  EyeOff,
   Lock,
   LockOpen,
   Pause,
@@ -19,6 +17,8 @@ import {
   Save,
   ShieldCheck,
   Sparkles,
+  ToggleLeft,
+  ToggleRight,
   UserMinus,
   UserPlus,
   Users,
@@ -197,6 +197,8 @@ export function GroupStudyPanel({
   // database work every 5–15 seconds for every participant.
   useEffect(() => {
     if (!sharedSession) return
+    let lastActivityCount = sharedSession.activities.length
+    let lastJoinRequestCount = sharedSession.joinRequests.length
     let lastVersion = sharedSession.version
     let lastParticipantCount = sharedSession.participants.length
     let stableCount = 0
@@ -208,8 +210,6 @@ export function GroupStudyPanel({
     let events: EventSource | undefined
 
     const poll = async () => {
-      if (document.visibilityState !== "visible") return
-
       try {
         const response = await fetch(
           `/api/timer/group-poll?roomId=${sharedSession.id}`,
@@ -217,6 +217,8 @@ export function GroupStudyPanel({
         )
         if (!response.ok) return
         const data = (await response.json()) as {
+          activityCount: number
+          joinRequestCount: number
           participantCount: number
           version: number
           status: string
@@ -229,12 +231,16 @@ export function GroupStudyPanel({
         if (
           groupStudySnapshotChanged(
             {
+              activityCount: lastActivityCount,
+              joinRequestCount: lastJoinRequestCount,
               participantCount: lastParticipantCount,
               version: lastVersion,
             },
             data,
           )
         ) {
+          lastActivityCount = data.activityCount
+          lastJoinRequestCount = data.joinRequestCount
           lastVersion = data.version
           lastParticipantCount = data.participantCount
           stableCount = 0
@@ -298,7 +304,7 @@ export function GroupStudyPanel({
           void poll().finally(schedule)
         }
         reconnectTimeout = window.setTimeout(connectEvents, 60_000)
-      }, 5_000)
+      }, 3_000)
     }
     connectEvents()
     const handleVisibilityChange = () => {
@@ -402,11 +408,11 @@ export function GroupStudyPanel({
             type="button"
           >
             {privacyMode ? (
-              <EyeOff aria-hidden="true" />
+              <ToggleRight aria-hidden="true" />
             ) : (
-              <Eye aria-hidden="true" />
+              <ToggleLeft aria-hidden="true" />
             )}
-            <span>{privacyMode ? "Masked: Focusing" : "Privacy mode"}</span>
+            <span>{privacyMode ? "Privacy on" : "Privacy mode"}</span>
           </button>
           <span className="group-study__heading-icon" aria-hidden="true">
             <Users />
@@ -470,7 +476,7 @@ export function GroupStudyPanel({
                 <Users />
               </span>
               <div>
-                <h3>Create a room</h3>
+                <h4>Create a room</h4>
                 <p>Choose the shared study topic and invite your people.</p>
               </div>
               <label htmlFor="group-study-name">Room name</label>
@@ -511,7 +517,7 @@ export function GroupStudyPanel({
                 value={participantLimit}
               />
               <Button
-                className="group-study__join-button"
+                className="group-study__create-button"
                 disabled={hasActiveTimer || isPending}
                 type="submit"
               >
@@ -535,7 +541,7 @@ export function GroupStudyPanel({
                 <UserPlus />
               </span>
               <div>
-                <h3>Join with a code</h3>
+                <h4>Join with a code</h4>
                 <p>Enter the active room code shared by another student.</p>
               </div>
               <label htmlFor="group-study-code">Room code</label>
@@ -553,11 +559,12 @@ export function GroupStudyPanel({
                       .replace(/[^23456789A-HJ-NP-Z]/gu, ""),
                   )
                 }
-                placeholder="8-CHAR CODE"
+                placeholder="e.g. 8-character code"
                 required
                 value={joinCode}
               />
               <Button
+                className="group-study__join-button"
                 disabled={hasActiveTimer || isPending}
                 type="submit"
                 variant="outline"
@@ -813,11 +820,11 @@ function ActiveGroupStudyRoom({
               type="button"
             >
               {privacyMode ? (
-                <EyeOff aria-hidden="true" />
+                <ToggleRight aria-hidden="true" />
               ) : (
-                <Eye aria-hidden="true" />
+                <ToggleLeft aria-hidden="true" />
               )}
-              <span>{privacyMode ? "Masked: Focusing" : "Privacy mode"}</span>
+              <span>{privacyMode ? "Privacy on" : "Privacy mode"}</span>
             </button>
           </div>
           <h3>{session.name}</h3>
@@ -984,11 +991,11 @@ function ActiveGroupStudyRoom({
             type="button"
           >
             {privacyMode ? (
-              <EyeOff aria-hidden="true" />
+              <ToggleRight aria-hidden="true" />
             ) : (
-              <Eye aria-hidden="true" />
+              <ToggleLeft aria-hidden="true" />
             )}
-            <span>{privacyMode ? "Masked" : "Privacy mode"}</span>
+            <span>{privacyMode ? "Privacy on" : "Privacy mode"}</span>
           </button>
           <span>
             {session.participants.length} / {session.participantLimit} active

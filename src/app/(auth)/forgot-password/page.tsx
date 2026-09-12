@@ -2,7 +2,13 @@ import type { Metadata } from "next"
 
 import { AccountEmailForm } from "@/features/authentication/ui/account-email-form"
 
-export const metadata: Metadata = { title: "Forgot password" }
+export const metadata: Metadata = {
+  title: "Forgot password",
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 export default function ForgotPasswordPage() {
   return <AccountEmailForm mode="password-reset" />

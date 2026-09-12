@@ -40,6 +40,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   devIndicators: false,
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   experimental: {
     authInterrupts: true,
     // Integrity attributes protect cached JavaScript assets while public pages

@@ -104,7 +104,12 @@ export function formatDateTimeParts(
  * Example: "21 Aug 2026"
  */
 export function formatLocalDate(localDate: string): string {
-  return formatDateLong(new Date(`${localDate}T12:00:00Z`))
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(`${localDate}T12:00:00Z`))
 }
 
 /**

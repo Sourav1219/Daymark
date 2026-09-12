@@ -99,6 +99,7 @@ export async function requestAttachmentUpload(
   const attachmentId = randomUUID()
   const storageKey = `workspaces/${access.workspaceId}/quests/${quest.id}/staging/${randomUUID()}`
   const upload = await storage.createUploadGrant({
+    byteSize: command.byteSize,
     contentType: command.mimeType,
     key: storageKey,
   })

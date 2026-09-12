@@ -98,7 +98,7 @@ export async function TodayHero({ access }: { access: AccessContext }) {
       </div>
 
       <div className="today-hero__titles">
-        <h1 className="today-hero__title">{greetingFor(hour)}.</h1>
+        <h2 className="today-hero__title">{greetingFor(hour)}.</h2>
         <p className="today-hero__tagline">{dateLabel}</p>
       </div>
 

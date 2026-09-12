@@ -6,6 +6,10 @@ import { SignOutPageClient } from "@/app/(auth)/sign-out/sign-out-page-client"
 export const metadata: Metadata = {
   description: "This device was signed out and requires authentication.",
   title: "Signed Out",
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 type SignOutPageProps = Readonly<{

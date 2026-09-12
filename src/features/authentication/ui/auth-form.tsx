@@ -77,7 +77,10 @@ export function AuthForm({
   const termsCheckboxRef = useRef<HTMLInputElement>(null)
   const privacyCheckboxRef = useRef<HTMLInputElement>(null)
   const [passwordVisible, setPasswordVisible] = useState(false)
-  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
+  const turnstileSiteKey =
+    process.env.NEXT_PUBLIC_E2E_TEST_MODE === "true"
+      ? ""
+      : (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "")
   const [captchaVerified, setCaptchaVerified] = useState(!turnstileSiteKey)
   const [messageIndex, setMessageIndex] = useState(0)
   const fieldErrors = state && !state.ok ? state.error.fieldErrors : undefined

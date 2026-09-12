@@ -3,6 +3,8 @@
 
 # Next.js output
 /.next
+/.next-e2e
+/.next-pwa-e2e
 /out
 
 # test output

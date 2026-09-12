@@ -32,7 +32,13 @@ export function AppFrame({ children }: AppFrameProps) {
       </ScrollableMain>
 
       <BottomTabBar />
-      <Toaster closeButton position="bottom-center" richColors />
+      <Toaster
+        closeButton
+        mobileOffset={{ bottom: "calc(4.35rem + env(safe-area-inset-bottom))" }}
+        offset={{ bottom: "calc(4.35rem + env(safe-area-inset-bottom))" }}
+        position="bottom-center"
+        richColors
+      />
     </div>
   )
 }

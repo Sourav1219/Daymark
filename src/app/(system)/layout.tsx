@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import type { ReactNode } from "react"
 import { forbidden } from "next/navigation"
 
@@ -11,6 +12,13 @@ import { getAuthorizedWorkspaceSummary } from "@/features/workspaces/application
 import { readServerEnv } from "@/lib/env/server"
 
 export const dynamic = "force-dynamic"
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 export default async function SystemLayout({
   children,

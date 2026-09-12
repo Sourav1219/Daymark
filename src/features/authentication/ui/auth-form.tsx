@@ -167,11 +167,11 @@ export function AuthForm({
               </>
             )}
           </h1>
-          <h2 className="auth__subtitle">
+          <p className="auth__subtitle">
             {registering
               ? "Turn your intentions into finished tasks."
               : "Your tasks are waiting for you."}
-          </h2>
+          </p>
         </div>
 
         <div className="auth__tabs">
@@ -204,7 +204,7 @@ export function AuthForm({
           onRegistrationAgreementRequired={requestRegistrationAgreementReview}
         />
 
-        <div className="auth__divider" role="separator">
+        <div className="auth__divider">
           <span>or continue with email</span>
         </div>
 

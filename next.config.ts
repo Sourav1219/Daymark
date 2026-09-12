@@ -53,6 +53,31 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
   async headers() {
     return [
+      // Fingerprinted static assets are content-addressed and safe to cache
+      // for a full year. This entry must come BEFORE the catch-all rule below
+      // so it wins the specificity race and Next.js's built-in immutable
+      // headers are not overridden by the no-cache fallback.
+      {
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+        source: "/_next/static/:path*",
+      },
+      // Public static files (icons, manifest, splash screens) can be
+      // cached for a moderate period; they carry hash-busted filenames when
+      // referenced from Next.js and are infrequently updated.
+      {
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+        source: "/(icons|mascots|splash|public)/:path*",
+      },
       { headers: securityHeaders, source: "/:path*" },
       {
         headers: [

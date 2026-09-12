@@ -72,7 +72,7 @@ export function AuthExperience({
     <main className="welcome welcome--immersive">
       <div className="welcome__hero-stage">
         <div className="welcome__inner">
-          <section className="welcome__visual">
+          <section aria-hidden="true" className="welcome__visual">
             <header className="welcome__topbar">
               <span className="welcome__wordmark">
                 <span aria-hidden="true" /> Traketo
@@ -103,10 +103,10 @@ export function AuthExperience({
               <h1 className="welcome__brand" id="welcome-title">
                 Turn plans into <em>progress.</em>
               </h1>
-              <h2 className="welcome__tagline">
+              <p className="welcome__tagline">
                 Tasks, focus sessions, and shared study—together in one calm
                 place.
-              </h2>
+              </p>
             </div>
 
             <div className="welcome__actions">

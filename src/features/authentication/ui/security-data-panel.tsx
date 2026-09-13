@@ -7,6 +7,7 @@ import {
   useState,
   useTransition,
 } from "react"
+import { useFormStatus } from "react-dom"
 import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
 import {
@@ -36,6 +37,7 @@ import {
   listActiveSessionsAction,
   revokeSessionAction,
   signOutEverywhereAction,
+  type DeleteAccountState,
   type SessionView,
 } from "@/features/authentication/application/account-security-actions"
 import { ACTIVE_SESSIONS_CHANGED_EVENT } from "@/features/authentication/client/session-events"
@@ -864,7 +866,7 @@ function DataCard() {
   )
 }
 
-function DeleteAccountCard({
+export function DeleteAccountCard({
   hasPassword = true,
 }: Readonly<{
   hasPassword?: boolean
@@ -872,9 +874,11 @@ function DeleteAccountCard({
   const router = useRouter()
   const [open, setOpen] = useState(false)
   // Stable so the dialog's completion effect does not re-fire on re-render.
+  // router.replace keeps the deleted-account landing out of history so
+  // pressing Back doesn't attempt to revisit the now-gone /profile page.
   const handleDeleted = useCallback(async () => {
     await clearPrivateOfflineData()
-    router.push("/sign-in")
+    router.replace("/sign-out?reason=deleted")
   }, [router])
 
   return (
@@ -934,27 +938,55 @@ export function DeleteAccountDialog({
     const viewport = document.getElementById("app-device-viewport")
     viewport?.classList.add("has-modal-open")
 
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose()
-    }
-    document.addEventListener("keydown", closeOnEscape)
-
     return () => {
       viewport?.classList.remove("has-modal-open")
-      document.removeEventListener("keydown", closeOnEscape)
     }
-  }, [onClose])
+  }, [])
 
   const portalContainer =
     document.getElementById("app-device-viewport") ?? document.body
 
   return createPortal(
+    <DeleteAccountDialogInner
+      hasPassword={hasPassword}
+      onClose={onClose}
+      state={state}
+      action={action}
+    />,
+    portalContainer,
+  )
+}
+
+function DeleteAccountDialogInner({
+  hasPassword,
+  onClose,
+  state,
+  action,
+}: Readonly<{
+  hasPassword: boolean
+  onClose: () => void
+  state: DeleteAccountState
+  action: (formData: FormData) => void
+}>) {
+  const { pending } = useFormStatus()
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      // Block Escape while the deletion request is in-flight.
+      if (!pending && event.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", closeOnEscape)
+    return () => document.removeEventListener("keydown", closeOnEscape)
+  }, [onClose, pending])
+
+  return (
     <div
       aria-labelledby="delete-account-dialog-title"
       aria-modal="true"
       className="account-delete-dialog__overlay"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
+        // Prevent dismissing while the deletion is in-flight.
+        if (!pending && event.target === event.currentTarget) onClose()
       }}
       role="dialog"
     >
@@ -1018,6 +1050,7 @@ export function DeleteAccountDialog({
           <div className="account-delete-dialog__actions">
             <Button
               className="account-delete-dialog__cancel"
+              disabled={pending}
               onClick={onClose}
               type="button"
               variant="outline"
@@ -1032,8 +1065,7 @@ export function DeleteAccountDialog({
           </div>
         </form>
       </div>
-    </div>,
-    portalContainer,
+    </div>
   )
 }
 

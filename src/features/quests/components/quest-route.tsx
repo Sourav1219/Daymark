@@ -51,10 +51,9 @@ const routeCopy = {
   },
   quests: {
     description:
-      "Create, organise, search, and filter tasks in this workspace. Filter state lives in the URL, so every view is shareable.",
-    emptyDescription:
-      "Create your first task above. Active tasks stay scoped to this workspace and can be completed when finished.",
-    emptyTitle: "No active tasks yet",
+      "Create and organise tasks in this workspace. Active tasks stay scoped to this workspace and can be completed when finished.",
+    emptyDescription: "",
+    emptyTitle: "",
     eyebrow: "All tasks",
     title: "Tasks",
   },
@@ -87,9 +86,6 @@ export async function QuestRoute({
   const now = new Date()
 
   if (kind === "quests") {
-    const activeFilters = filters ?? defaultQuestFilters
-    const filtered = isQuestFiltered(activeFilters)
-
     const [
       active,
       deleted,
@@ -100,7 +96,6 @@ export async function QuestRoute({
       attachmentsByQuest,
     ] = await Promise.all([
       getQuestList(access, "active", {
-        filters: activeFilters,
         limit: questPageSize + 1,
         now,
         offset: (page - 1) * questPageSize,
@@ -133,13 +128,7 @@ export async function QuestRoute({
           activeHasNextPage={activeHasNextPage}
           activePage={page}
           deletedQuests={deleted.slice(0, questPageSize)}
-          emptyDescription={
-            filtered ? filteredCopy.emptyDescription : copy.emptyDescription
-          }
-          emptyTitle={filtered ? filteredCopy.emptyTitle : copy.emptyTitle}
-          filters={activeFilters}
           gates={gateOptions}
-          isFiltered={filtered}
           labels={labelOptions}
           parentOptions={parentOptions}
           quests={active.slice(0, questPageSize)}

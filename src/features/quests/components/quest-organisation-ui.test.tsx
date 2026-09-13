@@ -412,11 +412,7 @@ describe("Quest organisation controls", () => {
       <QuestActiveBoard
         attachmentsByQuest={{}}
         deletedQuests={[]}
-        emptyDescription="Try a different search"
-        emptyTitle="No matching tasks"
-        filters={defaultQuestFilters}
         gates={[]}
-        isFiltered={false}
         labels={[]}
         parentOptions={[]}
         quests={[]}
@@ -443,7 +439,7 @@ describe("Quest organisation controls", () => {
     ).toHaveAttribute("href", "/today?task=created-task")
   })
 
-  it("switches between task creation, search and ordering, and Trash", async () => {
+  it("switches between task creation and active tasks, and Trash", async () => {
     const user = userEvent.setup()
 
     render(
@@ -455,11 +451,7 @@ describe("Quest organisation controls", () => {
             deletedAt: "2026-08-13T09:00:00.000Z",
           },
         ]}
-        emptyDescription="Trash is empty"
-        emptyTitle="Trash is empty"
-        filters={defaultQuestFilters}
         gates={[]}
-        isFiltered={false}
         labels={[]}
         parentOptions={[]}
         quests={[quest("visible-task"), quest("another-task")]}
@@ -469,23 +461,17 @@ describe("Quest organisation controls", () => {
       />,
     )
 
-    expect(screen.getAllByRole("tab")).toHaveLength(3)
+    expect(screen.getAllByRole("tab")).toHaveLength(2)
 
-    // Create tab should be selected by default with task creation form rendered
+    // Create tab should be selected by default with task creation form and active tasks rendered
     expect(screen.getByRole("tab", { name: /Create/i })).toHaveAttribute(
       "aria-selected",
       "true",
     )
-    expect(screen.getByLabelText("Task title")).toBeVisible()
+    expect(
+      screen.getByLabelText("Task title", { selector: "#create-quest-title" }),
+    ).toBeVisible()
     expect(screen.getByRole("button", { name: "Create Task" })).toBeVisible()
-
-    const searchTab = screen.getByRole("tab", { name: /Search/i })
-    await user.click(searchTab)
-    expect(searchTab).toHaveAttribute("aria-selected", "true")
-    expect(screen.getByRole("searchbox", { name: "Search" })).toBeVisible()
-    expect(screen.queryByText("Quest visible-task")).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "Arrange all tasks" }))
     expect(screen.getByText("Quest visible-task")).toBeVisible()
     expect(
       screen.getByRole("button", {
@@ -509,8 +495,10 @@ describe("Quest organisation controls", () => {
     expect(
       within(screen.getByRole("tabpanel", { name: /Create/i })).getByLabelText(
         "Task title",
+        { selector: "#create-quest-title" },
       ),
     ).toBeVisible()
+    expect(screen.getByText("Quest visible-task")).toBeVisible()
   })
 
   it("provides Trash access and restoration in QuestList deleted mode", async () => {

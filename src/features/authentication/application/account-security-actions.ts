@@ -306,7 +306,6 @@ export async function deleteAccountAction(
   }
 
   await getAuth().api.signOut({ headers: await headers() })
-  revalidatePath("/profile")
 
   return { data: { deleted: true }, ok: true }
 }

@@ -18,8 +18,6 @@ import {
   ListChecks,
   PanelsTopLeft,
   RotateCcw,
-  Search,
-  SlidersHorizontal,
   Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -72,7 +70,7 @@ import {
 } from "@/features/reminders/domain/timezone"
 import { useOffline } from "@/features/offline/components/offline-provider"
 
-type QuestListMode = "active" | "cleared" | "deleted" | "search" | "today"
+type QuestListMode = "active" | "cleared" | "deleted" | "today"
 
 export type QuestLabelOption = Readonly<{
   id: string
@@ -82,8 +80,8 @@ export type QuestLabelOption = Readonly<{
 
 type QuestListProps = Readonly<{
   attachmentsByQuest?: Readonly<Record<string, readonly AttachmentView[]>>
-  emptyDescription: string
-  emptyTitle: string
+  emptyDescription?: string | undefined
+  emptyTitle?: string | undefined
   gates?: readonly QuestGateOption[] | undefined
   labels?: readonly QuestLabelOption[] | undefined
   mode: QuestListMode
@@ -440,7 +438,7 @@ function QuestCard({
   const input = { expectedVersion: quest.version, questId: quest.id }
   const [manageOpen, setManageOpen] = useState(false)
   const canAddSubquest =
-    (mode === "active" || mode === "search" || mode === "today") &&
+    (mode === "active" || mode === "today") &&
     depth < maxSubquestDepth
   const restorable = canRestoreTrashedTask(
     quest.deletedAt,
@@ -544,131 +542,6 @@ function QuestCard({
     )
   }
 
-  if (mode === "search") {
-    return (
-      <Card
-        aria-labelledby={titleId}
-        className="quest-card quest-card--search-result"
-        data-priority={quest.priority}
-        data-quest-id={quest.id}
-        role="article"
-      >
-        <CardContent className="quest-search-card">
-          <div className="quest-search-card__topline">
-            <span className="quest-search-card__icon" aria-hidden="true">
-              <Search />
-            </span>
-            <span>Search result</span>
-            <span className="quest-search-card__version">v{quest.version}</span>
-          </div>
-
-          <div className="quest-search-card__heading">
-            <div>
-              <CardTitle id={titleId}>{quest.title}</CardTitle>
-              {quest.description ? <p>{quest.description}</p> : null}
-            </div>
-            <div className="quest-search-card__badges">
-              <Badge
-                className={priorityStyles[quest.priority]}
-                variant="outline"
-              >
-                {quest.priority} priority
-              </Badge>
-              <Badge variant="outline">{questStatusLabel(quest.status)}</Badge>
-              {quest.parentTaskId ? (
-                <Badge variant="outline">Subtask</Badge>
-              ) : null}
-              {quest.gateName ? (
-                <Badge
-                  className="border-mana-violet/40 bg-mana-violet/10 text-mana-violet"
-                  variant="outline"
-                >
-                  {quest.gateName}
-                </Badge>
-              ) : null}
-              {quest.recurrenceRule ? (
-                <Badge variant="outline">Recurring</Badge>
-              ) : null}
-              {quest.labels.map((label) => (
-                <Badge
-                  className={
-                    labelBadgeStyles[label.colorToken] ??
-                    fallbackLabelBadgeStyle
-                  }
-                  key={label.id}
-                  variant="outline"
-                >
-                  {label.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {quest.startAt || quest.dueAt ? (
-            <div className="quest-search-card__schedule">
-              <CalendarClock aria-hidden="true" />
-              <QuestDates quest={quest} timezone={timezone} />
-            </div>
-          ) : null}
-
-          <div className="quest-search-card__actions">
-            {quest.status === "open" ? (
-              <Button
-                aria-label={`Complete ${quest.title}`}
-                disabled={completionPending || quest.optimistic}
-                onClick={() => onComplete(quest)}
-              >
-                <Check aria-hidden="true" />
-                Complete
-              </Button>
-            ) : null}
-
-            {!quest.optimistic ? (
-              <>
-                <Button
-                  aria-expanded={manageOpen}
-                  className="quest-search-card__manage"
-                  onClick={() => setManageOpen((current) => !current)}
-                  type="button"
-                  variant="outline"
-                >
-                  <SlidersHorizontal aria-hidden="true" />
-                  Manage
-                </Button>
-                {manageOpen ? (
-                  <div className="quest-search-card__manage-panel">
-                    <QuestEditForm
-                      gates={gates}
-                      quest={quest}
-                      timezone={timezone}
-                    />
-                    {labels ? (
-                      <QuestLabelControl labels={labels} quest={quest} />
-                    ) : null}
-                    {canAddSubquest ? (
-                      <details>
-                        <summary>Add Subtask</summary>
-                        <QuestSubquestForm
-                          gates={gates}
-                          parentQuest={quest}
-                          timezone={timezone}
-                        />
-                      </details>
-                    ) : null}
-                    <DeleteQuestControl
-                      input={input}
-                      quest={quest}
-                      title={quest.title}
-                    />
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
 
   return (
     <Card
@@ -1061,6 +934,26 @@ export function QuestList({
   }
 
   if (optimisticQuests.length === 0) {
+    if (mode === "active") {
+      return (
+        <>
+          {restoredTask ? (
+            <TaskRestoredPopup
+              onDismiss={() => setRestoredTask(null)}
+              task={restoredTask}
+            />
+          ) : null}
+          {permanentlyDeletedTask ? (
+            <TaskDeletedPopup
+              onDismiss={() => setPermanentlyDeletedTask(null)}
+              task={permanentlyDeletedTask}
+            />
+          ) : null}
+          <QuestFeedback announcement={announcement} />
+        </>
+      )
+    }
+
     return (
       <>
         {restoredTask ? (
@@ -1076,12 +969,14 @@ export function QuestList({
           />
         ) : null}
         <QuestFeedback announcement={announcement} />
-        <EmptyState
-          description={emptyDescription}
-          icon={emptyIcon(mode)}
-          title={emptyTitle}
-          variant={mode === "deleted" ? "trash" : "default"}
-        />
+        {emptyTitle ? (
+          <EmptyState
+            description={emptyDescription ?? ""}
+            icon={emptyIcon(mode)}
+            title={emptyTitle}
+            variant={mode === "deleted" ? "trash" : "default"}
+          />
+        ) : null}
       </>
     )
   }

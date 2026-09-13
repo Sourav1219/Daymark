@@ -57,28 +57,20 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
   async headers() {
     return [
-      // Fingerprinted static assets are content-addressed and safe to cache
-      // for a full year. This entry must come BEFORE the catch-all rule below
-      // so it wins the specificity race and Next.js's built-in immutable
-      // headers are not overridden by the no-cache fallback.
+      // The anonymous sign-in render can stream behind an auth-cookie check.
+      // Start its mobile LCP image directly from the response headers instead
+      // of waiting for the browser to receive and parse the completed HTML.
+      // Keep this unconditional: Chromium does not reliably honor `media` on
+      // HTTP Link response headers, which would defer discovery until HTML.
       {
         headers: [
           {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
+            key: "Link",
+            value:
+              '</_next/image?url=%2Fmascots%2Ftraketo-guide-blue-transparent.png&w=640&q=75>; rel="preload"; as="image"; fetchpriority="high"',
           },
         ],
-        source: "/_next/static/:path*",
-      },
-      // Next.js optimized images carry content hashes and dimensions in query params.
-      {
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, stale-while-revalidate=86400",
-          },
-        ],
-        source: "/_next/image",
+        source: "/sign-in",
       },
       // Public static files (icons, manifest, splash screens) can be
       // cached for 30 days; they carry hash-busted filenames when

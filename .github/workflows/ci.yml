@@ -43,6 +43,9 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # Keep the checked-in production audit inside the agreed quality budget.
+      # Refresh lighthouse-current.json whenever the deployed site is audited.
+      - run: pnpm performance:check
       - run: pnpm build
 
   integration:

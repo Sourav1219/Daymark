@@ -130,7 +130,7 @@ export function CookieConsentProvider({
         setShowChoices(false)
       }}
     >
-      <aside
+      <div
         aria-describedby="cookie-consent-description"
         aria-labelledby="cookie-consent-title"
         aria-modal="true"
@@ -153,15 +153,11 @@ export function CookieConsentProvider({
                   Choose whether to allow optional preference storage. Essential
                   cookies remain active.{" "}
                   <Link
-                    aria-label="Learn more about our privacy policy"
+                    aria-label="Read our privacy policy"
                     href="/privacy"
                     prefetch={false}
                   >
-                    Learn more
-                    <span className="sr-only">
-                      {" "}
-                      about our privacy policy
-                    </span>
+                    Read our privacy policy
                   </Link>
                 </>
               ) : (
@@ -169,15 +165,11 @@ export function CookieConsentProvider({
                   Essential cookies enable secure sign-in. With your permission,
                   optional storage remembers preferences.{" "}
                   <Link
-                    aria-label="Learn more about our privacy policy"
+                    aria-label="Read our privacy policy"
                     href="/privacy"
                     prefetch={false}
                   >
-                    Learn more
-                    <span className="sr-only">
-                      {" "}
-                      about our privacy policy
-                    </span>
+                    Read our privacy policy
                   </Link>
                 </>
               )}
@@ -307,7 +299,7 @@ export function CookieConsentProvider({
             </button>
           </div>
         )}
-      </aside>
+      </div>
     </div>
   ) : null
 

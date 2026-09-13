@@ -14,7 +14,6 @@
   background: rgba(215, 226, 249, 0.66);
   backdrop-filter: blur(15px) saturate(125%);
   -webkit-backdrop-filter: blur(15px) saturate(125%);
-  animation: profile-popup-backdrop 0.24s ease-out both;
   overflow-y: auto;
   overscroll-behavior: contain;
   transition: opacity 0.24s ease;
@@ -52,7 +51,6 @@ body > .cookie-consent-backdrop {
     0 26px 64px -26px rgba(36, 69, 151, 0.48);
   color: #172b49;
   font-family: var(--font-nunito), var(--font-inter), sans-serif;
-  animation: cookie-modal-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cookie-consent::before {
@@ -76,17 +74,6 @@ body > .cookie-consent-backdrop {
   box-shadow: 0 0 0 1.7rem rgba(92, 114, 220, 0.025);
   pointer-events: none;
   content: "";
-}
-
-@keyframes cookie-modal-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 
 .cookie-consent::-webkit-scrollbar {

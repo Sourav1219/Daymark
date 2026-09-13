@@ -5,8 +5,9 @@ import Script from "next/script"
 import type { ReactNode } from "react"
 
 import "./globals.css"
-import { Baloo_2, Inter, Nunito } from "next/font/google"
+import { Baloo_2, Nunito } from "next/font/google"
 import { DevServiceWorkerCleanup } from "@/components/system/dev-service-worker-cleanup"
+import { WebVitalsReporter } from "@/components/system/web-vitals-reporter"
 import {
   cookieConsentName,
   parseCookieConsent,
@@ -14,21 +15,18 @@ import {
 import { CookieConsentProvider } from "@/features/privacy/ui/cookie-consent-provider"
 import { cn } from "@/lib/utils"
 
-const inter = Inter({
-  display: "swap",
-  preload: false,
-  subsets: ["latin"],
-  variable: "--font-inter",
-})
 // Rounded, friendly display + UI faces used by the redesigned auth surfaces.
-// Exposed as scoped CSS variables so the app shell keeps its Inter default.
+// Exposed as CSS variables so the public surfaces can use them without blocking
+// initial rendering on a font download.
 const baloo = Baloo_2({
   display: "swap",
+  preload: false,
   subsets: ["latin"],
   variable: "--font-baloo",
 })
 const nunito = Nunito({
   display: "swap",
+  preload: false,
   subsets: ["latin"],
   variable: "--font-nunito",
 })
@@ -84,14 +82,10 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html
       lang="en"
-      className={cn(
-        "font-sans",
-        inter.variable,
-        baloo.variable,
-        nunito.variable,
-      )}
+      className={cn("font-sans", baloo.variable, nunito.variable)}
     >
       <body>
+        <WebVitalsReporter />
         <CookieConsentProvider initialConsent={initialConsent}>
           {process.env.NODE_ENV !== "production" ? (
             <Script

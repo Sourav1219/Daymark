@@ -44,9 +44,11 @@ describe("CookieConsentProvider", () => {
       </CookieConsentProvider>,
     )
 
-    expect(
-      await screen.findByRole("dialog", { name: "Cookies & privacy" }),
-    ).toBeVisible()
+    const dialog = await screen.findByRole("dialog", {
+      name: "Cookies & privacy",
+    })
+    expect(dialog).toBeVisible()
+    expect(dialog.tagName).toBe("DIV")
     expect(screen.getByRole("button", { name: "Accept all" })).toBeVisible()
     expect(screen.getByRole("button", { name: "Essential only" })).toBeVisible()
     expect(

@@ -520,6 +520,21 @@ Sign-up welcome screen — clean, illustration-led onboarding.
   background: transparent;
 }
 
+/* Keep the first viewport visually stable. Lighthouse's Speed Index compares
+   the page against its final frame, so entrance motion and the mascot's
+   infinite idle transform made an otherwise complete screen look unfinished. */
+.welcome--immersive .welcome__topbar,
+.welcome--immersive .welcome__art,
+.welcome--immersive .welcome__avatar,
+.welcome--immersive .welcome__copy,
+.welcome--immersive .welcome__actions {
+  animation: none;
+}
+
+.welcome--immersive .welcome__avatar {
+  will-change: auto;
+}
+
 .welcome--immersive .welcome__visual::before,
 .welcome--immersive .welcome__visual::after {
   border-color: rgba(63, 104, 206, 0.07);

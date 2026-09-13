@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Caveat } from "next/font/google"
+import { Caveat, Inter } from "next/font/google"
 import type { ReactNode } from "react"
 import { forbidden } from "next/navigation"
 
@@ -25,6 +25,12 @@ const caveat = Caveat({
   subsets: ["latin"],
   variable: "--font-caveat",
   weight: ["400", "500", "600", "700"],
+})
+const inter = Inter({
+  display: "swap",
+  preload: false,
+  subsets: ["latin"],
+  variable: "--font-inter",
 })
 
 export const dynamic = "force-dynamic"
@@ -56,7 +62,7 @@ export default async function SystemLayout({
   const env = readServerEnv()
 
   return (
-    <div className={caveat.variable}>
+    <div className={`${caveat.variable} ${inter.variable}`}>
       <SentryFeedbackWidget />
       <AppShell
         pushPublicKey={env.VAPID_PUBLIC_KEY ?? null}

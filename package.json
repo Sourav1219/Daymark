@@ -14,6 +14,7 @@
     "build": "next build",
     "prestart": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --experimental-strip-types scripts/validate-server-env.ts",
     "start": "next start",
+    "analyze": "next experimental-analyze --output",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
@@ -27,6 +28,7 @@
     "db:migrate": "drizzle-kit migrate",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "smoke": "node scripts/smoke.mjs",
+    "performance:check": "node scripts/check-lighthouse-budget.mjs",
     "backup:check": "./scripts/backup-restore-check.sh"
   },
   "dependencies": {

@@ -18,7 +18,7 @@ count_snapshot() {
   # Exact per-table counts (pg_stat estimates drift across restore).
   {
     echo "select 'public.' || tablename || '=' || (xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I.%I', schemaname, tablename), false, true, '')))[1]::text"
-    echo "  from pg_tables where schemaname = 'public' order by tablename \\gexec"
+    echo "  from pg_tables where schemaname = 'public' order by tablename;"
   } | psql "$DATABASE_URL" -tA | sort
 }
 

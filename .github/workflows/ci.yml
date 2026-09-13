@@ -28,9 +28,6 @@ jobs:
     name: Static checks, unit tests, build
     runs-on: ubuntu-latest
     env:
-      E2E_TEST_MODE: "true"
-      MIGRATION_DATABASE_URL: postgresql://traketo_migrator:traketo@127.0.0.1:5432/traketo_test
-      NEXT_PUBLIC_E2E_TEST_MODE: "true"
       TEST_DATABASE_URL: ""
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +49,10 @@ jobs:
       # Refresh lighthouse-current.json whenever the deployed site is audited.
       - run: pnpm performance:check
       - run: pnpm build
+        env:
+          E2E_TEST_MODE: "true"
+          MIGRATION_DATABASE_URL: postgresql://traketo_migrator:traketo@127.0.0.1:5432/traketo_test
+          NEXT_PUBLIC_E2E_TEST_MODE: "true"
 
   integration:
     name: Integration tests (PostgreSQL)

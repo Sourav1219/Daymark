@@ -27,6 +27,11 @@ jobs:
   check:
     name: Static checks, unit tests, build
     runs-on: ubuntu-latest
+    env:
+      E2E_TEST_MODE: "true"
+      MIGRATION_DATABASE_URL: postgresql://traketo_migrator:traketo@127.0.0.1:5432/traketo_test
+      NEXT_PUBLIC_E2E_TEST_MODE: "true"
+      TEST_DATABASE_URL: ""
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
@@ -129,9 +134,12 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
       # The restore drill needs client binaries matching the server version.
+      # Ubuntu's default repository can lag PostgreSQL, so enable the official
+      # PGDG repository before requesting the versioned client package.
       - run: |
-          echo "/usr/lib/postgresql/bin" >> "$GITHUB_PATH"
           sudo apt-get update
+          sudo apt-get install -y ca-certificates postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get install -y postgresql-client-17
       - run: pnpm db:migrate
       - name: Dump, wipe, restore, verify
@@ -211,6 +219,7 @@ jobs:
       - run: pnpm test:pwa
         env:
           E2E_TEST_MODE: "true"
+          MIGRATION_DATABASE_URL: postgresql://traketo_migrator:traketo@127.0.0.1:5432/traketo_test
           NEXT_PUBLIC_E2E_TEST_MODE: "true"
       - uses: actions/upload-artifact@v4
         if: failure()

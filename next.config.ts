@@ -67,7 +67,7 @@ const nextConfig: NextConfig = {
           {
             key: "Link",
             value:
-              '</_next/image?url=%2Fmascots%2Ftraketo-guide-blue-transparent.png&w=640&q=75>; rel="preload"; as="image"; fetchpriority="high"',
+              '</_next/image?url=%2Fmascots%2Ftraketo-guide-blue-transparent.png&w=256&q=75>; rel="preload"; as="image"; fetchpriority="high"',
           },
         ],
         source: "/sign-in",

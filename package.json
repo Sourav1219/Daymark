@@ -2,6 +2,13 @@
   "name": "traketo",
   "version": "0.1.0",
   "private": true,
+  "browserslist": [
+    "chrome >= 109",
+    "edge >= 109",
+    "firefox >= 115",
+    "safari >= 16",
+    "ios_saf >= 16"
+  ],
   "type": "module",
   "description": "A production-minded personal task system built as a modular Next.js monolith.",
   "engines": {

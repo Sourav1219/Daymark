@@ -47,10 +47,8 @@ export function buildContentSecurityPolicy(
     "img-src 'self' data: blob:",
     "object-src 'none'",
     `script-src 'self' ${scriptAuthorization} https://challenges.cloudflare.com${development ? " 'unsafe-eval'" : ""}`,
-    development || !nonce
-      ? "style-src 'self' 'unsafe-inline'"
-      : `style-src 'self' 'nonce-${nonce}'`,
-    ...(!development && nonce ? ["style-src-attr 'unsafe-inline'"] : []),
+    "style-src 'self' 'unsafe-inline'",
+    "style-src-attr 'unsafe-inline'",
     `connect-src ${connectSources.join(" ")}`,
     "frame-src 'self' https://challenges.cloudflare.com",
     "worker-src 'self' blob:",

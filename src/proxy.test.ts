@@ -148,7 +148,7 @@ describe("protected route proxy", () => {
     expect(csp).toContain(
       "https://*.1234567890abcdef1234567890abcdef.r2.cloudflarestorage.com",
     )
-    expect(csp).toContain("style-src 'self' 'nonce-nonce-value'")
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'")
     expect(csp).toContain("style-src-attr 'unsafe-inline'")
     expect(csp).not.toContain("strict-dynamic")
     expect(csp).not.toContain("'unsafe-eval'")

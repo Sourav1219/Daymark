@@ -136,10 +136,10 @@ export function AuthExperience({
               </button>
             </div>
 
-            <div className="mt-4 text-center text-xs text-ink-muted">
-              <span>Having trouble?</span>{" "}
+            <div className="mt-4 flex items-center justify-center gap-1 text-center text-xs text-ink-muted">
+              <span>Having trouble?</span>
               <Link
-                className="font-semibold text-system-blue underline underline-offset-2 hover:opacity-80"
+                className="inline-flex min-h-[48px] items-center px-2 font-semibold text-system-blue underline underline-offset-2 hover:opacity-80"
                 href="/contact"
                 prefetch={false}
               >

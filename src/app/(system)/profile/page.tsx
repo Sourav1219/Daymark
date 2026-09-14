@@ -11,6 +11,10 @@ import type { SessionView } from "@/features/authentication/application/account-
 import { and, eq, isNotNull, ne } from "drizzle-orm"
 import { accounts } from "@/db/schema"
 import { listActiveSessionRecords } from "@/features/authentication/repositories/session-management-repository"
+import {
+  findProfilePhotoRecord,
+  profilePhotoUrl,
+} from "@/features/authentication/repositories/profile-photo-repository"
 import { getAuthorizedWorkspaceSummary } from "@/features/workspaces/application/get-workspace-summary"
 import { readServerEnv } from "@/lib/env/server"
 
@@ -24,21 +28,23 @@ export default async function ProfilePage() {
     getCurrentSessionId(),
   ])
   const database = getDatabase()
-  const [workspace, sessionRecords, credentialAccounts] = await Promise.all([
-    getAuthorizedWorkspaceSummary(access),
-    listActiveSessionRecords(database, user.id, new Date()),
-    database
-      .select({ id: accounts.id })
-      .from(accounts)
-      .where(
-        and(
-          eq(accounts.userId, user.id),
-          isNotNull(accounts.password),
-          ne(accounts.password, ""),
-        ),
-      )
-      .limit(1),
-  ])
+  const [workspace, sessionRecords, credentialAccounts, profilePhoto] =
+    await Promise.all([
+      getAuthorizedWorkspaceSummary(access),
+      listActiveSessionRecords(database, user.id, new Date()),
+      database
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(
+          and(
+            eq(accounts.userId, user.id),
+            isNotNull(accounts.password),
+            ne(accounts.password, ""),
+          ),
+        )
+        .limit(1),
+      findProfilePhotoRecord(database, user.id),
+    ])
   const hasPassword = credentialAccounts.length > 0
   const sessions: readonly SessionView[] = sessionRecords.map((record) => ({
     createdAt: record.createdAt.toISOString(),
@@ -61,6 +67,7 @@ export default async function ProfilePage() {
       initialSessions={sessions}
       joined={joined}
       name={user.name}
+      photoUrl={profilePhoto ? profilePhotoUrl(profilePhoto.version) : null}
       pushPublicKey={env.VAPID_PUBLIC_KEY ?? null}
       role={access.role}
       workspaceName={workspace?.name ?? "Personal workspace"}

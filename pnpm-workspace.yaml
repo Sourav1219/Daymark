@@ -1,6 +1,8 @@
 allowBuilds:
   "@sentry/cli": true
+  "@serwist/turbopack": true
   "@swc/core": true
+  drizzle-kit: true
   esbuild: true
   unrs-resolver: true
 overrides:
@@ -15,6 +17,13 @@ overrides:
   # Security: browserslist unbounded memory growth (GHSA-c83g-rgw3-j3cx) and crash (GHSA-73wf-gq98-2v4g).
   # Patched in >=4.28.7.
   browserslist: ">=4.28.7"
+  # Security: js-yaml CPU DoS via unbounded merge key expansion (GHSA-2883-xcg3-v3hh, CWE-400).
+  # Affects eslint→@eslint/eslintrc→js-yaml and shadcn→cosmiconfig→js-yaml. Patched in >=4.3.2.
+  js-yaml: ">=4.3.2"
+  # Security: hono path-traversal in toSSG() + memory DoS in parseBody() + query-param cache differential
+  # (GHSA-gqvv-2mrq-wpjv, GHSA-g6gw-c38x-mqfc, GHSA-crvj-82cr-hjcx). Dev-only via shadcn→MCP SDK.
+  # Patched in >=4.13.5.
+  hono: ">=4.13.5"
 minimumReleaseAgeExclude:
   - lucide-react@1.30.0
   - shadcn@4.21.0

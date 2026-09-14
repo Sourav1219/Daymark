@@ -32,5 +32,6 @@ export const accountExportSecurityExclusions = [
 
 export const accountExportContentNotes = [
   "Attachment metadata is included, but the binary attachment files are not embedded in the portable archive.",
+  "A saved profile photo is embedded as base64 WebP data so it remains portable with the account archive.",
   "Browser-only choices are included as a current snapshot when available because their earlier change history is not retained on the server.",
 ] as const

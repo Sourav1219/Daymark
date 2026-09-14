@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   description:
     "Sign in to your Traketo account to access your tasks and focus timer.",
   alternates: { canonical: "/sign-in" },
+  openGraph: { url: "/sign-in" },
 }
 
 type SignInPageProps = Readonly<{

@@ -166,4 +166,26 @@ describe("enforceRateLimit", () => {
     expect(result?.success).toBe(true)
     expect(mocks.observeRateLimitHit).not.toHaveBeenCalled()
   })
+
+  it("segregates anonymous callers with unknown IP by client signature", async () => {
+    mocks.limit.mockResolvedValue({
+      limit: 10,
+      remaining: 9,
+      reset: Date.now() + 60_000,
+      success: true,
+    })
+    const { enforceRateLimit } = await import("./rate-limiter")
+
+    await enforceRateLimit({
+      headers: new Headers({
+        "user-agent": "TestBrowser/1.0",
+        "accept-language": "en-US",
+      }),
+      policy: "account",
+    })
+
+    expect(mocks.limit).toHaveBeenCalledOnce()
+    const calledKey = mocks.limit.mock.calls[0]?.[0]
+    expect(calledKey).toMatch(/^unknown:[a-f0-9]{16}$/)
+  })
 })

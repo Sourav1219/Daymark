@@ -38,7 +38,10 @@ export async function POST(request: Request) {
 async function runStaleTimersCleanup(request: Request): Promise<Response> {
   if (!authorizeCronRequest(request, "stale-timers")) {
     observeCronOutcome("stale-timers", "denied")
-    return NextResponse.json({ message: "Unauthorized." }, { status: 401 })
+    return NextResponse.json(
+      { message: "Unauthorized." },
+      { headers: { "Cache-Control": "no-store" }, status: 401 },
+    )
   }
 
   try {

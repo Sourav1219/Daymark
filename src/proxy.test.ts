@@ -15,6 +15,9 @@ describe("protected route proxy", () => {
     "/quests/example",
     "/settings/privacy-data",
     "/sign-in",
+    "/sign-up",
+    "/verify-email",
+    "/forgot-password",
     "/contact",
   ])("runs on dynamic application route %s", (url) => {
     expect(unstable_doesMiddlewareMatch({ config, url })).toBe(true)
@@ -52,7 +55,7 @@ describe("protected route proxy", () => {
 
       expect(response.status).toBe(307)
       expect(response.headers.get("location")).toBe(
-        "https://questly.test/sign-out?next=%2Fprofile",
+        "https://questly.test/sign-out?next=%2Fprofile&reason=expired",
       )
     },
   )

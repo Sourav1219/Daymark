@@ -21,7 +21,11 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mocks.push, refresh: mocks.refresh, replace: mocks.replace }),
+  useRouter: () => ({
+    push: mocks.push,
+    refresh: mocks.refresh,
+    replace: mocks.replace,
+  }),
 }))
 
 vi.mock(
@@ -34,6 +38,7 @@ vi.mock(
       data: { revoked: true },
       ok: true,
     })),
+    resetAccountDataAction: vi.fn(async () => null),
     signOutEverywhereAction: vi.fn(async () => ({
       data: { signedOut: true },
       ok: true,
@@ -181,7 +186,7 @@ describe("SecurityDataPanel sessions", () => {
     ).not.toBeInTheDocument()
   })
 
-  it("switches to Consent & Data tab and renders consent controls, data export, and delete account", async () => {
+  it("switches to Consent & Data tab and renders consent controls and data actions", async () => {
     render(
       <SecurityDataPanel
         currentSessionId={macSession.id}
@@ -234,7 +239,7 @@ describe("SecurityDataPanel sessions", () => {
     ).not.toBeInTheDocument()
     expect(screen.queryByText("LEDGER-001")).not.toBeInTheDocument()
 
-    // Export & Delete Account
+    // Export, reset & delete account
     expect(
       screen.getByRole("heading", { name: "Export your data" }),
     ).toBeInTheDocument()
@@ -242,10 +247,37 @@ describe("SecurityDataPanel sessions", () => {
       screen.getByRole("button", { name: /request export/i }),
     ).toBeInTheDocument()
     expect(
+      screen.getByRole("heading", { name: "Reset tasks & progress" }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /reset my data/i }),
+    ).toBeInTheDocument()
+    expect(
       screen.getByRole("heading", { name: "Delete account" }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: /delete my account/i }),
+    ).toBeInTheDocument()
+  })
+
+  it("requires an explicit confirmation before resetting account data", async () => {
+    const user = userEvent.setup()
+    render(
+      <SecurityDataPanel
+        currentSessionId={macSession.id}
+        initialSessions={[macSession]}
+      />,
+    )
+
+    await user.click(screen.getByRole("tab", { name: /consent & data/i }))
+    await user.click(screen.getByRole("button", { name: /reset my data/i }))
+
+    expect(
+      screen.getByRole("dialog", { name: "Reset tasks and progress?" }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText(/type reset to confirm/i)).toBeRequired()
+    expect(
+      screen.getByRole("button", { name: "Reset everything" }),
     ).toBeInTheDocument()
   })
 
@@ -367,4 +399,3 @@ describe("SecurityDataPanel sessions", () => {
     expect(mocks.push).not.toHaveBeenCalled()
   })
 })
-

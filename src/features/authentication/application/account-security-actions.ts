@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { cookies, headers } from "next/headers"
+import { redirect } from "next/navigation"
 
 import { getDatabase } from "@/db/client"
 import {
@@ -10,6 +11,7 @@ import {
   requireWorkspaceAccess,
 } from "@/features/authentication/server/authorization"
 import { deleteUserAndOwnedData } from "@/features/authentication/mutations/account-deletion-service"
+import { resetUserContentData } from "@/features/authentication/mutations/account-data-reset-service"
 import { buildAccountExport } from "@/features/authentication/export/account-export-service"
 import { buildAccountExportPdf } from "@/features/authentication/export/account-export-pdf"
 import {
@@ -62,6 +64,7 @@ export type ExportDataState = ActionResult<{
   }
 }> | null
 export type DeleteAccountState = ActionResult<{ deleted: true }> | null
+export type ResetAccountDataState = ActionResult<{ reset: true }> | null
 
 const revokeSessionSchema = z.object({ sessionId: z.uuid() })
 const deleteAccountPasswordSchema = z.object({
@@ -73,6 +76,14 @@ const deleteAccountConfirmationSchema = z.object({
     .trim()
     .refine((val) => val.toUpperCase() === "DELETE", {
       message: 'Type "DELETE" to confirm account deletion.',
+    }),
+})
+const resetAccountDataConfirmationSchema = z.object({
+  confirmation: z
+    .string()
+    .trim()
+    .refine((val) => val.toUpperCase() === "RESET", {
+      message: 'Type "RESET" to confirm the fresh start.',
     }),
 })
 const exportAccountDataSchema = z.object({
@@ -240,6 +251,37 @@ export async function exportAccountDataAction(input: {
   }
 }
 
+export async function resetAccountDataAction(
+  _previousState: ResetAccountDataState,
+  formData: FormData,
+): Promise<ResetAccountDataState> {
+  const access = await requireWorkspaceAccess()
+  const limited = await accountRateLimitFailure(access.userId)
+  if (limited) return limited
+
+  const parsed = resetAccountDataConfirmationSchema.safeParse({
+    confirmation: formData.get("confirmation"),
+  })
+  if (!parsed.success) {
+    return validationFailure('Type "RESET" to confirm the fresh start.', {
+      confirmation: ['Type "RESET" exactly to confirm.'],
+    })
+  }
+
+  const summary = await resetUserContentData(getDatabase(), access)
+  logSecurityEvent("account.data_reset", {
+    userId: access.userId,
+    workspaceId: access.workspaceId,
+  })
+
+  if (summary.attachmentKeys.length > 0) {
+    await removeAttachmentObjects(summary.attachmentKeys)
+  }
+
+  revalidatePath("/", "layout")
+  return { data: { reset: true }, ok: true }
+}
+
 export async function deleteAccountAction(
   _previousState: DeleteAccountState,
   formData: FormData,
@@ -306,8 +348,11 @@ export async function deleteAccountAction(
   }
 
   await getAuth().api.signOut({ headers: await headers() })
+  const cookieStore = await cookies()
+  cookieStore.delete("questly.session_token")
+  cookieStore.delete("questly.session_data")
 
-  return { data: { deleted: true }, ok: true }
+  redirect("/sign-out?reason=deleted")
 }
 
 /**

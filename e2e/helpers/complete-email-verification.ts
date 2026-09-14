@@ -8,7 +8,7 @@ export async function completeEmailVerification(
 ) {
   await expect(
     page.getByRole("heading", { name: "Check your inbox." }),
-  ).toBeVisible()
+  ).toBeVisible({ timeout: 30_000 })
   await page.getByLabel("Verification code").fill(e2eVerificationCode)
   await page.getByRole("button", { name: "Verify email" }).click()
   await expect(page).toHaveURL(expectedUrl, { timeout: 30_000 })

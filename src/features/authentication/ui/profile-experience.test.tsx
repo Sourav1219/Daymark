@@ -27,6 +27,14 @@ vi.mock("@/features/offline/components/offline-logout-button", () => ({
   OfflineLogoutButton: () => <button type="button">Log out</button>,
 }))
 
+vi.mock("@/features/authentication/ui/profile-photo-editor", () => ({
+  ProfilePhotoEditor: () => (
+    <button aria-label="Add profile photo" type="button">
+      Add photo
+    </button>
+  ),
+}))
+
 describe("ProfileExperience", () => {
   it("switches between the profile overview and inline editor", async () => {
     const user = userEvent.setup()
@@ -56,6 +64,9 @@ describe("ProfileExperience", () => {
     expect(screen.queryByText("Access")).not.toBeInTheDocument()
     expect(screen.queryByText(/password/iu)).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Log out" })).toBeVisible()
+    expect(
+      screen.getByRole("button", { name: "Add profile photo" }),
+    ).toBeVisible()
     expect(
       screen.getByRole("region", { name: "Session controls" }),
     ).toContainElement(screen.getByRole("button", { name: "Log out" }))

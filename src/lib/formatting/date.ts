@@ -14,8 +14,8 @@
  *                (Gregorian calendar, latin numerals — avoids locale-specific
  *                 numeral systems that make part extraction unpredictable)
  *
- * TODO: replace the hard-coded locale strings below with a user preference
- *       stored in user_settings.locale once that column is added.
+ * Current defaults use unambiguous standard English formatting pending future
+ * user-configurable locale selection in user_settings.
  */
 
 const DATE_LOCALE = "en-US"

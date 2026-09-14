@@ -15,13 +15,17 @@ export const maxDuration = 60
 
 /** Backlog size at which the cron run logs an explicit warning. */
 const reminderBacklogAlertThreshold = 100
+const noStore = { "Cache-Control": "no-store" } as const
 
 async function handleReminderJob(request: Request): Promise<Response> {
   const env = readServerEnv()
 
   if (!authorizeCronRequest(request, "reminders")) {
     observeCronOutcome("reminders", "denied")
-    return Response.json({ error: "Unauthorized." }, { status: 401 })
+    return Response.json(
+      { error: "Unauthorized." },
+      { headers: noStore, status: 401 },
+    )
   }
 
   try {
@@ -50,7 +54,7 @@ async function handleReminderJob(request: Request): Promise<Response> {
     }
 
     return Response.json(summary, {
-      headers: { "Cache-Control": "no-store" },
+      headers: noStore,
     })
   } catch (error) {
     logger.error(
@@ -66,7 +70,7 @@ async function handleReminderJob(request: Request): Promise<Response> {
     observeCronOutcome("reminders", "partial")
     return Response.json(
       { error: "Reminder processing failed." },
-      { status: 500 },
+      { headers: noStore, status: 500 },
     )
   }
 }

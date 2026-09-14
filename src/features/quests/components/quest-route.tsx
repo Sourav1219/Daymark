@@ -204,6 +204,7 @@ export async function QuestRoute({
         mode={kind}
         parentOptions={parentOptions}
         quests={visibleQuests}
+        referenceNow={now.toISOString()}
         storageAvailable={storageAvailable}
         timezone={settings.timezone}
       />

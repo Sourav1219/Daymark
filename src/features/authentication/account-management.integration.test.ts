@@ -33,6 +33,7 @@ import {
 import type { AccessContext } from "@/features/authentication/authorization/access-context"
 import { buildAccountExport } from "@/features/authentication/export/account-export-service"
 import { deleteUserAndOwnedData } from "@/features/authentication/mutations/account-deletion-service"
+import { resetUserContentData } from "@/features/authentication/mutations/account-data-reset-service"
 import {
   listActiveSessionRecords,
   revokeSessionRecord,
@@ -286,6 +287,95 @@ integrationDescribe("account security and data lifecycle", () => {
       expect.arrayContaining([expect.objectContaining({ hunterLevel: 2 })]),
     )
     expect(payload.securityExclusions).toEqual(expect.any(Array))
+  })
+
+  it("resets personal content and progression while preserving the account", async () => {
+    const owner = await createUser(database, "Ada Lovelace")
+    const outsider = await createUser(database, "Grace Hopper")
+    await seedWorkspaceContent(database, owner.access)
+    await seedWorkspaceContent(database, outsider.access)
+    await database.insert(sessions).values({
+      expiresAt: new Date(Date.now() + 86_400_000),
+      token: `tok-reset-${randomUUID()}`,
+      userId: owner.userId,
+    })
+
+    const summary = await resetUserContentData(database, owner.access)
+
+    expect(summary.attachmentKeys).toHaveLength(1)
+    expect(
+      await database.select().from(users).where(eq(users.id, owner.userId)),
+    ).toHaveLength(1)
+    expect(
+      await database
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.id, owner.access.workspaceId)),
+    ).toHaveLength(1)
+    expect(
+      await database
+        .select()
+        .from(workspaceMembers)
+        .where(eq(workspaceMembers.userId, owner.userId)),
+    ).toHaveLength(1)
+    expect(
+      await database
+        .select()
+        .from(userSettings)
+        .where(eq(userSettings.userId, owner.userId)),
+    ).toHaveLength(1)
+    expect(
+      await database
+        .select()
+        .from(sessions)
+        .where(eq(sessions.userId, owner.userId)),
+    ).toHaveLength(1)
+    expect(
+      await database
+        .select()
+        .from(pushSubscriptions)
+        .where(eq(pushSubscriptions.userId, owner.userId)),
+    ).toHaveLength(1)
+
+    const [freshProgression] = await database
+      .select()
+      .from(userProgression)
+      .where(eq(userProgression.userId, owner.userId))
+    expect(freshProgression).toMatchObject({
+      bestStreak: 0,
+      currentStreak: 0,
+      experiencePoints: 0,
+      hunterLevel: 1,
+      hunterRank: "E",
+    })
+
+    for (const table of [
+      tasks,
+      gates,
+      labels,
+      questLabels,
+      reminders,
+      reminderDeliveries,
+      inAppNotifications,
+      attachments,
+      xpLedger,
+      activityEvents,
+      timerSessions,
+    ]) {
+      expect(
+        await database
+          .select()
+          .from(table)
+          .where(eq(table.workspaceId, owner.access.workspaceId)),
+      ).toHaveLength(0)
+    }
+
+    expect(
+      await database
+        .select()
+        .from(tasks)
+        .where(eq(tasks.workspaceId, outsider.access.workspaceId)),
+    ).toHaveLength(1)
   })
 
   it("purges the account and every owned record while preserving others", async () => {

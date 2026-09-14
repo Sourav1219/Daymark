@@ -51,10 +51,24 @@ export const metadata: Metadata = {
   openGraph: {
     description:
       "A calm, private space to turn your intentions into finished tasks.",
+    images: [
+      {
+        alt: "Traketo — a calm space to turn intentions into finished tasks",
+        height: 630,
+        url: "/icons/traketo-icon-512.png",
+        width: 512,
+      },
+    ],
     siteName: "Traketo",
     title: "Traketo",
     type: "website",
-    url: "/",
+  },
+  twitter: {
+    card: "summary",
+    description:
+      "A calm, private space to turn your intentions into finished tasks.",
+    images: ["/icons/traketo-icon-512.png"],
+    title: "Traketo",
   },
 }
 

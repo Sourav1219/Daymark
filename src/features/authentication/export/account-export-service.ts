@@ -15,6 +15,7 @@ import {
   groupStudyParticipants,
   groupStudySessions,
   labels,
+  profilePhotos,
   pushSubscriptions,
   questLabels,
   reminders,
@@ -79,6 +80,7 @@ export async function buildAccountExport(
 
   const [
     accountRows,
+    profilePhotoRows,
     settingsRows,
     workspaceRows,
     sessionRows,
@@ -118,6 +120,20 @@ export async function buildAccountExport(
       })
       .from(users)
       .where(eq(users.id, userId))
+      .limit(1),
+    database
+      .select({
+        byteSize: profilePhotos.byteSize,
+        contentType: profilePhotos.contentType,
+        createdAt: profilePhotos.createdAt,
+        height: profilePhotos.height,
+        imageBase64: profilePhotos.imageBase64,
+        updatedAt: profilePhotos.updatedAt,
+        version: profilePhotos.version,
+        width: profilePhotos.width,
+      })
+      .from(profilePhotos)
+      .where(eq(profilePhotos.userId, userId))
       .limit(1),
     database
       .select({
@@ -486,6 +502,7 @@ export async function buildAccountExport(
     account: account
       ? { ...account, connectedSignInMethods: providerRows }
       : null,
+    profilePhoto: profilePhotoRows[0] ?? null,
     settings,
     consentHistory,
     sessions: sessionRows.map((row) => ({

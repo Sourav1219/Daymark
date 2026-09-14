@@ -1,5 +1,6 @@
 import "server-only"
 
+import { createHash } from "node:crypto"
 import { Ratelimit } from "@upstash/ratelimit"
 import { Redis } from "@upstash/redis"
 
@@ -111,6 +112,17 @@ export function clientIp(requestHeaders: Headers): string {
   return "unknown"
 }
 
+function getClientSignature(headers: Headers): string {
+  const ua = headers.get("user-agent") ?? ""
+  const lang = headers.get("accept-language") ?? ""
+  const enc = headers.get("accept-encoding") ?? ""
+  const raw = `${ua}:${lang}:${enc}`
+  if (!raw.trim()) {
+    return "anonymous"
+  }
+  return createHash("sha256").update(raw).digest("hex").slice(0, 16)
+}
+
 export async function enforceRateLimit(
   input: Readonly<{
     headers: Headers
@@ -120,6 +132,9 @@ export async function enforceRateLimit(
 ): Promise<RateLimitResult | null> {
   const ip = clientIp(input.headers)
   const isUnknownIp = ip === "unknown"
+  const rateLimitKey = isUnknownIp
+    ? `unknown:${getClientSignature(input.headers)}`
+    : ip
 
   // If the client IP is genuinely known, check the IP bucket.
   // When the IP is "unknown" but an identity/userId is provided, meter against the user/identity
@@ -127,7 +142,7 @@ export async function enforceRateLimit(
   const checkIp = !isUnknownIp || !input.userId
 
   const checks = [
-    checkIp ? limiter(input.policy, "ip")?.limit(ip) : undefined,
+    checkIp ? limiter(input.policy, "ip")?.limit(rateLimitKey) : undefined,
     input.userId
       ? limiter(input.policy, "user")?.limit(input.userId)
       : undefined,

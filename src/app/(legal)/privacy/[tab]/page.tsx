@@ -28,8 +28,10 @@ const tabTitles: Record<CentreTab, string> = {
 }
 
 export function generateStaticParams() {
-  return validTabs.map((tab) => ({ tab }))
+  return [...validTabs, "actions"].map((tab) => ({ tab }))
 }
+
+export const dynamicParams = false
 
 export async function generateMetadata(props: {
   params: Promise<{ tab: string }>
@@ -41,10 +43,7 @@ export async function generateMetadata(props: {
     }
   }
   if (!validTabs.includes(tab as CentreTab)) {
-    return {
-      title: "Page Not Found",
-      robots: { index: false, follow: false },
-    }
+    notFound()
   }
   const resolvedTab = tab as CentreTab
   const title = `${tabTitles[resolvedTab]} · Privacy & Data Centre`
@@ -52,6 +51,7 @@ export async function generateMetadata(props: {
   return {
     alternates: { canonical: `/privacy/${resolvedTab}` },
     description: `Traketo Privacy & Data Centre: ${tabTitles[resolvedTab]}`,
+    openGraph: { url: `/privacy/${resolvedTab}` },
     title,
   }
 }

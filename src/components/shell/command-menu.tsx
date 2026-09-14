@@ -11,6 +11,7 @@ import {
   PanelsTopLeft,
   Plus,
   Search,
+  Settings,
   X,
 } from "lucide-react"
 
@@ -43,6 +44,12 @@ const commands = [
     label: "Go to Cleared",
     shortcut: "G C",
   },
+  {
+    href: "/settings",
+    icon: Settings,
+    label: "Go to Settings",
+    shortcut: "G S",
+  },
 ] as const
 
 const navigationShortcuts = new Map<string, Route>([
@@ -51,6 +58,7 @@ const navigationShortcuts = new Map<string, Route>([
   ["q", "/quests"],
   ["g", "/gates"],
   ["c", "/cleared"],
+  ["s", "/settings"],
 ])
 
 export const OPEN_COMMAND_MENU_EVENT = "traketo:open-command-menu"

@@ -5,6 +5,7 @@ import { TermsExperience } from "@/features/terms/ui/terms-experience"
 export const metadata: Metadata = {
   alternates: { canonical: "/terms" },
   description: "The terms that apply when you access or use Traketo.",
+  openGraph: { url: "/terms" },
   title: "Terms of Service",
 }
 

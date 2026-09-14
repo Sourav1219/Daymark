@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   description:
     "Create a private Traketo account to organize tasks, track streaks, and master your focus.",
   alternates: { canonical: "/sign-up" },
+  openGraph: { url: "/sign-up" },
 }
 
 type SignUpPageProps = Readonly<{

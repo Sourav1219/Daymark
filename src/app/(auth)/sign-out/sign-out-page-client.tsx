@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { SessionExpiredCard } from "@/features/authentication/ui/session-expired-card"
 
 type SignOutPageClientProps = Readonly<{
@@ -18,6 +19,14 @@ export function SignOutPageClient({
   nextPath,
   reason,
 }: SignOutPageClientProps) {
+  useEffect(() => {
+    if (reason === "deleted") {
+      void import("@/features/offline/storage/offline-database").then((mod) =>
+        mod.clearPrivateOfflineData(),
+      )
+    }
+  }, [reason])
+
   if (reason === "deleted") {
     return (
       <SessionExpiredCard

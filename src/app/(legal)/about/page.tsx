@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
   description:
     "Meet Traketo, a calm space for planning tasks, focusing, and making progress together.",
+  openGraph: { url: "/about" },
   title: "About Traketo",
 }
 

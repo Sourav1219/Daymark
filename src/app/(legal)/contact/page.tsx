@@ -6,6 +6,7 @@ import { ContactExperience } from "@/features/support/components/contact-experie
 export const metadata: Metadata = {
   alternates: { canonical: "/contact" },
   description: "Contact Traketo for account help, privacy, or feedback.",
+  openGraph: { url: "/contact" },
   title: "Contact us",
 }
 

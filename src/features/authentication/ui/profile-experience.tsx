@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useCallback, useState } from "react"
 import type { Route } from "next"
 import Link from "next/link"
@@ -19,6 +20,7 @@ import {
   MessageCircleMore,
   MessageSquareWarning,
   Pencil,
+  Settings,
   ShieldCheck,
   UserRound,
   X,
@@ -34,6 +36,7 @@ import { SecurityDataPanel } from "@/features/authentication/ui/security-data-pa
 import { OfflineLogoutButton } from "@/features/offline/components/offline-logout-button"
 import { ReportProblemButton } from "@/components/system/sentry-feedback-widget"
 import { ProfileCookieSettingsButton } from "@/features/privacy/ui/cookie-consent-provider"
+import { ProfilePhotoEditor } from "@/features/authentication/ui/profile-photo-editor"
 
 type ProfileExperienceProps = Readonly<{
   currentSessionId: string | null
@@ -42,6 +45,7 @@ type ProfileExperienceProps = Readonly<{
   initialSessions: readonly SessionView[]
   joined: string
   name: string
+  photoUrl?: string | null
   role: string
   pushPublicKey?: string | null
   workspaceName: string
@@ -66,6 +70,7 @@ export function ProfileExperience({
   initialSessions,
   joined,
   name,
+  photoUrl: initialPhotoUrl = null,
   pushPublicKey = null,
   role,
   workspaceName,
@@ -73,6 +78,8 @@ export function ProfileExperience({
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [securityOpen, setSecurityOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [photoUrl, setPhotoUrl] = useState(initialPhotoUrl)
   const [updateNotice, setUpdateNotice] = useState<ProfileUpdateKind | null>(
     null,
   )
@@ -123,7 +130,25 @@ export function ProfileExperience({
         </div>
         <div className="profile-hero__identity">
           <div className="profile-hero__avatar-wrap">
-            <div className="profile-hero__avatar">{initials(displayName)}</div>
+            <div className="profile-hero__avatar">
+              {photoUrl ? (
+                <Image
+                  alt={`${displayName}'s profile photo`}
+                  className="profile-hero__avatar-image"
+                  height={80}
+                  src={photoUrl}
+                  unoptimized
+                  width={80}
+                />
+              ) : (
+                initials(displayName)
+              )}
+            </div>
+            <ProfilePhotoEditor
+              currentPhotoUrl={photoUrl}
+              name={displayName}
+              onUpdated={setPhotoUrl}
+            />
             <span className="profile-hero__verified">
               <BadgeCheck aria-label="Verified account" />
             </span>
@@ -210,6 +235,7 @@ export function ProfileExperience({
         className="profile-security-settings"
         onToggle={(event) => setSecurityOpen(event.currentTarget.open)}
         open={securityOpen}
+        suppressHydrationWarning
       >
         <summary className="profile-security-settings__trigger">
           <span className="profile-security-settings__icon">
@@ -240,7 +266,12 @@ export function ProfileExperience({
           ) : null}
         </div>
       </details>
-      <details className="profile-help-settings">
+      <details
+        className="profile-help-settings"
+        onToggle={(event) => setHelpOpen(event.currentTarget.open)}
+        open={helpOpen}
+        suppressHydrationWarning
+      >
         <summary className="profile-help-settings__trigger">
           <span className="profile-help-settings__icon">
             <CircleHelp aria-hidden="true" />
@@ -259,6 +290,20 @@ export function ProfileExperience({
           aria-label="Help and information"
           className="profile-help-settings__content"
         >
+          <Link
+            className="profile-help-settings__action"
+            href={"/settings" as Route}
+            scroll={false}
+          >
+            <span>
+              <Settings aria-hidden="true" />
+            </span>
+            <div>
+              <strong>App Settings &amp; Preferences</strong>
+              <small>Dates, reminders, offline data &amp; preferences</small>
+            </div>
+            <ChevronRight aria-hidden="true" />
+          </Link>
           <ReportProblemButton className="profile-help-settings__action">
             <span>
               <MessageSquareWarning aria-hidden="true" />

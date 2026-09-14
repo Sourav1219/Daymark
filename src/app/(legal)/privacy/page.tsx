@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
   description:
     "Official Privacy Policy, personal data inventory, consent controls, and statutory rights.",
+  openGraph: { url: "/privacy" },
   title: "Privacy & Data Centre",
 }
 

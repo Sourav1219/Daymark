@@ -16,18 +16,22 @@ export const maxDuration = 60
 
 /** Retained attachment bytes at which the cron run logs a warning. */
 const storageAlertThresholdBytes = 5 * 1024 * 1024 * 1024
+const noStore = { "Cache-Control": "no-store" } as const
 
 async function handleAttachmentCleanup(request: Request) {
   const env = readServerEnv()
   if (!authorizeCronRequest(request, "attachments")) {
     observeCronOutcome("attachments", "denied")
-    return Response.json({ error: "Unauthorized." }, { status: 401 })
+    return Response.json(
+      { error: "Unauthorized." },
+      { headers: noStore, status: 401 },
+    )
   }
   const r2 = r2EnvFromServerEnv(env)
   if (!r2) {
     return Response.json(
       { error: "Attachment cleanup unavailable." },
-      { status: 503 },
+      { headers: noStore, status: 503 },
     )
   }
 
@@ -48,7 +52,7 @@ async function handleAttachmentCleanup(request: Request) {
       })
     }
 
-    return Response.json(summary, { headers: { "Cache-Control": "no-store" } })
+    return Response.json(summary, { headers: noStore })
   } catch (error) {
     logger.error(
       "Attachment cleanup incident",
@@ -63,7 +67,7 @@ async function handleAttachmentCleanup(request: Request) {
     observeCronOutcome("attachments", "partial")
     return Response.json(
       { error: "Attachment cleanup failed." },
-      { status: 500 },
+      { headers: noStore, status: 500 },
     )
   }
 }

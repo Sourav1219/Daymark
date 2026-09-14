@@ -88,7 +88,7 @@ export function getDatabase(): Database {
   return database
 }
 
-const databaseProbeTimeoutMilliseconds = 3_000
+const databaseProbeTimeoutMilliseconds = 8_000
 
 async function probeDatabase(candidate: Database): Promise<void> {
   let timeout: ReturnType<typeof setTimeout> | undefined

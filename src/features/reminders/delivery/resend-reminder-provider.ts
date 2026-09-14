@@ -32,6 +32,7 @@ export class ResendReminderDeliveryProvider implements ReminderDeliveryProvider 
           from: this.from,
           html: `<p>A task reminder is due.</p><p><a href="${this.appUrl}/quests">Open your task list</a></p>`,
           subject: "A task reminder is due",
+          text: `A task reminder is due.\n\nOpen your task list: ${this.appUrl}/quests\n`,
           to: input.recipientEmail,
         },
         { idempotencyKey: input.idempotencyKey },

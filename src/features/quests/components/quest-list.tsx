@@ -436,10 +436,8 @@ function QuestCard({
 }: QuestCardProps) {
   const titleId = `quest-${quest.id}-title`
   const input = { expectedVersion: quest.version, questId: quest.id }
-  const [manageOpen, setManageOpen] = useState(false)
   const canAddSubquest =
-    (mode === "active" || mode === "today") &&
-    depth < maxSubquestDepth
+    (mode === "active" || mode === "today") && depth < maxSubquestDepth
   const restorable = canRestoreTrashedTask(
     quest.deletedAt,
     referenceNow,
@@ -541,7 +539,6 @@ function QuestCard({
       </Card>
     )
   }
-
 
   return (
     <Card

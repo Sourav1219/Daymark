@@ -45,4 +45,12 @@ describe("CommandMenu", () => {
     await user.keyboard("gh")
     expect(push).toHaveBeenCalledWith("/today")
   })
+
+  it("navigates to /settings when pressing g then s", async () => {
+    const user = userEvent.setup()
+    render(<CommandMenu />)
+
+    await user.keyboard("gs")
+    expect(push).toHaveBeenCalledWith("/settings")
+  })
 })

@@ -206,6 +206,24 @@ export function AboutContent() {
               </Link>
             </div>
           </section>
+
+          {/* Footer nav */}
+          <nav
+            aria-label="Site navigation"
+            className="about-footer-nav"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "1rem",
+              justifyContent: "center",
+              padding: "1.5rem 1rem",
+            }}
+          >
+            <Link href="/sign-up">Get started</Link>
+            <Link href="/contact">Contact us</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/privacy">Privacy</Link>
+          </nav>
         </main>
       </div>
     </div>

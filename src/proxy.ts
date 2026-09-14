@@ -51,6 +51,9 @@ export function proxy(request: NextRequest) {
   ) {
     const signOutUrl = request.nextUrl.clone()
     signOutUrl.pathname = "/sign-out"
+    if (!signOutUrl.searchParams.has("reason")) {
+      signOutUrl.searchParams.set("reason", "expired")
+    }
     response = NextResponse.redirect(signOutUrl)
   } else if (request.nextUrl.pathname === "/") {
     const destination = sessionCookie ? "/today" : "/sign-in"
@@ -83,7 +86,7 @@ export const config = {
       // dynamic CSP enter the Node.js proxy. Public/static pages and arbitrary
       // scanner paths are served directly by Next/Vercel's CDN.
       source:
-        "/((?:app(?:/.*)?|today|quests(?:/.*)?|timer|gates|cleared|progress|profile|settings(?:/.*)?|sign-in|sign-up|reset-password|sign-out|session-expired|unauthorized|contact)?)",
+        "/((?:app(?:/.*)?|today|quests(?:/.*)?|timer|gates|cleared|progress|profile|settings(?:/.*)?|sign-in|sign-up|verify-email|forgot-password|reset-password|sign-out|session-expired|unauthorized|contact)?)",
     },
   ],
 }

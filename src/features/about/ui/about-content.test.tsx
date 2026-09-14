@@ -66,21 +66,25 @@ describe("AboutContent", () => {
     ).toHaveAttribute("href", "/privacy")
   })
 
-  it("does not render CTA buttons, sign in link, or footer links", () => {
+  it("renders the footer navigation links for public page crawling and navigation", () => {
     backHrefState.href = "/sign-in"
     render(<AboutContent />)
 
-    expect(
-      screen.queryByRole("link", { name: /get started/i }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole("link", { name: /sign in/i }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole("link", { name: "Terms" }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole("link", { name: "Contact Support" }),
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /get started/i })).toHaveAttribute(
+      "href",
+      "/sign-up",
+    )
+    expect(screen.getByRole("link", { name: /contact us/i })).toHaveAttribute(
+      "href",
+      "/contact",
+    )
+    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute(
+      "href",
+      "/terms",
+    )
+    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    )
   })
 })

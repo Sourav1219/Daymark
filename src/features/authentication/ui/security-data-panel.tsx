@@ -24,6 +24,7 @@ import {
   Smartphone,
   Tablet,
   Trash2,
+  RotateCcw,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -35,6 +36,7 @@ import { Label } from "@/components/ui/label"
 import {
   deleteAccountAction,
   listActiveSessionsAction,
+  resetAccountDataAction,
   revokeSessionAction,
   signOutEverywhereAction,
   type DeleteAccountState,
@@ -187,6 +189,7 @@ export function SecurityDataPanel({
         >
           <ConsentControlsCard pushPublicKey={pushPublicKey} />
           <DataCard />
+          <ResetAccountDataCard />
           <DeleteAccountCard hasPassword={hasPassword} />
         </div>
       )}
@@ -863,6 +866,156 @@ function DataCard() {
       </div>
       <AccountExportDialog />
     </section>
+  )
+}
+
+export function ResetAccountDataCard() {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const handleReset = useCallback(async () => {
+    await clearPrivateOfflineData().catch(() => undefined)
+    toast.success("Fresh start complete. Your account is ready.")
+    router.replace("/today")
+  }, [router])
+
+  return (
+    <section
+      aria-labelledby="reset-data-heading"
+      className="security-action-card security-action-card--reset"
+    >
+      <span className="security-action-card__icon" data-tone="amber">
+        <RotateCcw aria-hidden="true" />
+      </span>
+      <div className="security-action-card__copy">
+        <div className="security-action-card__meta">
+          <span>Fresh start</span>
+          <small>Account stays active</small>
+        </div>
+        <h3 id="reset-data-heading">Reset tasks &amp; progress</h3>
+        <p>
+          Permanently clear quests, lists, labels, reminders, timers, files, and
+          XP while keeping your profile and sign-in.
+        </p>
+      </div>
+      <Button
+        className="security-action-card__button"
+        onClick={() => setOpen(true)}
+        type="button"
+        variant="outline"
+      >
+        <RotateCcw aria-hidden="true" />
+        Reset my data
+      </Button>
+      {open ? (
+        <ResetAccountDataDialog
+          onClose={() => setOpen(false)}
+          onReset={handleReset}
+        />
+      ) : null}
+    </section>
+  )
+}
+
+export function ResetAccountDataDialog({
+  onClose,
+  onReset,
+}: Readonly<{
+  onClose: () => void
+  onReset: () => Promise<void> | void
+}>) {
+  const [state, action, pending] = useActionState(resetAccountDataAction, null)
+
+  useEffect(() => {
+    if (state?.ok) void onReset()
+  }, [onReset, state])
+
+  useEffect(() => {
+    const viewport = document.getElementById("app-device-viewport")
+    viewport?.classList.add("has-modal-open")
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (!pending && event.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", closeOnEscape)
+
+    return () => {
+      viewport?.classList.remove("has-modal-open")
+      document.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [onClose, pending])
+
+  const portalContainer =
+    document.getElementById("app-device-viewport") ?? document.body
+
+  return createPortal(
+    <div
+      aria-labelledby="reset-account-data-dialog-title"
+      aria-modal="true"
+      className="account-delete-dialog__overlay"
+      onMouseDown={(event) => {
+        if (!pending && event.target === event.currentTarget) onClose()
+      }}
+      role="dialog"
+    >
+      <div className="account-delete-dialog account-reset-dialog">
+        <header className="account-delete-dialog__header">
+          <span className="account-delete-dialog__icon">
+            <RotateCcw aria-hidden="true" />
+          </span>
+          <div>
+            <span>Irreversible fresh start</span>
+            <h3 id="reset-account-data-dialog-title">
+              Reset tasks and progress?
+            </h3>
+            <p>
+              This permanently removes all personal quests, completed history,
+              timer sessions, attachments, and XP. Your account and settings
+              stay intact.
+            </p>
+          </div>
+        </header>
+        <form action={action} className="account-delete-dialog__form">
+          <div className="account-delete-dialog__field">
+            <Label htmlFor="reset-account-data-confirm">
+              Type <strong>RESET</strong> to confirm
+            </Label>
+            <Input
+              autoComplete="off"
+              autoFocus
+              id="reset-account-data-confirm"
+              name="confirmation"
+              placeholder="RESET"
+              required
+              type="text"
+            />
+            {state && !state.ok ? (
+              <p className="account-delete-dialog__error" role="alert">
+                {state.error.fieldErrors?.confirmation?.[0] ??
+                  state.error.message}
+              </p>
+            ) : null}
+          </div>
+          <div className="account-delete-dialog__actions">
+            <Button
+              className="account-delete-dialog__cancel"
+              disabled={pending}
+              onClick={onClose}
+              type="button"
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <MutationSubmitButton
+              className="account-delete-dialog__submit"
+              disabled={pending}
+              idleLabel="Reset everything"
+              pendingLabel="Resetting data"
+            />
+          </div>
+        </form>
+      </div>
+    </div>,
+    portalContainer,
   )
 }
 

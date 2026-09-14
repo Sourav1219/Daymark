@@ -4,23 +4,23 @@
   "crons": [
     {
       "path": "/api/cron/reminders",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/overdue-tasks",
-      "schedule": "*/5 * * * *"
+      "schedule": "15 0 * * *"
     },
     {
       "path": "/api/cron/stale-rooms",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 1 * * *"
     },
     {
       "path": "/api/cron/stale-timers",
-      "schedule": "*/15 * * * *"
+      "schedule": "15 1 * * *"
     },
     {
       "path": "/api/cron/attachments",
-      "schedule": "0 * * * *"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/cron/retention",

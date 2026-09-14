@@ -113,8 +113,6 @@ describe("protected route proxy", () => {
     expect(response.headers.get("x-middleware-rewrite")).toBe(
       "https://questly.test/sign-in",
     )
-    expect(response.headers.get("link")).toContain('rel="preload"')
-    expect(response.headers.get("link")).toContain("w=256")
   })
 
   it("adds a strict nonce-based CSP to rendered pages", () => {

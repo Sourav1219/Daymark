@@ -33,7 +33,7 @@ describe("WebVitalsReporter", () => {
     })
   })
 
-  it("reports a normalized Core Web Vital without visitor identifiers", () => {
+  it("reports a normalized Core Web Vital without visitor identifiers", async () => {
     render(<WebVitalsReporter />)
 
     mocks.report?.({
@@ -46,14 +46,16 @@ describe("WebVitalsReporter", () => {
       value: 2_400,
     })
 
-    expect(mocks.distribution).toHaveBeenCalledWith("web_vitals.lcp", 2_400, {
-      unit: "millisecond",
-      attributes: {
-        navigation_type: "navigate",
-        rating: "good",
-        route: "/sign-in",
-        viewport: "mobile",
-      },
+    await vi.waitFor(() => {
+      expect(mocks.distribution).toHaveBeenCalledWith("web_vitals.lcp", 2_400, {
+        unit: "millisecond",
+        attributes: {
+          navigation_type: "navigate",
+          rating: "good",
+          route: "/sign-in",
+          viewport: "mobile",
+        },
+      })
     })
   })
 

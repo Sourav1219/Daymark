@@ -64,6 +64,10 @@ export function proxy(request: NextRequest) {
       response = NextResponse.rewrite(rewriteUrl, {
         request: { headers: requestHeaders },
       })
+      response.headers.set(
+        "Link",
+        '</_next/image?url=%2Fmascots%2Ftraketo-guide-blue-transparent.png&w=256&q=75>; rel="preload"; as="image"; fetchpriority="high"',
+      )
     }
   } else if (isProtectedPath(request.nextUrl.pathname) && !sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url)

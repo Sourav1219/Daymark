@@ -43,9 +43,14 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   experimental: {
     authInterrupts: true,
+    inlineCss: true,
     // Integrity attributes protect cached JavaScript assets while public pages
     // use a static CSP and can therefore be served without a function.
     sri: { algorithm: "sha256" },
+    turbopackChunking: {
+      priorityRoutes: [/^\/$/, /^\/sign-in$/],
+      priorityBoost: 2,
+    },
   },
   images: {
     formats: ["image/avif", "image/webp"],
@@ -62,6 +67,16 @@ const nextConfig: NextConfig = {
       // of waiting for the browser to receive and parse the completed HTML.
       // Keep this unconditional: Chromium does not reliably honor `media` on
       // HTTP Link response headers, which would defer discovery until HTML.
+      {
+        headers: [
+          {
+            key: "Link",
+            value:
+              '</_next/image?url=%2Fmascots%2Ftraketo-guide-blue-transparent.png&w=256&q=75>; rel="preload"; as="image"; fetchpriority="high"',
+          },
+        ],
+        source: "/",
+      },
       {
         headers: [
           {

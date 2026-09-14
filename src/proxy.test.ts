@@ -15,7 +15,12 @@ describe("protected route proxy", () => {
     "/quests/example",
     "/settings/privacy-data",
     "/sign-in",
+    "/signin",
     "/sign-up",
+    "/signup",
+    "/login",
+    "/register",
+    "/welcome",
     "/verify-email",
     "/forgot-password",
     "/contact",
@@ -104,6 +109,21 @@ describe("protected route proxy", () => {
 
     expect(response.status).toBe(307)
     expect(response.headers.get("location")).toBe("https://questly.test/today")
+  })
+
+  it("redirects a localhost root request to /sign-in to show the welcome page even with a cookie", () => {
+    const response = proxy(
+      new NextRequest("http://localhost:3000/", {
+        headers: {
+          cookie: "questly.session_token=opaque-token",
+        },
+      }),
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/sign-in",
+    )
   })
 
   it("redirects an unauthenticated root request directly to /sign-in", () => {

@@ -49,7 +49,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   )
 
   const user = await getCurrentUserWhenSessionCookieExists()
-  if (user) {
+  const isDevelopment = process.env.NODE_ENV !== "production"
+  if (user && (!isDevelopment || Boolean(next))) {
     redirect(nextPath)
   }
   const hasGoogleError =
@@ -70,6 +71,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
   return (
     <AuthExperience
+      currentUser={user}
       googleAuthConfigured={isGoogleAuthConfigured()}
       initial={
         requestedMode === "login" || oauthError || notice ? "login" : "welcome"

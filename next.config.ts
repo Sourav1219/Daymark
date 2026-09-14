@@ -60,30 +60,6 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   reactCompiler: true,
   typedRoutes: true,
-  async redirects() {
-    return [
-      {
-        source: "/signin",
-        destination: "/sign-in",
-        permanent: true,
-      },
-      {
-        source: "/signup",
-        destination: "/sign-up",
-        permanent: true,
-      },
-      {
-        source: "/login",
-        destination: "/sign-in",
-        permanent: true,
-      },
-      {
-        source: "/register",
-        destination: "/sign-up",
-        permanent: true,
-      },
-    ]
-  },
   async headers() {
     return [
       // The anonymous sign-in render can stream behind an auth-cookie check.

@@ -56,7 +56,10 @@ export function proxy(request: NextRequest) {
     }
     response = NextResponse.redirect(signOutUrl)
   } else if (request.nextUrl.pathname === "/") {
-    const destination = sessionCookie ? "/today" : "/sign-in"
+    const isLocal =
+      request.nextUrl.hostname === "localhost" ||
+      request.nextUrl.hostname === "127.0.0.1"
+    const destination = !isLocal && sessionCookie ? "/today" : "/sign-in"
     response = NextResponse.redirect(new URL(destination, request.url))
   } else if (isProtectedPath(request.nextUrl.pathname) && !sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url)
@@ -86,7 +89,7 @@ export const config = {
       // dynamic CSP enter the Node.js proxy. Public/static pages and arbitrary
       // scanner paths are served directly by Next/Vercel's CDN.
       source:
-        "/((?:app(?:/.*)?|today|quests(?:/.*)?|timer|gates|cleared|progress|profile|settings(?:/.*)?|sign-in|sign-up|verify-email|forgot-password|reset-password|sign-out|session-expired|unauthorized|contact)?)",
+        "/((?:app(?:/.*)?|today|quests(?:/.*)?|timer|gates|cleared|progress|profile|settings(?:/.*)?|sign-in|signin|sign-up|signup|login|register|welcome|verify-email|forgot-password|reset-password|sign-out|session-expired|unauthorized|contact)?)",
     },
   ],
 }

@@ -21,6 +21,7 @@ type AuthMode = "welcome" | "login" | "register"
 export type AuthNotice = "verification-error" | null
 
 type AuthExperienceProps = Readonly<{
+  currentUser?: { name: string } | null
   googleAuthConfigured: boolean
   initial: AuthMode
   nextPath: string
@@ -38,6 +39,7 @@ type AuthExperienceProps = Readonly<{
  * login form — both wired to the existing auth backend.
  */
 export function AuthExperience({
+  currentUser,
   googleAuthConfigured,
   initial,
   nextPath,
@@ -119,6 +121,15 @@ export function AuthExperience({
             </div>
 
             <div className="welcome__actions">
+              {currentUser ? (
+                <Link
+                  className="welcome__cta mb-2 flex items-center justify-center gap-2"
+                  href="/today"
+                >
+                  <span>Continue to workspace</span>
+                  <ArrowRight aria-hidden="true" />
+                </Link>
+              ) : null}
               <button
                 className="welcome__cta"
                 onClick={() => setMode("register")}

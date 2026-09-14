@@ -43,14 +43,9 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   experimental: {
     authInterrupts: true,
-    inlineCss: true,
     // Integrity attributes protect cached JavaScript assets while public pages
     // use a static CSP and can therefore be served without a function.
     sri: { algorithm: "sha256" },
-    turbopackChunking: {
-      priorityRoutes: [/^\/$/, /^\/sign-in$/],
-      priorityBoost: 2,
-    },
   },
   images: {
     formats: ["image/avif", "image/webp"],
@@ -72,17 +67,7 @@ const nextConfig: NextConfig = {
           {
             key: "Link",
             value:
-              '</mascots/traketo-guide-blue-transparent.webp>; rel="preload"; as="image"; fetchpriority="high"',
-          },
-        ],
-        source: "/",
-      },
-      {
-        headers: [
-          {
-            key: "Link",
-            value:
-              '</mascots/traketo-guide-blue-transparent.webp>; rel="preload"; as="image"; fetchpriority="high"',
+              '</_next/image?url=%2Fmascots%2Ftraketo-guide-blue-transparent.png&w=640&q=75>; rel="preload"; as="image"; fetchpriority="high"',
           },
         ],
         source: "/sign-in",

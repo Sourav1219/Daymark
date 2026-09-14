@@ -1,5 +1,6 @@
 "use client"
 
+import { metrics } from "@sentry/nextjs"
 import { useReportWebVitals } from "next/web-vitals"
 
 const CORE_WEB_VITALS = new Set(["CLS", "FCP", "INP", "LCP", "TTFB"])
@@ -67,23 +68,19 @@ type WebVitalsMetric = Parameters<Parameters<typeof useReportWebVitals>[0]>[0]
 export function reportWebVital(metric: WebVitalsMetric) {
   if (!CORE_WEB_VITALS.has(metric.name)) return
 
-  void import("@sentry/nextjs")
-    .then(({ metrics }) => {
-      metrics.distribution(
-        `web_vitals.${metric.name.toLowerCase()}`,
-        metric.value,
-        {
-          unit: metric.name === "CLS" ? "ratio" : "millisecond",
-          attributes: {
-            navigation_type: metric.navigationType,
-            rating: metric.rating,
-            route: normalizeWebVitalsPathname(window.location.pathname),
-            viewport: getViewportBucket(window.innerWidth),
-          },
-        },
-      )
-    })
-    .catch(() => {})
+  metrics.distribution(
+    `web_vitals.${metric.name.toLowerCase()}`,
+    metric.value,
+    {
+      unit: metric.name === "CLS" ? "ratio" : "millisecond",
+      attributes: {
+        navigation_type: metric.navigationType,
+        rating: metric.rating,
+        route: normalizeWebVitalsPathname(window.location.pathname),
+        viewport: getViewportBucket(window.innerWidth),
+      },
+    },
+  )
 }
 
 export function WebVitalsReporter() {

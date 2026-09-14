@@ -13,13 +13,11 @@ export function WelcomeAvatar({
     <Image
       alt={alt}
       className={className}
-      decoding="sync"
-      fetchPriority="high"
+      decoding="async"
       height={478}
-      loading="eager"
       preload
-      src="/mascots/traketo-guide-blue-transparent.webp"
-      unoptimized
+      sizes="(max-width: 640px) 240px, 260px"
+      src="/mascots/traketo-guide-blue-transparent.png"
       width={606}
     />
   )

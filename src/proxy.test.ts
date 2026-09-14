@@ -106,11 +106,11 @@ describe("protected route proxy", () => {
     expect(response.headers.get("location")).toBe("https://questly.test/today")
   })
 
-  it("rewrites an unauthenticated root request to /sign-in content", () => {
+  it("redirects an unauthenticated root request directly to /sign-in", () => {
     const response = proxy(new NextRequest("https://questly.test/"))
 
-    expect(response.status).toBe(200)
-    expect(response.headers.get("x-middleware-rewrite")).toBe(
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
       "https://questly.test/sign-in",
     )
   })

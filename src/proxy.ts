@@ -56,15 +56,8 @@ export function proxy(request: NextRequest) {
     }
     response = NextResponse.redirect(signOutUrl)
   } else if (request.nextUrl.pathname === "/") {
-    if (sessionCookie) {
-      response = NextResponse.redirect(new URL("/today", request.url))
-    } else {
-      const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = "/sign-in"
-      response = NextResponse.rewrite(rewriteUrl, {
-        request: { headers: requestHeaders },
-      })
-    }
+    const destination = sessionCookie ? "/today" : "/sign-in"
+    response = NextResponse.redirect(new URL(destination, request.url))
   } else if (isProtectedPath(request.nextUrl.pathname) && !sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url)
     signInUrl.searchParams.set(

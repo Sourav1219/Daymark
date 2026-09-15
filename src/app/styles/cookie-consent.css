@@ -18,6 +18,20 @@
   overscroll-behavior: contain;
   transition: opacity 0.24s ease;
   border-radius: inherit;
+  animation: cookie-overlay-fadein 0.4s ease both;
+}
+
+@keyframes cookie-overlay-fadein {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0) saturate(100%);
+    -webkit-backdrop-filter: blur(0) saturate(100%);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(15px) saturate(125%);
+    -webkit-backdrop-filter: blur(15px) saturate(125%);
+  }
 }
 
 body > .cookie-consent-overlay,
@@ -51,6 +65,18 @@ body > .cookie-consent-backdrop {
     0 26px 64px -26px rgba(36, 69, 151, 0.48);
   color: #172b49;
   font-family: var(--font-nunito), var(--font-inter), sans-serif;
+  animation: cookie-dialog-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+
+@keyframes cookie-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .cookie-consent::before {
@@ -432,9 +458,13 @@ body > .cookie-consent-backdrop {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .cookie-consent-overlay,
+  .cookie-consent-backdrop,
+  .cookie-consent,
   .cookie-consent__actions button,
   .cookie-consent__toggle-slider,
   .cookie-consent__toggle-slider::before {
+    animation: none;
     transition: none;
   }
 }

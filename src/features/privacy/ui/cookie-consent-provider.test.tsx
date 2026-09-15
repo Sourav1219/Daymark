@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   readDeadlineStorageKey,
@@ -24,6 +24,7 @@ vi.mock("@/features/privacy/application/cookie-consent-actions", () => ({
 
 describe("CookieConsentProvider", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     saveCookieConsentAction.mockReset()
     const values = new Map<string, string>()
     Object.defineProperty(window, "localStorage", {
@@ -37,12 +38,24 @@ describe("CookieConsentProvider", () => {
     })
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it("automatically opens consent banner for new visitors with Accept all and Essential only, and no Manage choices button initially", async () => {
     render(
       <CookieConsentProvider initialConsent={null}>
         <p>Page content</p>
       </CookieConsentProvider>,
     )
+
+    // Banner should not appear immediately (delayed for page load)
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+
+    // Advance past the 800ms delay
+    await act(async () => {
+      vi.advanceTimersByTime(800)
+    })
 
     const dialog = await screen.findByRole("dialog", {
       name: "Cookies & privacy",
@@ -77,7 +90,7 @@ describe("CookieConsentProvider", () => {
   })
 
   it("offers equal prominence choices for Accept all and Essential only", async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     saveCookieConsentAction.mockResolvedValue("essential")
     window.localStorage.setItem(readDeadlineStorageKey, "stored")
     window.localStorage.setItem(todayPromoStorageKey, "1")
@@ -87,6 +100,10 @@ describe("CookieConsentProvider", () => {
         <p>Page content</p>
       </CookieConsentProvider>,
     )
+
+    await act(async () => {
+      vi.advanceTimersByTime(800)
+    })
 
     const acceptBtn = await screen.findByRole("button", { name: "Accept all" })
     const essentialBtn = screen.getByRole("button", { name: "Essential only" })
@@ -107,7 +124,7 @@ describe("CookieConsentProvider", () => {
   })
 
   it("saves preferences when Accept all is clicked", async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     saveCookieConsentAction.mockResolvedValue("preferences")
 
     render(
@@ -115,6 +132,10 @@ describe("CookieConsentProvider", () => {
         <p>Page content</p>
       </CookieConsentProvider>,
     )
+
+    await act(async () => {
+      vi.advanceTimersByTime(800)
+    })
 
     await user.click(await screen.findByRole("button", { name: "Accept all" }))
 
@@ -125,7 +146,7 @@ describe("CookieConsentProvider", () => {
   })
 
   it("allows users to open cookie preferences in profile section and manage choices", async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     saveCookieConsentAction.mockResolvedValue("preferences")
 
     render(
@@ -168,7 +189,7 @@ describe("CookieConsentProvider", () => {
   })
 
   it("allows users to reopen cookie settings and withdraw consent later inside the site", async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     saveCookieConsentAction.mockResolvedValue("essential")
     window.localStorage.setItem(readDeadlineStorageKey, "stored")
     window.localStorage.setItem(todayPromoStorageKey, "1")
@@ -208,13 +229,17 @@ describe("CookieConsentProvider", () => {
   })
 
   it("lets a user close the banner via close button without saving a choice", async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
     render(
       <CookieConsentProvider initialConsent={null}>
         <p>Page content</p>
       </CookieConsentProvider>,
     )
+
+    await act(async () => {
+      vi.advanceTimersByTime(800)
+    })
 
     expect(await screen.findByRole("dialog")).toBeVisible()
     await user.click(

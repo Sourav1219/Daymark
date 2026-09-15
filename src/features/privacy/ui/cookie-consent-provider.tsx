@@ -4,6 +4,7 @@ import {
   useCallback,
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
   useSyncExternalStore,
@@ -85,8 +86,19 @@ export function CookieConsentProvider({
     setExplicitPreferencesAllowed(null)
   }, [])
 
+  // Delay the auto-open for new visitors so the page content renders first,
+  // then the cookie popup fades in after a short moment.
+  const [delayedAutoOpen, setDelayedAutoOpen] = useState(false)
+  const shouldAutoOpen = consent === null
+  useEffect(() => {
+    if (!shouldAutoOpen) return
+    const timer = setTimeout(() => setDelayedAutoOpen(true), 800)
+    return () => clearTimeout(timer)
+  }, [shouldAutoOpen])
+
   // Automatically show only to new visitors (consent === null) unless explicitly closed.
-  const isOpen = explicitOpen ?? consent === null
+  // For auto-open (new visitors), wait for the delay; explicit open/close takes precedence.
+  const isOpen = explicitOpen ?? (shouldAutoOpen && delayedAutoOpen)
 
   function choose(nextConsent: CookieConsent) {
     setError(null)

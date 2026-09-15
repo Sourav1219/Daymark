@@ -1,9 +1,12 @@
 import { withSentryConfig } from "@sentry/nextjs/config"
 import { withSerwist } from "@serwist/turbopack"
 import type { NextConfig } from "next"
+import { dirname } from "node:path"
+import { fileURLToPath } from "node:url"
 
 import { buildContentSecurityPolicy } from "./src/lib/security/content-security-policy"
 
+const projectRoot = dirname(fileURLToPath(import.meta.url))
 const production = process.env.NODE_ENV === "production"
 const securityHeaders = [
   ...(!production
@@ -43,6 +46,10 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   experimental: {
     authInterrupts: true,
+    // The public entry route is dominated by compact Tailwind CSS. Inlining it
+    // removes the stylesheet discovery round trip that Lighthouse reports as
+    // render-blocking, which is most valuable for first-time sign-in visits.
+    inlineCss: true,
     // Integrity attributes protect cached JavaScript assets while public pages
     // use a static CSP and can therefore be served without a function.
     sri: { algorithm: "sha256" },
@@ -58,6 +65,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   reactCompiler: true,
+  // A pnpm workspace file exists above this repository. Pinning both roots
+  // prevents Next.js from tracing or watching that unrelated parent tree.
+  outputFileTracingRoot: projectRoot,
+  turbopack: {
+    root: projectRoot,
+  },
   typedRoutes: true,
   async headers() {
     return [

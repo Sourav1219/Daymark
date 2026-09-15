@@ -3,7 +3,6 @@
 @import "shadcn/tailwind.css";
 
 @import "./styles/base.css";
-@import "./styles/sign-up-welcome-screen.css";
 @import "./styles/cookie-consent.css";
 
 /* Native Touch Ergonomics (Android / Mobile PWA) */

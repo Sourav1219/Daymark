@@ -8,6 +8,17 @@ const reportPath = resolve(
 )
 const report = JSON.parse(await readFile(reportPath, "utf8"))
 
+function sumAuditItemField(auditId, field) {
+  const items = report.audits?.[auditId]?.details?.items
+  if (!Array.isArray(items)) return undefined
+
+  return items.reduce(
+    (total, item) =>
+      total + (typeof item?.[field] === "number" ? item[field] : 0),
+    0,
+  )
+}
+
 const budgets = [
   {
     label: "Performance score",
@@ -68,9 +79,23 @@ const budgets = [
   {
     label: "Unused JavaScript savings",
     actual: report.audits?.["unused-javascript"]?.details?.overallSavingsBytes,
-    limit: 80 * 1_024,
+    limit: 50 * 1_024,
     passes: (actual, limit) => actual <= limit,
-    expected: "<= 80 KiB",
+    expected: "<= 50 KiB",
+  },
+  {
+    label: "Legacy JavaScript savings",
+    actual: sumAuditItemField("legacy-javascript-insight", "wastedBytes"),
+    limit: 14 * 1_024,
+    passes: (actual, limit) => actual <= limit,
+    expected: "<= 14 KiB (framework compatibility floor)",
+  },
+  {
+    label: "Render-blocking request savings",
+    actual: sumAuditItemField("render-blocking-insight", "wastedMs"),
+    limit: 0,
+    passes: (actual, limit) => actual <= limit,
+    expected: "= 0 ms",
   },
 ]
 

@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import type { ReactNode } from "react"
 
+import "@/app/styles/sign-up-welcome-screen.css"
+
 export const metadata: Metadata = {
   description: "Sign in to Traketo.",
   title: {

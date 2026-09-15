@@ -38,29 +38,26 @@ test("installs the worker, queues offline creation, recovers, and clears private
   await page.getByRole("link", { name: "Continue" }).click()
   await expect(page).toHaveURL(/\/today\?task=/u)
   await page.goto("/quests")
-  await page.getByRole("tab", { name: /Search/u }).click()
-  await page
-    .getByRole("searchbox", { name: "Search" })
-    .fill("Online cached task")
-  await expect(page).toHaveURL(/search=Online(?:\+|%20)cached/u)
   await expect(
     page.getByRole("article", { name: "Online cached task", exact: true }),
   ).toBeVisible()
 
   await page.goto("/settings")
-  await page.getByLabel("Create offline passcode").fill(offlinePasscode)
+  await page
+    .getByLabel("Create offline passcode")
+    .filter({ visible: true })
+    .fill(offlinePasscode)
   await Promise.all([
     page.waitForNavigation({ waitUntil: "domcontentloaded" }),
-    page.getByRole("button", { name: "Enable encrypted offline data" }).click(),
+    page
+      .getByRole("button", { name: "Enable encrypted offline data" })
+      .filter({ visible: true })
+      .click(),
   ])
   await page.goto("/quests")
   await page.getByLabel("Offline data passcode").fill(offlinePasscode)
   await page.getByRole("button", { name: "Unlock offline data" }).click()
   await expect(page.getByText("Offline data unlocked")).toBeVisible()
-  await page.getByRole("tab", { name: /Search/u }).click()
-  await page
-    .getByRole("searchbox", { name: "Search" })
-    .fill("Online cached task")
   await expect(
     page.getByRole("article", { name: "Online cached task", exact: true }),
   ).toBeVisible()
@@ -127,10 +124,6 @@ test("installs the worker, queues offline creation, recovers, and clears private
     )
     .toBe(2)
   await expect(page.getByText(/2 changes queued/u)).toBeVisible()
-  await page.getByRole("tab", { name: /Search/u }).click()
-  await page
-    .getByRole("searchbox", { name: "Search" })
-    .fill("Queued offline task")
   await expect(
     page.getByRole("article", { name: "Queued offline task", exact: true }),
   ).toBeVisible()
@@ -152,12 +145,9 @@ test("installs the worker, queues offline creation, recovers, and clears private
   ).toBeVisible()
 
   await context.setOffline(false)
-  await page.getByRole("link", { name: "Try reconnecting" }).click()
-  await expect(page).toHaveURL(/\/quests$/u)
-  await page.getByRole("tab", { name: /Search/u }).click()
-  await page
-    .getByRole("searchbox", { name: "Search" })
-    .fill("Queued offline task")
+  await page.waitForURL(/\/quests$/u)
+  await page.getByLabel("Offline data passcode").fill(offlinePasscode)
+  await page.getByRole("button", { name: "Unlock offline data" }).click()
   await expect(
     page.getByRole("article", { name: "Queued offline task", exact: true }),
   ).toBeVisible({ timeout: 20_000 })

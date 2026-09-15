@@ -395,6 +395,17 @@ export function OfflineProvider({
     }
   }, [online, replay])
 
+  // Replay pending mutations that become visible after an unlock while
+  // already online. The main online-effect above only fires when `online`
+  // toggles, but mutations can appear later when the encryption key is
+  // provided. The `replaying` guard prevents concurrent execution.
+  useEffect(() => {
+    if (!online) return
+    if (mutations.some(({ status }) => status === "pending")) {
+      void replay().catch(logOfflineFailure("Offline replay failed"))
+    }
+  }, [mutations, online, replay])
+
   useEffect(
     () => () => {
       if (replayTimer.current) clearTimeout(replayTimer.current)

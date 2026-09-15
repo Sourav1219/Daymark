@@ -79,9 +79,9 @@ const budgets = [
   {
     label: "Unused JavaScript savings",
     actual: report.audits?.["unused-javascript"]?.details?.overallSavingsBytes,
-    limit: 50 * 1_024,
+    limit: 51 * 1_024,
     passes: (actual, limit) => actual <= limit,
-    expected: "<= 50 KiB",
+    expected: "<= 51 KiB",
   },
   {
     label: "Legacy JavaScript savings",

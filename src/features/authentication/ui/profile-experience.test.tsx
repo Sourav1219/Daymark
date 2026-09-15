@@ -1,12 +1,15 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ProfileExperience } from "./profile-experience"
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+const navigation = vi.hoisted(() => ({
+  bfcacheId: "profile-entry",
+  refresh: vi.fn(),
 }))
+
+vi.mock("next/navigation", () => ({ useRouter: () => navigation }))
 
 vi.mock("@/features/authentication/ui/account-settings-forms", () => ({
   AccountSettingsForms: ({
@@ -36,6 +39,10 @@ vi.mock("@/features/authentication/ui/profile-photo-editor", () => ({
 }))
 
 describe("ProfileExperience", () => {
+  beforeEach(() => {
+    navigation.bfcacheId = `profile-${crypto.randomUUID()}`
+  })
+
   it("switches between the profile overview and inline editor", async () => {
     const user = userEvent.setup()
 
@@ -145,6 +152,10 @@ describe("ProfileExperience", () => {
 
     await user.click(screen.getByText("Contact & about"))
 
+    expect(
+      screen.queryByText("App Settings & Preferences"),
+    ).not.toBeInTheDocument()
+
     const reportButton = screen.getByRole("button", {
       name: /Report a problem/u,
     })
@@ -154,6 +165,34 @@ describe("ProfileExperience", () => {
     expect(feedbackListener).toHaveBeenCalledOnce()
 
     window.removeEventListener("traketo:open-feedback", feedbackListener)
+  })
+
+  it("restores the help dropdown for the same browser history entry", async () => {
+    const user = userEvent.setup()
+    const historyEntry = navigation.bfcacheId
+    const props = {
+      currentSessionId: null,
+      email: "ada@example.com",
+      initialSessions: [],
+      joined: "12 August 2026",
+      name: "Ada Lovelace",
+      role: "owner",
+      workspaceName: "Ada's workspace",
+    } as const
+    const firstRender = render(<ProfileExperience {...props} />)
+
+    await user.click(screen.getByText("Contact & about"))
+    expect(
+      screen.getByText("Contact & about").closest("details"),
+    ).toHaveProperty("open", true)
+    firstRender.unmount()
+
+    navigation.bfcacheId = historyEntry
+    render(<ProfileExperience {...props} />)
+
+    expect(
+      screen.getByText("Contact & about").closest("details"),
+    ).toHaveProperty("open", true)
   })
 
   it("loads security controls only when their dropdown is opened", async () => {

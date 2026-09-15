@@ -20,7 +20,6 @@ import {
   MessageCircleMore,
   MessageSquareWarning,
   Pencil,
-  Settings,
   ShieldCheck,
   UserRound,
   X,
@@ -53,6 +52,7 @@ type ProfileExperienceProps = Readonly<{
 
 const whitespacePattern = /\s+/u
 const legacyDemoNamePattern = /^\s*demo\s+hunter\s*$/iu
+const helpDisclosureStates = new Map<string, boolean>()
 
 function initials(name: string): string {
   return name
@@ -76,9 +76,12 @@ export function ProfileExperience({
   workspaceName,
 }: ProfileExperienceProps) {
   const router = useRouter()
+  const { bfcacheId } = router
   const [editing, setEditing] = useState(false)
   const [securityOpen, setSecurityOpen] = useState(false)
-  const [helpOpen, setHelpOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(
+    () => (bfcacheId ? helpDisclosureStates.get(bfcacheId) : false) ?? false,
+  )
   const [photoUrl, setPhotoUrl] = useState(initialPhotoUrl)
   const [updateNotice, setUpdateNotice] = useState<ProfileUpdateKind | null>(
     null,
@@ -268,7 +271,11 @@ export function ProfileExperience({
       </details>
       <details
         className="profile-help-settings"
-        onToggle={(event) => setHelpOpen(event.currentTarget.open)}
+        onToggle={(event) => {
+          const open = event.currentTarget.open
+          setHelpOpen(open)
+          if (bfcacheId) helpDisclosureStates.set(bfcacheId, open)
+        }}
         open={helpOpen}
         suppressHydrationWarning
       >
@@ -290,20 +297,6 @@ export function ProfileExperience({
           aria-label="Help and information"
           className="profile-help-settings__content"
         >
-          <Link
-            className="profile-help-settings__action"
-            href={"/settings" as Route}
-            scroll={false}
-          >
-            <span>
-              <Settings aria-hidden="true" />
-            </span>
-            <div>
-              <strong>App Settings &amp; Preferences</strong>
-              <small>Dates, reminders, offline data &amp; preferences</small>
-            </div>
-            <ChevronRight aria-hidden="true" />
-          </Link>
           <ReportProblemButton className="profile-help-settings__action">
             <span>
               <MessageSquareWarning aria-hidden="true" />

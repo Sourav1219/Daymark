@@ -13,7 +13,7 @@ export function WelcomeAvatar({
     <Image
       alt={alt}
       className={className}
-      decoding="sync"
+      decoding="async"
       fetchPriority="high"
       height={478}
       loading="eager"

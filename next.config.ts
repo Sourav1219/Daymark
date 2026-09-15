@@ -43,7 +43,6 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   experimental: {
     authInterrupts: true,
-    inlineCss: true,
     // Integrity attributes protect cached JavaScript assets while public pages
     // use a static CSP and can therefore be served without a function.
     sri: { algorithm: "sha256" },

@@ -20,13 +20,11 @@ import { cn } from "@/lib/utils"
 // initial rendering on a font download.
 const baloo = Baloo_2({
   display: "swap",
-  preload: false,
   subsets: ["latin"],
   variable: "--font-baloo",
 })
 const nunito = Nunito({
   display: "swap",
-  preload: false,
   subsets: ["latin"],
   variable: "--font-nunito",
 })

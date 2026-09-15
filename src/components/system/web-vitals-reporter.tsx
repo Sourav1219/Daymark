@@ -2,6 +2,8 @@
 
 import { useReportWebVitals } from "next/web-vitals"
 
+import { loadSentryClient } from "@/lib/observability/sentry-client"
+
 const CORE_WEB_VITALS = new Set(["CLS", "FCP", "INP", "LCP", "TTFB"])
 const PUBLIC_ROUTES = new Set([
   "/",
@@ -64,11 +66,19 @@ export function getViewportBucket(width: number) {
 
 type WebVitalsMetric = Parameters<Parameters<typeof useReportWebVitals>[0]>[0]
 
-export function reportWebVital(metric: WebVitalsMetric) {
-  if (!CORE_WEB_VITALS.has(metric.name)) return
+const REPORT_DELAY_MS = 8_000
+const pendingMetrics: WebVitalsMetric[] = []
+let reportTimer: number | null = null
 
-  void import("@sentry/nextjs")
-    .then(({ metrics }) => {
+async function flushWebVitals() {
+  reportTimer = null
+  const metricsToReport = pendingMetrics.splice(0)
+  if (metricsToReport.length === 0) return
+
+  try {
+    const { metrics } = await loadSentryClient()
+
+    for (const metric of metricsToReport) {
       metrics.distribution(
         `web_vitals.${metric.name.toLowerCase()}`,
         metric.value,
@@ -82,8 +92,32 @@ export function reportWebVital(metric: WebVitalsMetric) {
           },
         },
       )
-    })
-    .catch(() => {})
+    }
+  } catch {
+    // Observability must never interfere with the application experience.
+  }
+}
+
+function scheduleWebVitalsFlush() {
+  if (reportTimer !== null) return
+
+  reportTimer = window.setTimeout(() => {
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(() => void flushWebVitals(), {
+        timeout: 2_000,
+      })
+      return
+    }
+
+    void flushWebVitals()
+  }, REPORT_DELAY_MS)
+}
+
+export function reportWebVital(metric: WebVitalsMetric) {
+  if (!CORE_WEB_VITALS.has(metric.name)) return
+
+  pendingMetrics.push(metric)
+  scheduleWebVitalsFlush()
 }
 
 export function WebVitalsReporter() {

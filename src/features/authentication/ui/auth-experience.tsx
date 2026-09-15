@@ -1,21 +1,41 @@
 "use client"
 
-import { useState } from "react"
+import { lazy, Suspense, useState, type ComponentProps } from "react"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
-
-import dynamic from "next/dynamic"
 
 import type { GoogleOAuthError } from "@/features/authentication/ui/google-auth-button"
 import { WelcomeAvatar } from "@/features/authentication/ui/welcome-avatar"
 
-const AuthForm = dynamic(
-  () =>
-    import("@/features/authentication/ui/auth-form").then(
-      (mod) => mod.AuthForm,
-    ),
-  { ssr: true },
-)
+let authFormPromise: Promise<{
+  default: typeof import("@/features/authentication/ui/auth-form").AuthForm
+}> | null = null
+
+const loadAuthForm = () => {
+  authFormPromise ??= import("@/features/authentication/ui/auth-form").then(
+    (mod) => ({ default: mod.AuthForm }),
+  )
+
+  return authFormPromise
+}
+
+const AuthForm = lazy(loadAuthForm)
+
+function AuthFormLoading() {
+  return (
+    <main className="auth" aria-busy="true" aria-label="Loading sign in">
+      <div className="auth__inner auth__inner--instant" />
+    </main>
+  )
+}
+
+function DeferredAuthForm(props: ComponentProps<typeof AuthForm>) {
+  return (
+    <Suspense fallback={<AuthFormLoading />}>
+      <AuthForm {...props} />
+    </Suspense>
+  )
+}
 
 type AuthMode = "welcome" | "login" | "register"
 export type AuthNotice = "verification-error" | null
@@ -49,9 +69,13 @@ export function AuthExperience({
 }: AuthExperienceProps) {
   const [mode, setMode] = useState<AuthMode>(initial)
 
+  function showAuthForm(nextMode: Exclude<AuthMode, "welcome">) {
+    void loadAuthForm().then(() => setMode(nextMode))
+  }
+
   if (mode === "login") {
     return (
-      <AuthForm
+      <DeferredAuthForm
         googleAuthConfigured={googleAuthConfigured}
         key="login"
         mode="login"
@@ -66,7 +90,7 @@ export function AuthExperience({
 
   if (mode === "register") {
     return (
-      <AuthForm
+      <DeferredAuthForm
         googleAuthConfigured={googleAuthConfigured}
         key="register"
         mode="register"
@@ -132,7 +156,9 @@ export function AuthExperience({
               ) : null}
               <button
                 className="welcome__cta"
-                onClick={() => setMode("register")}
+                onFocus={() => void loadAuthForm()}
+                onClick={() => showAuthForm("register")}
+                onPointerDown={() => void loadAuthForm()}
                 type="button"
               >
                 <span>Get started</span>
@@ -140,7 +166,9 @@ export function AuthExperience({
               </button>
               <button
                 className="welcome__cta welcome__cta--secondary"
-                onClick={() => setMode("login")}
+                onFocus={() => void loadAuthForm()}
+                onClick={() => showAuthForm("login")}
+                onPointerDown={() => void loadAuthForm()}
                 type="button"
               >
                 I already have an account

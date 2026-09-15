@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("@sentry/nextjs", () => ({
+  init: vi.fn(),
   metrics: { distribution: mocks.distribution },
 }))
 
@@ -24,6 +25,7 @@ vi.mock("next/web-vitals", () => ({
 
 describe("WebVitalsReporter", () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     mocks.distribution.mockReset()
     mocks.report = undefined
     window.history.replaceState({}, "", "/sign-in")
@@ -46,16 +48,16 @@ describe("WebVitalsReporter", () => {
       value: 2_400,
     })
 
-    await vi.waitFor(() => {
-      expect(mocks.distribution).toHaveBeenCalledWith("web_vitals.lcp", 2_400, {
-        unit: "millisecond",
-        attributes: {
-          navigation_type: "navigate",
-          rating: "good",
-          route: "/sign-in",
-          viewport: "mobile",
-        },
-      })
+    await vi.advanceTimersByTimeAsync(8_000)
+
+    expect(mocks.distribution).toHaveBeenCalledWith("web_vitals.lcp", 2_400, {
+      unit: "millisecond",
+      attributes: {
+        navigation_type: "navigate",
+        rating: "good",
+        route: "/sign-in",
+        viewport: "mobile",
+      },
     })
   })
 

@@ -473,33 +473,37 @@ Sign-up welcome screen — clean, illustration-led onboarding.
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   width: 100%;
   min-height: 100dvh;
   height: auto;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow-x: clip;
+  overflow-y: visible;
   background: #eef3ff;
+  padding: clamp(2rem, 4.5vh, 3.25rem) 1rem clamp(2.75rem, 6vh, 4.5rem);
 }
 
 .welcome__hero-stage {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
-  min-height: 100dvh;
+  min-height: auto;
   flex-shrink: 0;
 }
 
 .welcome--immersive .welcome__inner {
-  display: grid;
-  grid-template-columns: 100%;
-  grid-template-rows: 48% 52%;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 28rem;
-  height: 100dvh;
-  min-height: 0;
-  padding: 0;
-  border: 0;
+  min-height: auto;
+  height: auto;
+  overflow: visible;
+  padding: max(1.5rem, env(safe-area-inset-top, 0px)) 1.45rem
+    calc(1.85rem + env(safe-area-inset-bottom, 0px));
+  border-radius: 28px;
+  border: 1px solid rgba(62, 95, 169, 0.1);
   background:
     radial-gradient(circle at 90% 8%, rgba(108, 91, 232, 0.1), transparent 28%),
     radial-gradient(
@@ -508,7 +512,7 @@ Sign-up welcome screen — clean, illustration-led onboarding.
       transparent 30%
     ),
     linear-gradient(165deg, #fbfcff 0%, #f4f7ff 58%, #edf3ff 100%);
-  box-shadow: 0 0 4rem rgba(35, 64, 135, 0.12);
+  box-shadow: 0 1rem 3rem -1rem rgba(35, 64, 135, 0.14);
 }
 
 .welcome--immersive .welcome__inner::before,
@@ -517,6 +521,12 @@ Sign-up welcome screen — clean, illustration-led onboarding.
 }
 
 .welcome--immersive .welcome__visual {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
   background: transparent;
 }
 
@@ -541,11 +551,12 @@ Sign-up welcome screen — clean, illustration-led onboarding.
 }
 
 .welcome--immersive .welcome__topbar {
-  min-height: auto;
-  padding: max(1rem, env(safe-area-inset-top, 0px)) 1.25rem 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  min-height: 2.4rem;
+  padding: 0 0.1rem;
 }
 
 .welcome--immersive .welcome__wordmark {
@@ -564,13 +575,14 @@ Sign-up welcome screen — clean, illustration-led onboarding.
 }
 
 .welcome--immersive .welcome__art {
-  position: absolute;
-  inset: 2.8rem 0 0;
+  position: relative;
+  inset: auto;
+  display: grid;
+  place-items: center;
   width: 100%;
-  height: calc(100% - 2.8rem);
-  aspect-ratio: auto;
-  margin: 0;
-  overflow: hidden;
+  height: 16.5rem;
+  margin: 0.5rem auto 0;
+  overflow: visible;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -578,13 +590,20 @@ Sign-up welcome screen — clean, illustration-led onboarding.
 }
 
 .welcome--immersive .welcome__avatar {
-  width: min(54vw, 15rem);
-  max-height: 78%;
+  position: relative;
+  z-index: 1;
+  width: 13.5rem;
+  height: auto;
+  max-height: 92%;
+  object-fit: contain;
   filter: drop-shadow(0 1.2rem 1.6rem rgba(46, 91, 194, 0.16));
 }
 
 .welcome--immersive .welcome__halo {
-  width: min(70vw, 19rem);
+  position: absolute;
+  width: 17.5rem;
+  height: 17.5rem;
+  border-radius: 50%;
   background: radial-gradient(
     circle,
     rgba(255, 255, 255, 0.98) 0 43%,
@@ -595,19 +614,27 @@ Sign-up welcome screen — clean, illustration-led onboarding.
 }
 
 .welcome--immersive .welcome__ring--one {
-  width: min(84vw, 23rem);
-  border-color: rgba(58, 105, 213, 0.09);
+  position: absolute;
+  width: 21.5rem;
+  height: 21.5rem;
+  border: 1px solid rgba(58, 105, 213, 0.09);
+  border-radius: 50%;
 }
 
 .welcome--immersive .welcome__ring--two {
-  width: min(100vw, 28rem);
-  border-color: rgba(58, 105, 213, 0.045);
+  position: absolute;
+  width: 25.5rem;
+  height: 25.5rem;
+  border: 1px solid rgba(58, 105, 213, 0.045);
+  border-radius: 50%;
 }
 
 .welcome--immersive .welcome__panel {
-  margin-top: 0;
-  padding: 0.4rem 1.25rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
-  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0;
   background: transparent;
   box-shadow: none;
 }
@@ -621,39 +648,49 @@ Sign-up welcome screen — clean, illustration-led onboarding.
 }
 
 .welcome--immersive .welcome__eyebrow {
-  margin-bottom: 0.42rem;
+  display: inline-flex;
+  margin-bottom: 0.35rem;
   color: #4a6fdb;
-  font-size: 0.6rem;
+  font-size: 0.62rem;
+  font-weight: 950;
   letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .welcome--immersive .welcome__brand {
-  max-width: 13ch;
+  max-width: 14ch;
   margin-inline: auto;
   color: #142a49;
-  font-size: clamp(2rem, 8.5vw, 2.75rem);
+  font-family: var(--font-baloo), var(--font-nunito), sans-serif;
+  font-size: clamp(2.15rem, 7.5vw, 2.5rem);
   letter-spacing: -0.04em;
-  line-height: 0.98;
+  line-height: 1.04;
 }
 
 .welcome--immersive .welcome__tagline {
-  max-width: 30rem;
-  margin: 0.55rem auto 0;
+  max-width: 26rem;
+  margin: 0.5rem auto 0;
   color: #71809b;
-  font-size: 0.78rem;
-  line-height: 1.48;
+  font-size: 0.82rem;
+  line-height: 1.5;
   text-align: center;
 }
 
 .welcome--immersive .welcome__actions {
-  gap: 0.62rem;
-  margin-top: clamp(0.85rem, 2.1dvh, 1.15rem);
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1.15rem;
 }
 
 .welcome--immersive .welcome__cta {
-  min-height: 3.2rem;
-  border-radius: 15px;
-  font-size: 0.86rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3.35rem;
+  border-radius: 16px;
+  font-size: 0.88rem;
+  font-weight: 850;
 }
 
 .welcome--immersive .welcome__cta--secondary {
@@ -673,28 +710,39 @@ Sign-up welcome screen — clean, illustration-led onboarding.
   font-size: 0.56rem;
 }
 
-@media (max-height: 42rem) {
+@media (max-width: 520px) {
+  .welcome.welcome--immersive {
+    padding: 0;
+  }
+
   .welcome--immersive .welcome__inner {
-    grid-template-rows: 47% 53%;
+    border-radius: 0;
+    border-inline: none;
+    min-height: 100dvh;
+    padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1.25rem
+      calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .welcome--immersive .welcome__art {
+    height: 15rem;
   }
 
   .welcome--immersive .welcome__avatar {
-    width: min(48vw, 12rem);
+    width: min(55vw, 12.5rem);
   }
 
-  .welcome--immersive .welcome__brand {
-    font-size: 1.85rem;
+  .welcome--immersive .welcome__halo {
+    width: min(68vw, 16rem);
+    height: min(68vw, 16rem);
   }
 
-  .welcome--immersive .welcome__tagline {
-    margin-top: 0.35rem;
+  .welcome--immersive .welcome__ring--one {
+    width: min(82vw, 20rem);
+    height: min(82vw, 20rem);
   }
 
-  .welcome--immersive .welcome__actions {
-    margin-top: 0.65rem;
-  }
-
-  .welcome--immersive .welcome__cta {
-    min-height: 3rem;
+  .welcome--immersive .welcome__ring--two {
+    width: min(96vw, 23.5rem);
+    height: min(96vw, 23.5rem);
   }
 }

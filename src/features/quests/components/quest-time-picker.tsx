@@ -168,11 +168,11 @@ export function QuestTimePicker({
           type="button"
           variant="outline"
         >
-          <Clock3 aria-hidden="true" />
+          <Clock3 aria-hidden="true" className="shrink-0" />
           <span>{value || "Set time"}</span>
           <ChevronDown
             aria-hidden="true"
-            className="quest-time-trigger__chevron"
+            className="quest-time-trigger__chevron shrink-0"
           />
         </Button>
       </DialogTrigger>

@@ -52,6 +52,7 @@ export async function TodayView({
           homeFilters,
           0,
           now,
+          bucket === "active" ? focusedQuestId : undefined,
         ),
       ),
     ),

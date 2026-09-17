@@ -397,6 +397,37 @@ describe("Quest organisation controls", () => {
     expect(await screen.findByText("Creation undone")).toBeVisible()
   })
 
+  it("includes scheduled date and refreshes page when continuing from task created popup", async () => {
+    const user = userEvent.setup()
+    const onDismiss = vi.fn()
+
+    render(
+      <TaskCreatedPopup
+        onDismiss={onDismiss}
+        task={{
+          date: "2026-09-17",
+          id: "scheduled-task",
+          title: "Study session",
+          version: 1,
+        }}
+      />,
+    )
+
+    const continueLink = screen.getByRole("link", { name: "Continue" })
+    expect(continueLink).toHaveAttribute(
+      "href",
+      "/today?date=2026-09-17&task=scheduled-task",
+    )
+    expect(navigation.prefetch).toHaveBeenCalledWith(
+      "/today?date=2026-09-17&task=scheduled-task",
+    )
+
+    const refreshCallsBefore = navigation.refresh.mock.calls.length
+    await user.click(continueLink)
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(navigation.refresh).toHaveBeenCalledTimes(refreshCallsBefore + 1)
+  })
+
   it("keeps creation off the list and returns to the current Home day", async () => {
     let finishCreation: (() => void) | undefined
     questActions.createQuestAction.mockImplementation(
@@ -439,7 +470,7 @@ describe("Quest organisation controls", () => {
     ).toHaveAttribute("href", "/today?task=created-task")
   })
 
-  it("switches between task creation and active tasks, and Trash", async () => {
+  it("switches between task creation and Trash, keeping Create panel free of task cards", async () => {
     const user = userEvent.setup()
 
     render(
@@ -463,7 +494,7 @@ describe("Quest organisation controls", () => {
 
     expect(screen.getAllByRole("tab")).toHaveLength(2)
 
-    // Create tab should be selected by default with task creation form and active tasks rendered
+    // Create tab should be selected by default with task creation form rendered and active tasks omitted
     expect(screen.getByRole("tab", { name: /Create/i })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -472,12 +503,12 @@ describe("Quest organisation controls", () => {
       screen.getByLabelText("Task title", { selector: "#create-quest-title" }),
     ).toBeVisible()
     expect(screen.getByRole("button", { name: "Create Task" })).toBeVisible()
-    expect(screen.getByText("Quest visible-task")).toBeVisible()
+    expect(screen.queryByText("Quest visible-task")).not.toBeInTheDocument()
     expect(
-      screen.getByRole("button", {
+      screen.queryByRole("button", {
         name: "Drag Quest visible-task to reorder",
       }),
-    ).toBeVisible()
+    ).not.toBeInTheDocument()
 
     // Trash tab is present and displays deleted quests
     const trashTab = screen.getByRole("tab", { name: /Trash/i })
@@ -498,7 +529,7 @@ describe("Quest organisation controls", () => {
         { selector: "#create-quest-title" },
       ),
     ).toBeVisible()
-    expect(screen.getByText("Quest visible-task")).toBeVisible()
+    expect(screen.queryByText("Quest visible-task")).not.toBeInTheDocument()
   })
 
   it("provides Trash access and restoration in QuestList deleted mode", async () => {
@@ -988,6 +1019,14 @@ describe("Quest organisation controls", () => {
     expect(startTime).toBeDisabled()
     expect(dueDate).toHaveTextContent("Choose date")
     expect(dueTime).toBeDisabled()
+
+    // Test late-night Today preset clamp
+    const todayButton = screen.getByRole("button", { name: "Today · 2 hours" })
+    await user.click(todayButton)
+    expect(startDate).toHaveTextContent(/\d{4}$/u)
+    expect(startTime).not.toBeDisabled()
+    expect(dueDate).toHaveTextContent(/\d{4}$/u)
+    expect(dueTime).not.toBeDisabled()
   })
 
   it("hides elapsed time choices while allowing any future minute", async () => {

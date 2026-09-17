@@ -148,15 +148,25 @@ export function QuestFormFields({
       // Keep a full minute of headroom before the next quarter-hour. Without
       // it, clicking near a boundary can submit a start time that the server
       // already considers past by the time the action is processed.
-      const start = new Date(
+      const today = formatZonedLocalInput(new Date(), timezone).slice(0, 10)
+      const candidateStart = new Date(
         Math.ceil((Date.now() + 60_000) / 900_000) * 900_000,
       )
+      const candidateStartDate = formatZonedLocalInput(
+        candidateStart,
+        timezone,
+      ).slice(0, 10)
+
+      // If rounding pushed candidateStart into tomorrow, clamp start to today's earliest future minute
+      const actualStart =
+        candidateStartDate === today ? candidateStart : earliestSchedule
+
       setSchedule({
         dueAt: formatZonedLocalInput(
-          new Date(start.getTime() + 2 * 60 * 60_000),
+          new Date(actualStart.getTime() + 2 * 60 * 60_000),
           timezone,
         ),
-        startAt: formatZonedLocalInput(start, timezone),
+        startAt: formatZonedLocalInput(actualStart, timezone),
       })
       return
     }

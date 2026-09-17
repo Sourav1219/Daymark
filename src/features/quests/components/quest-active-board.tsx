@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 
 import { QuestCreateForm } from "@/features/quests/components/quest-create-form"
@@ -36,8 +36,6 @@ type QuestActiveBoardProps = Readonly<{
 
 export function QuestActiveBoard({
   attachmentsByQuest = {},
-  activeHasNextPage = false,
-  activePage = 1,
   deletedQuests = [],
   gates = [],
   labels = [],
@@ -50,34 +48,22 @@ export function QuestActiveBoard({
   trashPage = 1,
 }: QuestActiveBoardProps) {
   const [activeTab, setActiveTab] = useState<"create" | "trash">("create")
-  const [offlineQuests, setOfflineQuests] = useState<readonly QuestView[]>([])
   const { isOffline, pendingCount, snapshotQuests } = useOffline()
-  const visibleQuests = useMemo(() => {
-    const byId = new Map(quests.map((quest) => [quest.id, quest]))
-    for (const quest of offlineQuests) byId.set(quest.id, quest)
-    return Array.from(byId.values())
-  }, [offlineQuests, quests])
 
   useEffect(() => {
     if (!isOffline && pendingCount === 0) void snapshotQuests(quests)
   }, [isOffline, pendingCount, quests, snapshotQuests])
 
-  function rememberOfflineQuest(quest: QuestView) {
-    setOfflineQuests((current) => [
-      quest,
-      ...current.filter(({ id }) => id !== quest.id),
-    ])
+  function rememberOfflineQuest() {
     setActiveTab("create")
   }
 
   return (
     <div className="quest-studio">
       <header className="quest-overview">
-        <div className="quest-overview__heading">
-          <div>
-            <span>Workspace</span>
-            <h1>Tasks</h1>
-          </div>
+        <div>
+          <span>Workspace</span>
+          <h1>Tasks</h1>
           <p>Create, organise, or recover tasks.</p>
         </div>
       </header>
@@ -97,8 +83,7 @@ export function QuestActiveBoard({
           type="button"
         >
           <Plus aria-hidden="true" />
-          Create
-          <span>Build a new task</span>
+          <span>Create</span>
         </button>
         <button
           aria-controls="quest-trash-panel"
@@ -110,8 +95,12 @@ export function QuestActiveBoard({
           type="button"
         >
           <Trash2 aria-hidden="true" />
-          Trash
-          <span>{deletedQuests.length} in Trash</span>
+          <span>Trash</span>
+          {deletedQuests.length > 0 ? (
+            <span className="quest-studio__tab-badge">
+              {deletedQuests.length}
+            </span>
+          ) : null}
         </button>
       </div>
 
@@ -127,27 +116,6 @@ export function QuestActiveBoard({
           onOfflineQueued={rememberOfflineQuest}
           timezone={timezone}
         />
-        {visibleQuests.length > 0 ? (
-          <div className="mt-8 grid gap-4">
-            <QuestList
-              attachmentsByQuest={attachmentsByQuest}
-              gates={gates}
-              labels={labels}
-              mode="active"
-              parentOptions={parentOptions}
-              quests={visibleQuests}
-              referenceNow={referenceNow}
-              reorderable
-              storageAvailable={storageAvailable}
-              timezone={timezone}
-            />
-            <QuestPagination
-              hasNextPage={activeHasNextPage}
-              page={activePage}
-              paramName="page"
-            />
-          </div>
-        ) : null}
       </section>
 
       <section

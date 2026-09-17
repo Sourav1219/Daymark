@@ -6,6 +6,7 @@ import { authorizeQuestAccess } from "@/features/quests/authorization/quest-auth
 import { getLocalDayWindow } from "@/features/quests/domain/today-window"
 import { localDateForInstant } from "@/features/progression/domain/progression"
 import {
+  findQuestRecord,
   listQuestPriorityFacets,
   listQuestRecords,
   listQuestTypeFacets,
@@ -113,6 +114,7 @@ export async function getHomePage(
   filters: HomeFilters,
   offset = 0,
   now = new Date(),
+  focusedQuestId?: string,
 ): Promise<HomePage> {
   authorizeQuestAccess(access)
   const isSearching = Boolean(filters.search?.trim())
@@ -133,6 +135,38 @@ export async function getHomePage(
     const schedule = formatTodaySchedule(quest.startAt, quest.dueAt, timezone)
     return { ...quest, ...schedule, steps: quest.subquestCount }
   })
+  if (
+    bucket === "active" &&
+    focusedQuestId &&
+    !cards.some((card) => card.id === focusedQuestId)
+  ) {
+    const focusedRecord = await findQuestRecord(
+      getDatabase(),
+      access,
+      focusedQuestId,
+    )
+    if (
+      focusedRecord &&
+      !focusedRecord.deletedAt &&
+      focusedRecord.status === "open"
+    ) {
+      const quest = toQuestView(
+        {
+          ...focusedRecord,
+          gateName: null,
+          subquestCount: 0,
+        },
+        new Map(),
+      )
+      const schedule = formatTodaySchedule(quest.startAt, quest.dueAt, timezone)
+      const focusedCard: TodayCard = {
+        ...quest,
+        ...schedule,
+        steps: quest.subquestCount,
+      }
+      cards.unshift(focusedCard)
+    }
+  }
   return {
     bucket,
     cards,

@@ -67,6 +67,7 @@ import { lockWorkspaceForMutation } from "@/features/workspaces/infrastructure/w
 import { taskQuotaAvailable } from "@/lib/resource-quotas"
 
 export type QuestMutationSummary = Readonly<{
+  date?: string | null
   id: string
   progression?: ProgressionMutationFeedback
   version: number

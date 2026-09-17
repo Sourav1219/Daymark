@@ -10,6 +10,7 @@ import { softDeleteQuestAction } from "@/features/quests/application/actions"
 import { questHomeHref } from "@/features/quests/domain/quest-links"
 
 export type CreatedTaskNotice = Readonly<{
+  date?: string | null | undefined
   id: string
   title: string
   version: number
@@ -27,32 +28,38 @@ export function TaskCreatedPopup({
   variant?: "created" | "updated"
 }>) {
   const router = useRouter()
-  const homeHref = questHomeHref(task.id)
+  const homeHref = questHomeHref(task.id, task.date)
   const [phase, setPhase] = useState<NoticePhase>("created")
   const [pending, startTransition] = useTransition()
 
+  const handleDismiss = useCallback(() => {
+    router.refresh()
+    onDismiss()
+  }, [onDismiss, router])
+
   useEffect(() => {
     if (variant === "created") {
+      router.refresh()
       router.prefetch(homeHref)
     }
   }, [homeHref, router, variant])
 
   useEffect(() => {
     const timeout = window.setTimeout(
-      onDismiss,
+      handleDismiss,
       phase === "undone" ? 1_800 : variant === "updated" ? 4_000 : 8_000,
     )
     return () => window.clearTimeout(timeout)
-  }, [onDismiss, phase, task.id, variant])
+  }, [handleDismiss, phase, task.id, variant])
 
   useEffect(() => {
     function dismissOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !pending) onDismiss()
+      if (event.key === "Escape" && !pending) handleDismiss()
     }
 
     window.addEventListener("keydown", dismissOnEscape)
     return () => window.removeEventListener("keydown", dismissOnEscape)
-  }, [onDismiss, pending])
+  }, [handleDismiss, pending])
 
   const undoCreation = useCallback(() => {
     if (pending || phase === "undone" || variant === "updated") return
@@ -163,7 +170,14 @@ export function TaskCreatedPopup({
               <ArrowRight aria-hidden="true" />
             </button>
           ) : (
-            <Link className="task-created-popup__continue" href={homeHref}>
+            <Link
+              className="task-created-popup__continue"
+              href={homeHref}
+              onClick={() => {
+                onDismiss()
+                router.refresh()
+              }}
+            >
               Continue
               <ArrowRight aria-hidden="true" />
             </Link>

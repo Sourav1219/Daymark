@@ -809,4 +809,241 @@ describe("TodayTasks completed section", () => {
     fireEvent.click(backButton)
     expect(shell).toHaveAttribute("data-details-open", "false")
   })
+
+  it("swipes an active task from right to left to reveal delete button, then clicking deletes immediately with animation popup", async () => {
+    const { softDeleteQuestAction } =
+      await import("@/features/quests/application/actions")
+    vi.mocked(softDeleteQuestAction).mockResolvedValueOnce({
+      data: { id: "active-swipe-1", version: 2 },
+      ok: true,
+    })
+
+    render(
+      <TodayTasks
+        empty={false}
+        sections={[
+          {
+            cards: [
+              {
+                id: "active-swipe-1",
+                priority: "high",
+                status: "open",
+                steps: 0,
+                timeLabel: "11:00",
+                title: "Prepare presentation",
+                version: 1,
+              },
+            ],
+            title: "My tasks",
+          },
+        ]}
+      />,
+    )
+
+    const card = screen.getByLabelText("Prepare presentation")
+    const shell = card.closest(".today-card-shell")
+    expect(shell).toHaveAttribute("data-swiped", "false")
+    expect(card).toHaveAttribute("data-swipable", "true")
+
+    // Swipe from right to left (diffX = -60px)
+    fireEvent.pointerDown(card, { button: 0, clientX: 100, clientY: 10 })
+    fireEvent.pointerMove(card, { buttons: 1, clientX: 40, clientY: 10 })
+    fireEvent.pointerUp(card)
+
+    // Shell is now swiped open
+    expect(shell).toHaveAttribute("data-swiped", "true")
+
+    // Delete button is revealed on the right with integrated circular badge
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete active task Prepare presentation",
+    })
+    expect(deleteBtn).toBeInTheDocument()
+    expect(
+      deleteBtn.querySelector(".today-card__swipe-delete-badge"),
+    ).toBeInTheDocument()
+    expect(
+      deleteBtn.querySelector(".today-card__swipe-delete-text"),
+    ).toHaveTextContent("Delete")
+
+    // Click Delete button
+    fireEvent.click(deleteBtn)
+
+    // Card is optimistically removed immediately without confirmation dialog
+    expect(
+      screen.queryByLabelText("Prepare presentation"),
+    ).not.toBeInTheDocument()
+
+    // Deletion animation popup is displayed
+    expect(screen.getByRole("dialog", { name: "Moved to Trash" })).toBeVisible()
+    expect(screen.getByText("Prepare presentation")).toBeVisible()
+
+    // Soft delete action was invoked
+    expect(softDeleteQuestAction).toHaveBeenCalledWith({
+      expectedVersion: 1,
+      questId: "active-swipe-1",
+    })
+
+    // Empty state with direct "Create task" action appears immediately without requiring screen refresh
+    expect(screen.getByRole("link", { name: "Create task" })).toBeVisible()
+    expect(screen.getByText("No active tasks for this date.")).toBeVisible()
+  })
+
+  it("immediately displays the Create task empty state above missed and completed sections when the last active task is deleted", () => {
+    render(
+      <TodayTasks
+        empty={false}
+        sections={[
+          {
+            cards: [
+              {
+                id: "active-sole-task",
+                priority: "high",
+                status: "open",
+                steps: 0,
+                timeLabel: "09:00",
+                title: "Sole active task",
+                version: 1,
+              },
+            ],
+            title: "My tasks",
+          },
+          {
+            cards: [
+              {
+                id: "missed-task-1",
+                priority: "medium",
+                status: "open",
+                steps: 0,
+                timeLabel: "Yesterday",
+                title: "Overdue item",
+                version: 1,
+              },
+            ],
+            title: "Missed",
+          },
+          {
+            cards: [
+              {
+                id: "completed-task-1",
+                priority: "low",
+                status: "completed",
+                steps: 0,
+                timeLabel: "Done",
+                title: "Finished item",
+                version: 1,
+              },
+            ],
+            title: "Completed",
+          },
+        ]}
+      />,
+    )
+
+    // Before deletion, the active task is present, and no empty state is shown
+    expect(screen.getByLabelText("Sole active task")).toBeVisible()
+    expect(
+      screen.queryByRole("link", { name: "Create task" }),
+    ).not.toBeInTheDocument()
+
+    // Swipe and delete the active task
+    const card = screen.getByLabelText("Sole active task")
+    fireEvent.pointerDown(card, { button: 0, clientX: 100, clientY: 10 })
+    fireEvent.pointerMove(card, { buttons: 1, clientX: 40, clientY: 10 })
+    fireEvent.pointerUp(card)
+
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete active task Sole active task",
+    })
+    fireEvent.click(deleteBtn)
+
+    // Active task is gone
+    expect(screen.queryByLabelText("Sole active task")).not.toBeInTheDocument()
+
+    // "Create task" button and empty state are now immediately visible without refresh
+    expect(screen.getByRole("link", { name: "Create task" })).toBeVisible()
+    expect(screen.getByText("No active tasks for this date.")).toBeVisible()
+
+    // Missed and Completed sections remain visible
+    expect(screen.getByText("Overdue item")).toBeVisible()
+    expect(screen.getByText("Finished item")).toBeVisible()
+  })
+
+  it("closes swipe when card is tapped while swiped open", () => {
+    render(
+      <TodayTasks
+        empty={false}
+        sections={[
+          {
+            cards: [
+              {
+                id: "active-swipe-2",
+                priority: "medium",
+                status: "open",
+                steps: 0,
+                timeLabel: "14:00",
+                title: "Review code",
+                version: 1,
+              },
+            ],
+            title: "My tasks",
+          },
+        ]}
+      />,
+    )
+
+    const card = screen.getByLabelText("Review code")
+    const shell = card.closest(".today-card-shell")
+
+    // Swipe open from right to left
+    fireEvent.pointerDown(card, { button: 0, clientX: 100, clientY: 10 })
+    fireEvent.pointerMove(card, { buttons: 1, clientX: 30, clientY: 10 })
+    fireEvent.pointerUp(card)
+    // Drag release click is consumed so the card stays open
+    fireEvent.click(card)
+    expect(shell).toHaveAttribute("data-swiped", "true")
+
+    // Tap card to close
+    fireEvent.click(card)
+    expect(shell).toHaveAttribute("data-swiped", "false")
+  })
+
+  it("closes swipe when user taps outside the task card", () => {
+    render(
+      <div>
+        <div data-testid="outside-area">Outside Area</div>
+        <TodayTasks
+          empty={false}
+          sections={[
+            {
+              cards: [
+                {
+                  id: "active-swipe-3",
+                  priority: "medium",
+                  status: "open",
+                  steps: 0,
+                  timeLabel: "15:00",
+                  title: "Deploy app",
+                  version: 1,
+                },
+              ],
+              title: "My tasks",
+            },
+          ]}
+        />
+      </div>,
+    )
+
+    const card = screen.getByLabelText("Deploy app")
+    const shell = card.closest(".today-card-shell")
+
+    // Swipe open right-to-left
+    fireEvent.pointerDown(card, { button: 0, clientX: 100, clientY: 10 })
+    fireEvent.pointerMove(card, { buttons: 1, clientX: 30, clientY: 10 })
+    fireEvent.pointerUp(card)
+    expect(shell).toHaveAttribute("data-swiped", "true")
+
+    // Click outside
+    fireEvent.pointerDown(screen.getByTestId("outside-area"))
+    expect(shell).toHaveAttribute("data-swiped", "false")
+  })
 })

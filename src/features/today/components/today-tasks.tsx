@@ -175,6 +175,15 @@ export function TodayTasks({
 
     return preparedSections.filter((section) => section.cards.length > 0)
   }, [optimisticallyDeletedIds, optimisticallyReopened, sections])
+
+  const isEffectivelyEmpty = useMemo(() => {
+    if (empty) return true
+    const hasMyTasksSection = sections.some((s) => s.title === "My tasks")
+    const hasVisibleActiveCards = visibleSections.some(
+      (s) => s.title === "My tasks" && s.cards.length > 0,
+    )
+    return hasMyTasksSection && !hasVisibleActiveCards
+  }, [empty, sections, visibleSections])
   const nextDeadline = useMemo(() => {
     const upcoming = visibleSections
       .flatMap(({ cards }) => cards)
@@ -327,7 +336,7 @@ export function TodayTasks({
           task={deletedTask}
         />
       ) : null}
-      {empty ? (
+      {isEffectivelyEmpty ? (
         <section className="today-empty" data-historical={historical}>
           <span aria-hidden="true" className="today-empty__visual">
             <CalendarCheck2 />
@@ -540,6 +549,41 @@ function TodayCompletedSection({
   )
 }
 
+const SWIPE_REVEAL_WIDTH = 80
+
+function applyCardDragTransform(
+  element: HTMLElement | null,
+  translateX: number,
+  isStarting = false,
+) {
+  if (!element) return
+  if (isStarting) {
+    element.setAttribute("data-dragging", "true")
+    element.style.transition = "none"
+  }
+  element.style.transform = `translate3d(${translateX}px, 0, 0)`
+}
+
+function applyCardSnapTransform(
+  element: HTMLElement | null,
+  translateX: number,
+) {
+  if (!element) return
+  element.removeAttribute("data-dragging")
+  element.style.transition = "transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)"
+  element.style.transform =
+    translateX === 0
+      ? "translate3d(0, 0, 0)"
+      : `translate3d(${translateX}px, 0, 0)`
+}
+
+function clearCardTransform(element: HTMLElement | null) {
+  if (!element) return
+  element.removeAttribute("data-dragging")
+  element.style.transition = ""
+  element.style.transform = ""
+}
+
 function TodayTaskCard({
   card,
   focused,
@@ -648,6 +692,8 @@ function TodayTaskCard({
     if (isDiscarding) return
     triggerHaptic("heavy")
 
+    clearCardTransform(cardElementRef.current)
+
     // Remove the card/empty section and open the trash confirmation in the
     // click frame. The network mutation then confirms or rolls this back.
     flushSync(() => {
@@ -667,6 +713,18 @@ function TodayTaskCard({
           toast.error(result.error.message)
           return
         }
+
+        if (typeof window !== "undefined") {
+          const nextUrl = new URL(window.location.href)
+          if (focused || nextUrl.searchParams.get("task") === card.id) {
+            nextUrl.searchParams.delete("task")
+            router.replace(
+              `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}` as Route,
+              { scroll: false },
+            )
+          }
+        }
+        router.refresh()
       } catch {
         onDeleteFailed(card.id)
         toast.error("The task could not be moved to Trash. Refresh and retry.")
@@ -674,14 +732,280 @@ function TodayTaskCard({
     })()
   }
 
+  const canSwipeToDelete =
+    !completed &&
+    !missed &&
+    !historical &&
+    !reopening &&
+    !isDiscarding &&
+    !detailsOpen
+
+  const shellElementRef = useRef<HTMLDivElement | null>(null)
+  const cardElementRef = useRef<HTMLElement | null>(null)
+  const [isSwipedOpen, setIsSwipedOpen] = useState(false)
+
+  const dragStartX = useRef(0)
+  const dragStartY = useRef(0)
+  const currentTranslateX = useRef(0)
+  const isDraggingRef = useRef(false)
+  const hasLockedDirection = useRef(false)
+  const isHorizontalSwipe = useRef(false)
+  const wasDragged = useRef(false)
+  const activePointerId = useRef<number | null>(null)
+
+  const startDrag = useCallback(
+    (clientX: number, clientY: number, target: EventTarget | null) => {
+      if (!canSwipeToDelete) return false
+      const el = target as HTMLElement | null
+      if (
+        el?.closest(
+          "button, a, input, select, textarea, [data-slot='checkbox']",
+        )
+      ) {
+        return false
+      }
+
+      dragStartX.current = clientX
+      dragStartY.current = clientY
+      currentTranslateX.current = isSwipedOpen ? -SWIPE_REVEAL_WIDTH : 0
+      hasLockedDirection.current = false
+      isHorizontalSwipe.current = false
+      wasDragged.current = false
+      return true
+    },
+    [canSwipeToDelete, isSwipedOpen],
+  )
+
+  const moveDrag = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!canSwipeToDelete) return
+
+      const diffX = clientX - dragStartX.current
+      const diffY = clientY - dragStartY.current
+
+      if (!hasLockedDirection.current) {
+        const distance = Math.hypot(diffX, diffY)
+        if (distance > 6) {
+          hasLockedDirection.current = true
+          if (Math.abs(diffY) > Math.abs(diffX)) {
+            isHorizontalSwipe.current = false
+            return
+          }
+          isHorizontalSwipe.current = true
+          wasDragged.current = true
+          isDraggingRef.current = true
+          shellElementRef.current?.setAttribute("data-dragging", "true")
+          applyCardDragTransform(
+            cardElementRef.current,
+            currentTranslateX.current,
+            true,
+          )
+        } else {
+          return
+        }
+      }
+
+      if (isHorizontalSwipe.current && cardElementRef.current) {
+        wasDragged.current = true
+        // Right-to-left swipe reveals delete button on right
+        // diffX < 0 when moving from right to left
+        const base = isSwipedOpen ? -SWIPE_REVEAL_WIDTH : 0
+        const targetX = base + diffX
+
+        let clampedX: number
+        if (targetX > 0) {
+          // Smooth rubber-band resistance dragging right
+          clampedX = (targetX * 0.18) / (1 + targetX * 0.008)
+        } else if (targetX < -SWIPE_REVEAL_WIDTH) {
+          // Smooth rubber-band resistance dragging left past reveal width
+          const overscroll = Math.abs(targetX) - SWIPE_REVEAL_WIDTH
+          const damped = (overscroll * 0.3) / (1 + overscroll * 0.006)
+          clampedX = -(SWIPE_REVEAL_WIDTH + damped)
+        } else {
+          clampedX = targetX
+        }
+
+        currentTranslateX.current = clampedX
+        // 120 FPS direct hardware-accelerated transform without React re-render overhead
+        applyCardDragTransform(cardElementRef.current, clampedX)
+      }
+    },
+    [canSwipeToDelete, isSwipedOpen],
+  )
+
+  const endDrag = useCallback(() => {
+    if (!canSwipeToDelete) return
+
+    if (isHorizontalSwipe.current) {
+      isDraggingRef.current = false
+      hasLockedDirection.current = false
+      isHorizontalSwipe.current = false
+
+      shellElementRef.current?.removeAttribute("data-dragging")
+
+      // If closed, pulling left past -34px opens it.
+      // If open, pulling right past -50px closes it.
+      const shouldOpen = isSwipedOpen
+        ? currentTranslateX.current < -50
+        : currentTranslateX.current < -34
+
+      if (shouldOpen) {
+        currentTranslateX.current = -SWIPE_REVEAL_WIDTH
+        applyCardSnapTransform(cardElementRef.current, -SWIPE_REVEAL_WIDTH)
+        setIsSwipedOpen(true)
+      } else {
+        currentTranslateX.current = 0
+        applyCardSnapTransform(cardElementRef.current, 0)
+        setIsSwipedOpen(false)
+      }
+
+      window.setTimeout(() => {
+        wasDragged.current = false
+      }, 50)
+    }
+  }, [canSwipeToDelete, isSwipedOpen])
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLElement>) => {
+      if (e.button !== 0) return
+      if (startDrag(e.clientX, e.clientY, e.target)) {
+        activePointerId.current = e.pointerId
+      }
+    },
+    [startDrag],
+  )
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLElement>) => {
+      if (
+        activePointerId.current !== null &&
+        e.pointerId !== activePointerId.current
+      )
+        return
+      if (e.pointerType === "mouse" && e.buttons !== 1) return
+      moveDrag(e.clientX, e.clientY)
+      if (
+        isHorizontalSwipe.current &&
+        typeof e.currentTarget.setPointerCapture === "function"
+      ) {
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId)
+        } catch {}
+      }
+    },
+    [moveDrag],
+  )
+
+  const handlePointerEnd = useCallback(
+    (e: React.PointerEvent<HTMLElement>) => {
+      if (
+        activePointerId.current !== null &&
+        e.pointerId === activePointerId.current
+      ) {
+        if (typeof e.currentTarget.releasePointerCapture === "function") {
+          try {
+            e.currentTarget.releasePointerCapture(e.pointerId)
+          } catch {}
+        }
+        activePointerId.current = null
+      }
+      endDrag()
+    },
+    [endDrag],
+  )
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLElement>) => {
+      const touch = e.touches[0]
+      if (!touch) return
+      startDrag(touch.clientX, touch.clientY, e.target)
+    },
+    [startDrag],
+  )
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLElement>) => {
+      const touch = e.touches[0]
+      if (!touch) return
+      moveDrag(touch.clientX, touch.clientY)
+    },
+    [moveDrag],
+  )
+
+  const handleTouchEnd = useCallback(() => {
+    endDrag()
+  }, [endDrag])
+
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      if (wasDragged.current) {
+        e.preventDefault()
+        e.stopPropagation()
+        wasDragged.current = false
+        return
+      }
+      if (isSwipedOpen) {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsSwipedOpen(false)
+        applyCardSnapTransform(cardElementRef.current, 0)
+      }
+    },
+    [isSwipedOpen],
+  )
+
+  useEffect(() => {
+    if (!isSwipedOpen) return
+
+    function handleOutsidePointerDown(e: PointerEvent | MouseEvent) {
+      const cardEl = cardElementRef.current
+      if (
+        cardEl &&
+        !cardEl.closest(".today-card-shell")?.contains(e.target as Node)
+      ) {
+        setIsSwipedOpen(false)
+        applyCardSnapTransform(cardEl, 0)
+      }
+    }
+
+    window.addEventListener("pointerdown", handleOutsidePointerDown)
+    return () => {
+      window.removeEventListener("pointerdown", handleOutsidePointerDown)
+    }
+  }, [isSwipedOpen])
+
   return (
     <div
+      ref={shellElementRef}
       className="today-card-shell"
       data-details-open={detailsOpen}
       data-discarding={isDiscarding}
       data-flippable={hasDescription}
+      data-swiped={isSwipedOpen}
     >
+      {canSwipeToDelete ? (
+        <div aria-hidden={!isSwipedOpen} className="today-card__swipe-action">
+          <button
+            aria-label={`Delete active task ${card.title}`}
+            className="today-card__swipe-delete"
+            disabled={isDiscarding}
+            onClick={(e) => {
+              e.stopPropagation()
+              moveTaskToTrash("cancelled")
+            }}
+            tabIndex={isSwipedOpen ? 0 : -1}
+            title="Delete task"
+            type="button"
+          >
+            <span className="today-card__swipe-delete-badge" aria-hidden="true">
+              <Trash2 className="today-card__swipe-delete-icon" />
+            </span>
+            <span className="today-card__swipe-delete-text">Delete</span>
+          </button>
+        </div>
+      ) : null}
       <article
+        ref={cardElementRef}
         aria-label={detailsOpen ? `${card.title} description` : card.title}
         aria-busy={pending || isDiscarding || reopening}
         className="today-card"
@@ -692,7 +1016,23 @@ function TodayTaskCard({
         data-priority={card.priority}
         data-reopening={reopening}
         data-status={missed ? "failed" : card.status}
+        data-swipable={canSwipeToDelete}
+        data-swiped={isSwipedOpen}
         id={todayTaskElementId(card.id)}
+        onClick={handleCardClick}
+        onPointerCancel={handlePointerEnd}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onTouchCancel={handleTouchEnd}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        onTouchStart={handleTouchStart}
+        style={
+          canSwipeToDelete && isSwipedOpen
+            ? { transform: `translate3d(-${SWIPE_REVEAL_WIDTH}px, 0, 0)` }
+            : undefined
+        }
         tabIndex={-1}
       >
         <div className="today-card__flipper">

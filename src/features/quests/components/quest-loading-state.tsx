@@ -32,12 +32,10 @@ function TasksLoadingState() {
       <span className="sr-only">Loading Tasks</span>
       <div className="quest-studio">
         <header className="quest-overview">
-          <div className="quest-overview__heading">
-            <div>
-              <span>Workspace</span>
-              <h2>Tasks</h2>
-            </div>
-            <p>Create and schedule a new task or manage trash.</p>
+          <div>
+            <span>Workspace</span>
+            <h1>Tasks</h1>
+            <p>Create, organise, or recover tasks.</p>
           </div>
         </header>
 
@@ -49,7 +47,7 @@ function TasksLoadingState() {
             role="tab"
             type="button"
           >
-            <Plus /> Create <span>Build a new task</span>
+            <Plus /> <span>Create</span>
           </button>
           <button
             aria-selected="false"
@@ -58,7 +56,7 @@ function TasksLoadingState() {
             role="tab"
             type="button"
           >
-            <Trash2 /> Trash <span>Recently removed</span>
+            <Trash2 /> <span>Trash</span>
           </button>
         </div>
 

@@ -50,10 +50,11 @@ export function QuestCreateForm({
 
   useEffect(() => {
     if (state?.ok) {
-      // Start the fresh Home request before painting the success notice, so
-      // the created task is ready when the user chooses Continue.
-      router.prefetch(questHomeHref(state.data.id))
+      // Invalidate client router cache so all subsequent navigations to Home render fresh data.
+      router.refresh()
+      router.prefetch(questHomeHref(state.data.id, state.data.date))
       setCreatedTask({
+        date: state.data.date,
         id: state.data.id,
         title: submittedTitleRef.current,
         version: state.data.version,
@@ -117,7 +118,7 @@ export function QuestCreateForm({
           </span>
           <div>
             <CardTitle className="quest-create-card__title">New task</CardTitle>
-            <CardDescription>
+            <CardDescription className="quest-create-card__description">
               Turn an intention into something you can finish.
             </CardDescription>
           </div>
@@ -125,7 +126,7 @@ export function QuestCreateForm({
         <CardContent className="quest-create-card__content">
           <form
             action={submitQuest}
-            className="grid gap-5"
+            className="grid gap-3.5"
             key={state?.ok ? state.data.id : "create-quest"}
             onKeyDown={(event) => {
               if (

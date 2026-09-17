@@ -97,13 +97,13 @@ export function QuestDatePicker({
           type="button"
           variant="outline"
         >
-          <CalendarDays aria-hidden="true" />
+          <CalendarDays aria-hidden="true" className="shrink-0" />
           <span>
             {selected ? compactDateFormatter.format(selected) : "Choose date"}
           </span>
           <ChevronDown
             aria-hidden="true"
-            className="quest-date-trigger__chevron"
+            className="quest-date-trigger__chevron shrink-0"
           />
         </Button>
       </DialogTrigger>

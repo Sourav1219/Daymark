@@ -627,6 +627,127 @@ button.today-section__count-badge--toggle:hover .today-section__chevron {
   block-size: var(--today-card-height);
   min-block-size: var(--today-card-height);
   width: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+.today-card__swipe-action {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  width: 100%;
+  z-index: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: stretch;
+  border-radius: 19px;
+  overflow: hidden;
+  background: linear-gradient(165deg, #ff453a 0%, #eb271b 52%, #d91b0f 100%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate3d(6px, 0, 0) scale(0.98);
+  transform-origin: right center;
+  transition:
+    opacity 0.2s var(--ease-system),
+    transform 0.2s var(--ease-system),
+    visibility 0.2s;
+}
+
+.today-card-shell[data-swiped="true"] .today-card__swipe-action,
+.today-card-shell[data-dragging="true"] .today-card__swipe-action {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.today-card__swipe-delete {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 5.35rem;
+  height: 100%;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 2px 0 6px -2px rgba(0, 0, 0, 0.12);
+  transition:
+    filter 0.15s var(--ease-system),
+    opacity 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.today-card__swipe-delete:hover {
+  filter: brightness(1.08);
+}
+
+.today-card__swipe-delete:active {
+  filter: brightness(0.92);
+}
+
+.today-card__swipe-delete-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition:
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.today-card__swipe-delete:hover .today-card__swipe-delete-badge {
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.today-card__swipe-delete:active .today-card__swipe-delete-badge {
+  transform: scale(0.93);
+}
+
+.today-card__swipe-delete-icon {
+  width: 1.12rem;
+  height: 1.12rem;
+  stroke-width: 2.2;
+  color: #ffffff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.today-card__swipe-delete:hover .today-card__swipe-delete-icon {
+  transform: scale(1.05);
+}
+
+.today-card__swipe-delete-text {
+  font-family: var(--font-nunito), var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  line-height: 1;
 }
 
 .today-card-shell[data-discarding="true"] {
@@ -672,6 +793,7 @@ button.today-section__count-badge--toggle:hover .today-section__chevron {
   padding: 0.62rem 0.7rem;
   border: 1px solid var(--tone-border);
   border-radius: 19px;
+  background-color: var(--surface-elevated, #ffffff);
   background:
     radial-gradient(circle at 92% 12%, var(--tone-orb), transparent 33%),
     linear-gradient(135deg, var(--tone-bg), var(--tone-bg-2));
@@ -679,15 +801,81 @@ button.today-section__count-badge--toggle:hover .today-section__chevron {
     0 17px 30px -26px var(--tone-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.72);
   animation: none;
+  touch-action: pan-y;
+  will-change: transform, translate, opacity;
   transition:
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
     translate 0.18s var(--ease-system),
-    transform 0.18s var(--ease-system),
+    border-radius 0.24s cubic-bezier(0.16, 1, 0.3, 1),
     opacity 0.2s,
     box-shadow 0.18s var(--ease-system);
   isolation: isolate;
   perspective: 900px;
   scroll-margin-block: 7rem;
   z-index: 1;
+}
+
+/* Subtle red indicator on the very edge of swipeable cards */
+.today-card[data-swipable="true"] {
+  border-right: 2px solid
+    color-mix(in srgb, var(--status-danger) 22%, var(--tone-border));
+}
+
+.today-card[data-swipable="true"]::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--status-danger) 38%, transparent);
+  opacity: 0.65;
+  pointer-events: none;
+  transition:
+    opacity 0.2s var(--ease-system),
+    transform 0.2s var(--ease-system),
+    background 0.2s;
+}
+
+.today-card[data-swipable="true"]:hover::after {
+  opacity: 0.95;
+  background: var(--status-danger);
+  transform: translateY(-50%) scaleY(1.15);
+}
+
+/* When dragging or swiped open: clean vertical edge without rounded tongue */
+.today-card-shell[data-swiped="true"] .today-card,
+.today-card-shell[data-dragging="true"] .today-card,
+.today-card[data-swiped="true"],
+.today-card[data-dragging="true"] {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-right: none !important;
+}
+
+.today-card-shell[data-swiped="true"] .today-card::after,
+.today-card-shell[data-dragging="true"] .today-card::after,
+.today-card[data-swiped="true"]::after,
+.today-card[data-dragging="true"]::after {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+.today-card[data-dragging="true"] {
+  transition: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grabbing;
+}
+
+.today-card[data-swiped="true"] {
+  box-shadow:
+    6px 0 18px -4px rgba(0, 0, 0, 0.16),
+    2px 0 6px -1px rgba(0, 0, 0, 0.08),
+    0 17px 30px -26px var(--tone-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .today-card__flipper {

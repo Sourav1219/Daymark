@@ -25,6 +25,7 @@ import {
   type QuestMutationSummary,
   type QuestReorderSummary,
 } from "@/features/quests/mutations/quest-mutation-service"
+import { localDateForInstant } from "@/features/progression/domain/progression"
 import {
   parseCreateQuestForm,
   parseEditQuestForm,
@@ -126,9 +127,14 @@ export async function createQuestAction(
     )
   }
 
-  return runQuestMutation(access.userId, createPaths, () =>
-    createQuest(getDatabase(), access, parsed.data),
-  )
+  return runQuestMutation(access.userId, createPaths, async () => {
+    const summary = await createQuest(getDatabase(), access, parsed.data)
+    const targetInstant = parsed.data.startAt ?? parsed.data.dueAt
+    const scheduledDate = targetInstant
+      ? localDateForInstant(targetInstant, settings.timezone)
+      : null
+    return { ...summary, date: scheduledDate }
+  })
 }
 
 export async function classifyQuestAction(input: ClassifyQuestCommand) {
